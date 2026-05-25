@@ -136,13 +136,19 @@ export async function leaveRoom(roomId: string, playerId: string) {
   return parseResponse(res, 'Failed to leave room')
 }
 
-export function leaveRoomBeacon(roomId: string, playerId: string) {
-  try {
-    fetch(`${ROOM_PATH}/leave`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomId, playerId }),
-      keepalive: true,
-    }).catch(() => {})
-  } catch {}
+export async function setPlayerPresence(
+  roomId: string,
+  playerId: string,
+  status: 'active' | 'break'
+): Promise<{ players: Player[]; state: GameState | null }> {
+  const res = await fetchRoom(`${ROOM_PATH}/presence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId, playerId, status }),
+  })
+  const data = await parseResponse(res, 'Failed to update presence')
+  return {
+    players: data.players as Player[],
+    state: (data.state as GameState | null) ?? null,
+  }
 }

@@ -10,6 +10,7 @@ import PlayerCircle from './PlayerCircle'
 import QuestionCard from './QuestionCard'
 import { getQuestionById, phaseDeadline } from '@/lib/trivia'
 import { advanceRound, applyAnswer, applyBuzz, applyTimeout, startNewGame } from '@/lib/gameLogic'
+import { isActivePlayer } from '@/lib/players'
 import {
   addRoomMessage,
   createRoom,
@@ -17,7 +18,7 @@ import {
   getRoom,
   joinRoom,
   leaveRoom,
-  leaveRoomBeacon,
+  setPlayerPresence,
   updateRoomState,
 } from '@/lib/roomApi'
 import type { CategoryId, ChatMessage, GameMode, GameState, Player, RejoinSession } from '@/lib/types'
@@ -82,6 +83,8 @@ export default function GameApp() {
   const [mode, setMode] = useState<'local' | 'online' | null>(null)
   const [multiplayerAvailable, setMultiplayerAvailable] = useState(false)
   const [pendingRejoin, setPendingRejoin] = useState<RejoinSession | null>(null)
+  const [onBreak, setOnBreak] = useState(false)
+  const [booting, setBooting] = useState(true)
 
   const [playerName, setPlayerName] = useState(loadSavedName)
   const [avatar, setAvatar] = useState('star')
@@ -103,36 +106,65 @@ export default function GameApp() {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const syncingRef = useRef(false)
-  const leaveRef = useRef({ roomId: null as string | null, playerId })
 
-  leaveRef.current = { roomId, playerId }
+  const enterRoomRef = useRef<
+    (
+      rid: string,
+      code: string | null,
+      plist: Player[],
+      host: boolean,
+      online: boolean,
+      initialState?: GameState | null,
+      initialMessages?: ChatMessage[]
+    ) => void
+  >(() => {})
 
   useEffect(() => {
     async function init() {
       const { available } = await getMultiplayerStatus()
       setMultiplayerAvailable(available)
       const saved = loadRejoinSession()
+      if (saved && saved.roomId === 'local') {
+        setBooting(false)
+        return
+      }
       if (saved && available) {
         try {
           const data = await getRoom(saved.roomId)
           const stillIn = (data.players || []).some((p) => p.id === playerId)
-          if (stillIn) setPendingRejoin(saved)
+          if (stillIn) {
+            setPlayerName(saved.playerName)
+            setAvatar(saved.avatar)
+            setGameCodeInput(saved.gameCode)
+            const joinData = await joinRoom(
+              saved.gameCode,
+              saved.playerName,
+              saved.avatar,
+              playerId
+            )
+            const host = joinData.players[0]?.id === playerId
+            enterRoomRef.current(
+              saved.roomId,
+              saved.gameCode,
+              joinData.players,
+              host,
+              true,
+              joinData.state,
+              joinData.messages || []
+            )
+            setOnBreak(false)
+            setBooting(false)
+            return
+          }
         } catch {
           clearRejoinSession()
         }
+        if (saved) setPendingRejoin(saved)
       }
+      setBooting(false)
     }
     init()
   }, [playerId])
-
-  useEffect(() => {
-    function onUnload() {
-      const { roomId: rid, playerId: pid } = leaveRef.current
-      if (rid) leaveRoomBeacon(rid, pid)
-    }
-    window.addEventListener('beforeunload', onUnload)
-    return () => window.removeEventListener('beforeunload', onUnload)
-  }, [])
 
   const me = players.find((p) => p.id === playerId)
   const myName = me?.name ?? playerName
@@ -232,13 +264,18 @@ export default function GameApp() {
     setGameState(initialState)
     setMessages(initialMessages)
     setScreen('room')
+    setOnBreak(false)
+    setPendingRejoin(null)
+    const name = playerName.trim() || plist.find((p) => p.id === playerId)?.name || 'Player'
     saveRejoinSession({
       roomId: rid,
       gameCode: code ?? '',
-      playerName: playerName.trim(),
+      playerName: name,
       avatar,
     })
   }
+
+  enterRoomRef.current = enterRoom
 
   async function startLocalGame() {
     if (!playerName.trim()) {
@@ -301,30 +338,36 @@ export default function GameApp() {
     }
   }
 
-  async function rejoinSavedRoom() {
-    if (!pendingRejoin) return
-    setPlayerName(pendingRejoin.playerName)
-    setAvatar(pendingRejoin.avatar)
-    setGameCodeInput(pendingRejoin.gameCode)
+  async function rejoinSavedRoom(session?: RejoinSession) {
+    const target = session ?? pendingRejoin
+    if (!target) return
+    setPlayerName(target.playerName)
+    setAvatar(target.avatar)
+    setGameCodeInput(target.gameCode)
     setError('')
-    try {
-      const data = await joinRoom(
-        pendingRejoin.gameCode,
-        pendingRejoin.playerName,
-        pendingRejoin.avatar,
-        playerId
+    if (target.roomId === 'local') {
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === playerId ? { ...p, status: 'active' as const } : p))
       )
+      setRoomId('local')
+      setMode('local')
+      setScreen('room')
+      setOnBreak(false)
+      setPendingRejoin(null)
+      return
+    }
+    try {
+      const data = await joinRoom(target.gameCode, target.playerName, target.avatar, playerId)
       const host = data.players[0]?.id === playerId
       await enterRoom(
-        pendingRejoin.roomId,
-        pendingRejoin.gameCode,
+        target.roomId,
+        target.gameCode,
         data.players,
         host,
         true,
         data.state,
         data.messages || []
       )
-      setPendingRejoin(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not rejoin')
       clearRejoinSession()
@@ -333,8 +376,13 @@ export default function GameApp() {
   }
 
   function dismissRejoin() {
+    const saved = loadRejoinSession()
+    if (saved?.roomId && saved.roomId !== 'local') {
+      leaveRoom(saved.roomId, playerId).catch(() => {})
+    }
     clearRejoinSession()
     setPendingRejoin(null)
+    setOnBreak(false)
   }
 
   function startGame() {
@@ -362,9 +410,14 @@ export default function GameApp() {
       ? buzzedPlayer ?? null
       : currentPlayer ?? null
 
+  const imActive = me ? isActivePlayer(me) : true
   const isMyTurn =
-    gameState?.gameMode === 'turns' && currentPlayer?.id === playerId
-  const canBuzz = gameState?.phase === 'buzzing' && !gameState.buzzedBy
+    imActive &&
+    gameState?.gameMode === 'turns' &&
+    currentPlayer?.id === playerId &&
+    isActivePlayer(currentPlayer)
+  const canBuzz =
+    imActive && gameState?.phase === 'buzzing' && !gameState.buzzedBy
   const canAnswer =
     gameState &&
     currentQ &&
@@ -378,7 +431,7 @@ export default function GameApp() {
   function handleBuzz() {
     if (!gameState || gameState.phase !== 'buzzing') return
     if (mode === 'online' && gameState.buzzedBy) return
-    const next = applyBuzz(gameState, playerId)
+    const next = applyBuzz(gameState, playerId, players)
     if (next === gameState) return
     setSelectedChoice(null)
     pushState(next)
@@ -401,7 +454,7 @@ export default function GameApp() {
   function advanceAfterReveal() {
     if (!gameState) return
     if (mode === 'online' && !isHost) return
-    const next = advanceRound(gameState, players.length)
+    const next = advanceRound(gameState, players)
     if (!next) return
     setSelectedChoice(null)
     pushState(next)
@@ -416,14 +469,38 @@ export default function GameApp() {
     }
   }
 
+  async function takeBreak() {
+    const saved = loadRejoinSession()
+    if (mode === 'online' && roomId) {
+      try {
+        const { players: plist, state } = await setPlayerPresence(roomId, playerId, 'break')
+        setPlayers(plist)
+        if (state) setGameState(state)
+      } catch (e) {
+        console.warn('Break failed', e)
+      }
+      if (pollRef.current) clearInterval(pollRef.current)
+    } else if (mode === 'local') {
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === playerId ? { ...p, status: 'break' as const } : p))
+      )
+    }
+    setRoomId(null)
+    setScreen('home')
+    setOnBreak(true)
+    if (saved) setPendingRejoin(saved)
+  }
+
   async function leaveGame() {
     if (roomId && mode === 'online') {
       try {
         await leaveRoom(roomId, playerId)
       } catch {}
     }
+    if (pollRef.current) clearInterval(pollRef.current)
     clearRejoinSession()
     setPendingRejoin(null)
+    setOnBreak(false)
     setScreen('home')
     setMode(null)
     setRoomId(null)
@@ -446,6 +523,17 @@ export default function GameApp() {
     (a, b) => (gameState?.scores[b.id] ?? 0) - (gameState?.scores[a.id] ?? 0)
   )
 
+  if (booting) {
+    return (
+      <div className="app-shell">
+        <header className="app-header">
+          <h1 className="logo">Head2Head</h1>
+          <p className="tagline">Loading…</p>
+        </header>
+      </div>
+    )
+  }
+
   if (screen === 'home') {
     return (
       <div className="app-shell">
@@ -454,18 +542,33 @@ export default function GameApp() {
           <p className="tagline">Group trivia — phones, laptops, couch or across the room</p>
         </header>
 
-        {pendingRejoin && (
+        {(pendingRejoin || onBreak) && (
           <section className="card rejoin-card">
-            <p>
-              Welcome back! Rejoin room <strong>{pendingRejoin.gameCode}</strong> as{' '}
-              <strong>{pendingRejoin.playerName}</strong>?
+            {onBreak ? (
+              <p>
+                You&apos;re on a break. Your spot in room{' '}
+                <strong>{pendingRejoin?.gameCode || gameCode}</strong> is saved.
+              </p>
+            ) : (
+              <p>
+                Welcome back! Rejoin room <strong>{pendingRejoin?.gameCode}</strong> as{' '}
+                <strong>{pendingRejoin?.playerName}</strong>?
+              </p>
+            )}
+            <p className="rejoin-hint">
+              Refreshed or closed the tab? Same device — just tap Rejoin. No need to enter the code
+              again.
             </p>
             <div className="rejoin-actions">
-              <button type="button" className="btn btn-primary" onClick={rejoinSavedRoom}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => pendingRejoin && rejoinSavedRoom(pendingRejoin)}
+              >
                 Rejoin game
               </button>
               <button type="button" className="btn" onClick={dismissRejoin}>
-                Not now
+                Leave for good
               </button>
             </div>
             {error && <p className="error">{error}</p>}
@@ -620,9 +723,14 @@ export default function GameApp() {
               Start game
             </button>
           )}
-          <button type="button" className="btn-ghost btn-sm" onClick={leaveGame}>
-            Leave
-          </button>
+          <div className="room-menu">
+            <button type="button" className="btn btn-sm" onClick={takeBreak} title="Step away — you can rejoin later">
+              Take a break
+            </button>
+            <button type="button" className="btn-ghost btn-sm" onClick={leaveGame} title="Leave the room completely">
+              Leave room
+            </button>
+          </div>
         </div>
       </header>
 
@@ -680,6 +788,7 @@ export default function GameApp() {
                   {players.map((p) => (
                     <li key={p.id}>
                       {p.name} {p.id === playerId ? '(you)' : ''}
+                      {p.status === 'break' ? ' — on break' : ''}
                     </li>
                   ))}
                 </ul>

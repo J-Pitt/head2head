@@ -27,10 +27,20 @@ export async function POST(request: Request) {
     const name = String(playerName).trim() || 'Player'
     const av = avatar ? String(avatar) : 'star'
 
-    const existing = players.find((p: { id: string }) => p.id === id)
-    if (existing) {
+    const existingIdx = players.findIndex((p: { id: string }) => p.id === id)
+    if (existingIdx >= 0) {
+      players[existingIdx] = {
+        ...players[existingIdx],
+        name,
+        avatar: av,
+        status: 'active',
+      }
+      room.players = players
+      room.updatedAt = new Date().toISOString()
+      await setRoom(room.roomId, room)
       return NextResponse.json({
         success: true,
+        rejoined: true,
         roomId: room.roomId,
         players,
         messages: room.messages || [],
@@ -38,12 +48,15 @@ export async function POST(request: Request) {
       })
     }
 
-    const taken = players.some((p: { name: string }) => p.name.toLowerCase() === name.toLowerCase())
+    const taken = players.some(
+      (p: { name: string; id: string; status?: string }) =>
+        p.id !== id && p.name.toLowerCase() === name.toLowerCase() && p.status !== 'break'
+    )
     if (taken) {
       return NextResponse.json({ success: false, error: 'That name is already taken in this room' }, { status: 409 })
     }
 
-    players.push({ id, name, avatar: av })
+    players.push({ id, name, avatar: av, status: 'active' })
     room.players = players
     room.updatedAt = new Date().toISOString()
     if (!Array.isArray(room.messages)) room.messages = []

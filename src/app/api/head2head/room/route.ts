@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     }
 
     const roomId = randomUUID()
-    const host = { id: playerId, name: hostName, avatar }
+    const host = { id: playerId, name: hostName, avatar, status: 'active' as const }
     const room = {
       roomId,
       gameCode: code,

@@ -1,3 +1,4 @@
+import { firstActiveIndex } from '../players'
 import type { CategoryId, GameMode, GameState, Player } from '../types'
 import { NINETIES_QUESTIONS } from './nineties'
 import { SCIENCE_QUESTIONS } from './science'
@@ -40,7 +41,7 @@ export function createInitialGameState(
     categories,
     questionIds: picked.map((q) => q.id),
     questionIndex: 0,
-    currentPlayerIndex: 0,
+    currentPlayerIndex: firstActiveIndex(players),
     scores,
     phase,
     phaseStartedAt: Date.now(),

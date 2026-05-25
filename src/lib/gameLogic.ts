@@ -1,7 +1,10 @@
-import { createInitialGameState, nextPlayerIndex, phaseDeadline } from './trivia'
+import { createInitialGameState, phaseDeadline } from './trivia'
+import { isActivePlayer, nextActivePlayerIndex, normalizeToActiveIndex } from './players'
 import type { CategoryId, GameMode, GameState, Player } from './types'
 
-export function applyBuzz(state: GameState, playerId: string): GameState {
+export function applyBuzz(state: GameState, playerId: string, players: Player[]): GameState {
+  const me = players.find((p) => p.id === playerId)
+  if (!me || !isActivePlayer(me)) return state
   if (state.phase !== 'buzzing' || state.buzzedBy) return state
   return {
     ...state,
@@ -52,8 +55,9 @@ export function applyTimeout(state: GameState, players: Player[]): GameState {
   }
 
   if (state.phase === 'question') {
-    const current = players[state.currentPlayerIndex]
-    if (!current) {
+    let idx = normalizeToActiveIndex(players, state.currentPlayerIndex ?? 0)
+    const current = players[idx]
+    if (!current || !isActivePlayer(current)) {
       return { ...state, phase: 'reveal', phaseStartedAt: now }
     }
     return {
@@ -67,13 +71,16 @@ export function applyTimeout(state: GameState, players: Player[]): GameState {
   return state
 }
 
-export function advanceRound(state: GameState, playerCount: number): GameState | null {
+export function advanceRound(state: GameState, players: Player[]): GameState | null {
   const nextQIndex = state.questionIndex + 1
   if (nextQIndex >= state.questionIds.length) {
     return { ...state, phase: 'reveal', questionIndex: nextQIndex }
   }
 
-  const nextPlayer = nextPlayerIndex(state.currentPlayerIndex, playerCount)
+  const nextPlayer =
+    state.gameMode === 'turns'
+      ? nextActivePlayerIndex(players, state.currentPlayerIndex ?? 0)
+      : state.currentPlayerIndex
   const phase = state.gameMode === 'buzzer' ? 'buzzing' : 'question'
 
   return {

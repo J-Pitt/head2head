@@ -658,6 +658,14 @@ body {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.rejoin-hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+  line-height: 1.45;
 }
 
 .category-picker {
@@ -841,4 +849,35 @@ body {
 .player-seat.buzzed .player-avatar {
   border-color: var(--warn);
   box-shadow: 0 0 16px rgba(251, 191, 36, 0.4);
+}
+
+.player-seat.on-break .player-avatar {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+
+.player-seat.on-break.current .player-avatar,
+.player-seat.on-break.buzzed .player-avatar {
+  border-color: var(--border);
+  box-shadow: none;
+  transform: none;
+}
+
+.break-badge {
+  position: absolute;
+  bottom: -0.35rem;
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  background: var(--muted);
+  color: var(--bg);
+}
+
+.room-menu {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }

@@ -2,10 +2,14 @@ export type CategoryId = 'science' | 'nineties'
 export type GameMode = 'turns' | 'buzzer'
 export type GamePhase = 'question' | 'buzzing' | 'answering' | 'reveal'
 
+export type PlayerStatus = 'active' | 'break'
+
 export type Player = {
   id: string
   name: string
   avatar: string
+  /** break = stepped away; still in room and can rejoin */
+  status?: PlayerStatus
 }
 
 export type ChatMessage = {
