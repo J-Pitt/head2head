@@ -16,17 +16,17 @@ Group trivia for phones and laptops — play on one device or online with a room
 ## Stack
 
 - Next.js 16 (App Router, TypeScript, Tailwind)
-- Upstash Redis — same API pattern as [truthordare](https://github.com/J-Pitt/truthordare); uses `head2head:` key prefix
+- Upstash Redis — rooms use a `head2head:` key prefix
 
 ## Quick start
 
 ```bash
 npm install
-npm run setup:env   # copies from ../truthordare/.env.local (sibling folder)
+cp env.example .env.local   # then fill in your Upstash Redis credentials
 npm run dev
 ```
 
-Or manually: copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` from truthordare into `.env.local` (see `env.example`). This file is **not** in git.
+Add your `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to `.env.local` (see `env.example`). This file is **not** in git.
 
 Open [http://localhost:3000](http://localhost:3000).
 

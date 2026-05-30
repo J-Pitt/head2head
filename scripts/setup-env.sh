@@ -1,27 +1,24 @@
 #!/usr/bin/env bash
-# Copy Upstash Redis vars from sibling truthordare app into head2head/.env.local
+# Copy Upstash Redis vars from an existing .env.local into head2head/.env.local.
+# Usage:
+#   ./scripts/setup-env.sh /path/to/other/.env.local
+#   SOURCE_ENV=/path/to/other/.env.local npm run setup:env
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SIBLING="$ROOT/../truthordare/.env.local"
-HOME_COPY="$HOME/truthordare/.env.local"
 
-if [[ -n "${TRUTHORDARE_ENV:-}" ]]; then
-  SOURCE="$TRUTHORDARE_ENV"
-elif [[ -f "$SIBLING" ]]; then
-  SOURCE="$SIBLING"
-elif [[ -f "$HOME_COPY" ]]; then
-  SOURCE="$HOME_COPY"
-else
-  SOURCE="$SIBLING"
-fi
-
+SOURCE="${1:-${SOURCE_ENV:-}}"
 TARGET="$ROOT/.env.local"
+
+if [[ -z "$SOURCE" ]]; then
+  echo "No source .env.local given."
+  echo "Usage: ./scripts/setup-env.sh /path/to/other/.env.local"
+  echo "   or: SOURCE_ENV=/path/to/other/.env.local npm run setup:env"
+  echo "Or just: cp env.example .env.local  (then fill in your credentials)"
+  exit 1
+fi
 
 if [[ ! -f "$SOURCE" ]]; then
   echo "Source not found: $SOURCE"
-  echo "Expected truthordare next to head2head:"
-  echo "  $SIBLING"
-  echo "Or set TRUTHORDARE_ENV to your .env.local path."
   exit 1
 fi
 
@@ -34,10 +31,10 @@ if [[ -z "$url" || -z "$token" ]]; then
 fi
 
 cat > "$TARGET" <<EOF
-# Copied from $SOURCE — same Upstash DB, head2head: key prefix in Redis
+# Upstash Redis — head2head: key prefix in Redis
 $url
 $token
 EOF
 
-echo "Wrote $TARGET (from $(basename "$(dirname "$SOURCE")")/.env.local)"
+echo "Wrote $TARGET"
 echo "Restart: npm run dev"

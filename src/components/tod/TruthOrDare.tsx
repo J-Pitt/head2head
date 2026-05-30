@@ -1,16 +1,12 @@
 'use client'
 
+import { useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import AvatarPicker from '@/components/AvatarPicker'
 import Avatar from '@/components/Avatar'
 import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
-import { getMinigame } from '@/lib/minigames/catalog'
-import type { GameViewProps } from '@/lib/minigames/types'
-import { GameViewRouter } from '@/components/minigames/views/GameViewRouter'
-import { RaceLeaderboard } from '@/components/minigames/views/shared'
-import { FORFEIT } from '@/lib/tod/prompts'
 
 export default function TruthOrDare() {
   const room = useTodRoom()
@@ -24,7 +20,6 @@ export default function TruthOrDare() {
   if (!room.roomId || !room.state) return <TodJoin room={room} />
 
   const { state } = room
-  const playerById = (id: string | null) => room.players.find((p) => p.id === id) ?? null
 
   return (
     <div className="app-shell">
@@ -39,35 +34,17 @@ export default function TruthOrDare() {
         <span className="party-count">{room.players.length} in</span>
       </header>
 
-      {state.phase === 'lobby' && (
-        <Lobby room={room} />
-      )}
-
-      {state.phase === 'minigame' && state.minigame && state.minigame.gameId && (
-        <MinigamePhase room={room} />
-      )}
-
-      {state.phase === 'forfeit' && (
-        <section className="card tod-stage">
-          <p className="tod-kicker">Round {state.round} forfeit</p>
-          <div className="tod-loser">
-            {playerById(state.loserId) && <Avatar seed={playerById(state.loserId)!.avatar} size={72} />}
-            <h2>{state.loserName ?? 'Nobody'} lost!</h2>
-          </div>
-          <p className="tod-forfeit">{FORFEIT}</p>
-          <button type="button" className="btn btn-primary full" onClick={room.beginTurns}>
-            On with Truth or Dare →
-          </button>
-        </section>
-      )}
+      {state.phase === 'lobby' && <Lobby room={room} />}
 
       {state.phase === 'turn' && <TurnPhase room={room} />}
+
+      {state.phase === 'picture' && <PicturePhase room={room} />}
 
       <ChatPanel
         messages={chat.messages}
         meId={room.playerId}
         onSend={chat.send}
-        title="Group chat 📸 — share your forfeit here"
+        title="Group chat 📸 — share your pictures here"
       />
     </div>
   )
@@ -86,8 +63,8 @@ function TodJoin({ room }: { room: Room }) {
       </header>
       <section className="card setup-card">
         <p className="intro">
-          A spicy party game. Each round kicks off with a mini game for everyone — the loser owes a
-          forfeit — then players take turns answering Truth or Dare. 18+.
+          A spicy party game. Players take turns answering Truth or Dare, and every 3 rounds it&apos;s
+          picture time — everyone sends a picture to the group chat. 18+.
         </p>
         <label className="field">
           <span>Your name</span>
@@ -145,8 +122,8 @@ function Lobby({ room }: { room: Room }) {
       </section>
       <section className="card tod-stage">
         {room.isHost ? (
-          <button type="button" className="btn btn-primary full" onClick={room.startRound}>
-            Start round 1 — launch a mini game 🎮
+          <button type="button" className="btn btn-primary full" onClick={room.startGame}>
+            Start round 1 →
           </button>
         ) : (
           <p className="lobby-sub">Waiting for the host to start…</p>
@@ -157,67 +134,57 @@ function Lobby({ room }: { room: Room }) {
   )
 }
 
-function MinigamePhase({ room }: { room: Room }) {
+function PicturePhase({ room }: { room: Room }) {
   const state = room.state
-  const mg = state?.minigame
-  const gameId = mg?.gameId
-  if (!state || !mg || !gameId) return null
-  const meta = getMinigame(gameId)
-  const over = mg.status === 'over'
-
-  const viewProps: GameViewProps = {
-    session: mg,
-    players: room.players,
-    progress: room.progress,
-    playerId: room.playerId,
-    isHost: room.isHost,
-    report: room.report,
-    setSession: room.setMinigameSession,
-    startRound: () => {},
-    now: room.now,
-  }
-
-  if (over) {
-    const loser = room.players.find((p) => p.id === state.loserId)
-    return (
-      <section className="card tod-stage">
-        <p className="tod-kicker">Round {state.round}: {meta?.label}</p>
-        <div className="tod-loser">
-          {loser && <Avatar seed={loser.avatar} size={64} />}
-          <h2>{state.loserName ?? 'Someone'} came last 💀</h2>
-        </div>
-        <RaceLeaderboard
-          players={room.players}
-          progress={room.progress}
-          playerId={room.playerId}
-          lowerIsBetter={mg.mode === 'reaction'}
-          unit={mg.mode === 'reaction' ? 'ms' : ''}
-        />
-        <button type="button" className="btn btn-primary full" onClick={room.revealForfeit}>
-          Reveal the forfeit 👀
-        </button>
-      </section>
-    )
-  }
-
+  if (!state) return null
   return (
-    <section className="card minigame-play-shell">
-      <p className="tod-kicker">
-        Round {state.round}: everyone plays {meta?.emoji} {meta?.label} — last place owes a forfeit!
-      </p>
-      <GameViewRouter gameId={gameId} {...viewProps} />
+    <section className="card tod-stage">
+      <p className="tod-kicker">After round {state.round}</p>
+      <div className="tod-picture">
+        <span className="tod-picture-emoji">📸</span>
+        <h2>Picture time!</h2>
+        <p className="tod-forfeit">
+          Everyone has to send a picture to the group chat below. No skipping!
+        </p>
+      </div>
+      {room.isHost ? (
+        <button type="button" className="btn btn-primary full" onClick={room.continueFromPicture}>
+          Everyone&apos;s posted — next round →
+        </button>
+      ) : (
+        <p className="lobby-sub">Snap your pic, then wait for the host to continue…</p>
+      )}
+      {room.isHost && (
+        <button type="button" className="btn-ghost btn-sm tod-end" onClick={room.endParty}>
+          End to lobby
+        </button>
+      )}
     </section>
   )
 }
 
 function TurnPhase({ room }: { room: Room }) {
   const state = room.state
+  const onSpot = room.players.find((p) => p.id === state?.onSpotId)
+  const asker = room.players.find((p) => p.id === state?.askerId)
+  const [draft, setDraft] = useState('')
+
+  // Clear the draft when the turn or choice changes.
+  useEffect(() => {
+    setDraft('')
+  }, [state?.onSpotId, state?.choice])
+
   if (!state) return null
-  const onSpot = room.players.find((p) => p.id === state.onSpotId)
-  const asker = room.players.find((p) => p.id === state.askerId)
   const isMine = state.onSpotId === room.playerId
+  // If there's nobody else, the player on the spot writes their own prompt.
+  const canWrite = state.askerId ? state.askerId === room.playerId : isMine
   const turnNum = state.turnIndex + 1
   const total = state.turnOrder.length
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    if (draft.trim()) room.submitPrompt(draft)
+  }
 
   return (
     <section className="card tod-stage">
@@ -227,9 +194,7 @@ function TurnPhase({ room }: { room: Room }) {
 
       <div className="tod-onspot">
         {onSpot && <Avatar seed={onSpot.avatar} size={72} />}
-        <h2>
-          {isMine ? "You're up!" : `${onSpot?.name ?? 'Someone'} is on the spot`}
-        </h2>
+        <h2>{isMine ? "You're up!" : `${onSpot?.name ?? 'Someone'} is on the spot`}</h2>
         {asker && (
           <p className="tod-asker">
             asked by <Avatar seed={asker.avatar} size={20} className="inline-avatar" /> {asker.name}
@@ -250,12 +215,49 @@ function TurnPhase({ room }: { room: Room }) {
         ) : (
           <p className="lobby-sub">Waiting for {onSpot?.name ?? 'them'} to choose…</p>
         )
+      ) : !state.prompt ? (
+        // Choice made — the asker writes the truth/dare.
+        canWrite ? (
+          <form className="tod-write" onSubmit={submit}>
+            <span className={`tod-badge ${state.choice}`}>{state.choice.toUpperCase()}</span>
+            <p className="tod-write-label">
+              Write a {state.choice} for {isMine ? 'yourself' : onSpot?.name ?? 'them'}:
+            </p>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={state.choice === 'truth' ? 'Ask them anything…' : 'Dare them to…'}
+              maxLength={400}
+              rows={3}
+              className="tod-textarea"
+              autoFocus
+            />
+            <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
+              Submit for everyone →
+            </button>
+          </form>
+        ) : (
+          <p className="lobby-sub">
+            <span className={`tod-badge ${state.choice}`}>{state.choice.toUpperCase()}</span>
+            <br />
+            Waiting for {asker?.name ?? 'the asker'} to write a {state.choice} for{' '}
+            {onSpot?.name ?? 'them'}…
+          </p>
+        )
       ) : (
+        // Prompt submitted — everyone reads it.
         <div className="tod-prompt-wrap">
           <span className={`tod-badge ${state.choice}`}>{state.choice.toUpperCase()}</span>
           <p className="tod-prompt">{state.prompt}</p>
+          {asker && (
+            <p className="tod-asker">— from {asker.name}</p>
+          )}
           <button type="button" className="btn btn-primary full" onClick={room.nextTurn}>
-            {turnNum >= total ? 'Finish round — next mini game 🎮' : 'Next player →'}
+            {turnNum >= total
+              ? state.round % 3 === 0
+                ? 'Finish round — picture time 📸'
+                : 'Finish round →'
+              : 'Next player →'}
           </button>
         </div>
       )}

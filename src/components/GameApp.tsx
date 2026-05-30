@@ -587,8 +587,8 @@ export default function GameApp() {
           )}
           {!multiplayerAvailable && (
             <p className="hint-banner">
-              Local play works now. For online rooms, run <code>npm run setup:env</code> (copies from{' '}
-              <code>../truthordare/.env.local</code>).
+              Local play works now. For online rooms, add your Upstash Redis keys to{' '}
+              <code>.env.local</code> (see <code>env.example</code>).
             </p>
           )}
           <div className="mode-grid">

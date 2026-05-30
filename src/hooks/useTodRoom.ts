@@ -2,23 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Player } from '@/lib/types'
-import type { Progress, ProgressMap, Session } from '@/lib/minigames/types'
 import type { TodState } from '@/lib/tod/types'
-import { initialTodState } from '@/lib/tod/types'
-import { getGameConfig, computeRaceLoser, isRoundComplete } from '@/lib/minigames/registry'
-import { randomTodMinigame } from '@/lib/minigames/catalog'
-import { randomPrompt } from '@/lib/tod/prompts'
+import { initialTodState, PICTURE_EVERY } from '@/lib/tod/types'
 import { DEFAULT_AVATAR } from '@/lib/avatars'
 import {
   createTodRoom,
   getTodRoomClient,
   joinTodRoom,
-  reportTodProgress,
   updateTodState,
 } from '@/lib/tod/roomApi'
 
 const POLL_MS = 600
-const REPORT_THROTTLE_MS = 220
 const PLAYER_KEY = 'head2head_player_id'
 const NAME_KEY = 'head2head_player_name'
 const TOD_KEY = 'head2head_tod_room'
@@ -36,19 +30,6 @@ function loadPlayerId() {
   }
 }
 
-function normalizeProgress(raw: ProgressMap, round: number): Record<string, Progress> {
-  const out: Record<string, Progress> = {}
-  for (const [key, value] of Object.entries(raw)) {
-    if (!value || typeof value !== 'object') continue
-    const p = value as Progress
-    const sep = key.indexOf(':')
-    const keyRound = sep >= 0 ? Number(key.slice(0, sep)) : NaN
-    if (!Number.isNaN(keyRound) && keyRound !== round) continue
-    if (p.playerId) out[p.playerId] = p
-  }
-  return out
-}
-
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
@@ -56,6 +37,11 @@ function shuffle<T>(arr: T[]): T[] {
     ;[a[i], a[j]] = [a[j], a[i]]
   }
   return a
+}
+
+function pickAsker(order: string[], onSpotId: string | null): string | null {
+  const others = order.filter((id) => id !== onSpotId)
+  return others.length ? others[Math.floor(Math.random() * others.length)] : null
 }
 
 export function useTodRoom() {
@@ -74,30 +60,16 @@ export function useTodRoom() {
   const [hostId, setHostId] = useState<string | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [state, setState] = useState<TodState | null>(null)
-  const [progress, setProgress] = useState<Record<string, Progress>>({})
   const [error, setError] = useState('')
-  const [now, setNow] = useState(() => Date.now())
 
   const stateRef = useRef<TodState | null>(null)
   stateRef.current = state
-  const progressRef = useRef<Record<string, Progress>>({})
-  progressRef.current = progress
   const playersRef = useRef<Player[]>([])
   playersRef.current = players
   const roomIdRef = useRef<string | null>(null)
   roomIdRef.current = roomId
 
-  const lastReportRef = useRef(0)
-  const ownProgressRef = useRef<Progress | null>(null)
-  const finalizingRef = useRef(false)
-
   const isHost = !!hostId && hostId === playerId
-
-  useEffect(() => {
-    if (!roomId) return
-    const id = setInterval(() => setNow(Date.now()), 100)
-    return () => clearInterval(id)
-  }, [roomId])
 
   useEffect(() => {
     if (!roomId) return
@@ -109,18 +81,7 @@ export function useTodRoom() {
         if (cancelled) return
         setPlayers(data.players || [])
         setHostId(data.hostId ?? null)
-        const incoming = data.state ?? null
-        const local = stateRef.current
-        if (!local || !incoming || incoming.round >= local.round) {
-          setState(incoming)
-        }
-        const round = incoming?.round ?? local?.round ?? 0
-        const merged = normalizeProgress(data.progress || {}, round)
-        const own = ownProgressRef.current
-        if (own && own.playerId && (!merged[own.playerId] || merged[own.playerId].at < own.at)) {
-          merged[own.playerId] = own
-        }
-        setProgress(merged)
+        setState(data.state ?? null)
       } catch {
         /* retry next poll */
       }
@@ -153,132 +114,46 @@ export function useTodRoom() {
     [pushState]
   )
 
-  // Update only the embedded minigame session (used by game views).
-  const setMinigameSession = useCallback(
-    (partial: Partial<Session>) => {
+  // Build a fresh round of turns: shuffle the order, set the first player on
+  // the spot, and pick a random asker.
+  const beginRound = useCallback(
+    (round: number) => {
       const base = stateRef.current
-      if (!base || !base.minigame) return
-      pushState({ ...base, minigame: { ...base.minigame, ...partial } })
+      if (!base) return
+      const order = shuffle(playersRef.current.map((p) => p.id))
+      const onSpotId = order[0] ?? null
+      pushState({
+        ...base,
+        phase: 'turn',
+        round,
+        turnOrder: order,
+        turnIndex: 0,
+        onSpotId,
+        askerId: pickAsker(order, onSpotId),
+        choice: null,
+        prompt: null,
+      })
     },
     [pushState]
   )
 
-  const report = useCallback(
-    (partial: Partial<Omit<Progress, 'playerId' | 'at'>>) => {
-      const rid = roomIdRef.current
-      const st = stateRef.current
-      if (!rid || !st) return
-      const prev = ownProgressRef.current
-      const next: Progress = {
-        playerId,
-        score: partial.score ?? prev?.score ?? 0,
-        alive: partial.alive ?? prev?.alive ?? true,
-        finished: partial.finished ?? prev?.finished ?? false,
-        finishAt: partial.finishAt ?? prev?.finishAt ?? null,
-        at: Date.now(),
-      }
-      ownProgressRef.current = next
-      setProgress((p) => ({ ...p, [playerId]: next }))
-      const changed = !prev || prev.alive !== next.alive || prev.finished !== next.finished
-      if (!changed && Date.now() - lastReportRef.current < REPORT_THROTTLE_MS) return
-      lastReportRef.current = Date.now()
-      reportTodProgress(rid, st.round, next).catch(() => {})
-    },
-    [playerId]
-  )
+  // Host starts the game from the lobby.
+  const startGame = useCallback(() => beginRound(1), [beginRound])
 
-  // Host kicks off a new round's minigame.
-  const startRound = useCallback(() => {
-    const base = stateRef.current
-    if (!roomIdRef.current || !base) return
-    const gameId = randomTodMinigame()
-    const config = getGameConfig(gameId)
-    const startAt = Date.now() + config.countdownMs
-    const seed = Math.floor(Math.random() * 1_000_000)
-    const extras = config.buildSession?.(playersRef.current, seed) ?? {}
-    const minigame: Session = {
-      gameId,
-      status: 'live',
-      mode: config.mode,
-      round: base.round + 1,
-      startAt,
-      endAt: config.durationMs ? startAt + config.durationMs : null,
-      seed,
-      goAt: config.mode === 'reaction' ? startAt + 1500 + (seed % 3500) : null,
-      connect4: null,
-      winnerId: null,
-      winnerName: null,
-      ...extras,
-    }
-    ownProgressRef.current = null
-    lastReportRef.current = 0
-    finalizingRef.current = false
-    setProgress({})
-    pushState({
-      ...base,
-      phase: 'minigame',
-      round: base.round + 1,
-      minigame,
-      minigameId: gameId,
-      loserId: null,
-      loserName: null,
-      onSpotId: null,
-      askerId: null,
-      choice: null,
-      prompt: null,
-    })
-  }, [pushState])
-
-  // Host finalizes the minigame and records the loser.
-  useEffect(() => {
-    if (!isHost) return
-    const st = stateRef.current
-    if (!st || st.phase !== 'minigame' || !st.minigame || st.minigame.status !== 'live') return
-    if (finalizingRef.current) return
-    const gid = st.minigame.gameId
-    if (!gid) return
-    const config = getGameConfig(gid)
-    const list = Object.values(progressRef.current)
-    if (!isRoundComplete(config, playersRef.current, list, now, st.minigame.endAt)) return
-    finalizingRef.current = true
-    const loser = computeRaceLoser(config, playersRef.current, list)
-    pushState({
-      ...st,
-      minigame: { ...st.minigame, status: 'over' },
-      loserId: loser?.id ?? null,
-      loserName: loser?.name ?? null,
-    }).finally(() => {
-      finalizingRef.current = false
-    })
-  }, [now, isHost, pushState])
-
-  const revealForfeit = useCallback(() => patchState({ phase: 'forfeit' }), [patchState])
-
-  const beginTurns = useCallback(() => {
-    const base = stateRef.current
-    if (!base) return
-    const order = shuffle(playersRef.current.map((p) => p.id))
-    const onSpotId = order[0] ?? null
-    const others = order.filter((id) => id !== onSpotId)
-    const askerId = others.length ? others[Math.floor(Math.random() * others.length)] : null
-    pushState({
-      ...base,
-      phase: 'turn',
-      turnOrder: order,
-      turnIndex: 0,
-      onSpotId,
-      askerId,
-      choice: null,
-      prompt: null,
-    })
-  }, [pushState])
-
+  // The player on the spot picks truth or dare; the asker then writes the prompt.
   const pickChoice = useCallback(
     (choice: 'truth' | 'dare') => {
-      const base = stateRef.current
-      if (!base) return
-      const prompt = randomPrompt(choice, Date.now() + base.turnIndex)
-      patchState({ choice, prompt })
+      patchState({ choice, prompt: null })
+    },
+    [patchState]
+  )
+
+  // The randomly-chosen asker types the truth/dare and submits it for everyone.
+  const submitPrompt = useCallback(
+    (text: string) => {
+      const t = text.trim()
+      if (!t) return
+      patchState({ prompt: t.slice(0, 400) })
     },
     [patchState]
   )
@@ -288,16 +163,35 @@ export function useTodRoom() {
     if (!base) return
     const nextIndex = base.turnIndex + 1
     if (nextIndex >= base.turnOrder.length) {
-      startRound()
+      // Round complete — every Nth round triggers picture time.
+      if (base.round % PICTURE_EVERY === 0) {
+        patchState({ phase: 'picture' })
+      } else {
+        beginRound(base.round + 1)
+      }
       return
     }
     const onSpotId = base.turnOrder[nextIndex] ?? null
-    const others = base.turnOrder.filter((id) => id !== onSpotId)
-    const askerId = others.length ? others[Math.floor(Math.random() * others.length)] : null
-    patchState({ turnIndex: nextIndex, onSpotId, askerId, choice: null, prompt: null })
-  }, [patchState, startRound])
+    patchState({
+      turnIndex: nextIndex,
+      onSpotId,
+      askerId: pickAsker(base.turnOrder, onSpotId),
+      choice: null,
+      prompt: null,
+    })
+  }, [patchState, beginRound])
 
-  const endParty = useCallback(() => pushState({ ...initialTodState(), round: stateRef.current?.round ?? 0 }), [pushState])
+  // After picture time, continue into the next round of turns.
+  const continueFromPicture = useCallback(() => {
+    const base = stateRef.current
+    if (!base) return
+    beginRound(base.round + 1)
+  }, [beginRound])
+
+  const endParty = useCallback(
+    () => pushState({ ...initialTodState(), round: stateRef.current?.round ?? 0 }),
+    [pushState]
+  )
 
   async function hostRoom() {
     if (!playerName.trim()) {
@@ -365,18 +259,14 @@ export function useTodRoom() {
     isHost,
     players,
     state,
-    progress,
     error,
-    now,
-    report,
-    setMinigameSession,
     hostRoom,
     joinRoom,
-    startRound,
-    revealForfeit,
-    beginTurns,
+    startGame,
     pickChoice,
+    submitPrompt,
     nextTurn,
+    continueFromPicture,
     endParty,
   }
 }
