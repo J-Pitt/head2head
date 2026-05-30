@@ -1927,6 +1927,38 @@ body {
   margin: 0;
 }
 
+.room-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.party-players li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.party-players li.is-away {
+  opacity: 0.55;
+}
+
+.away-badge {
+  margin-left: 0.4rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--border);
+  color: var(--muted);
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+}
+
+.kick-btn {
+  margin-left: auto;
+  line-height: 1;
+}
+
 .tod-picture {
   display: flex;
   flex-direction: column;

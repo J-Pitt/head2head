@@ -50,6 +50,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
+    // Player management: leave, kick (host only), or presence (break/active).
+    if (body.roomId && body.action) {
+      const room = await getTodRoom(body.roomId)
+      if (!room) {
+        return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
+      }
+      let players = Array.isArray(room.players) ? [...room.players] : []
+      const pid = String(body.playerId || '')
+      const action = String(body.action)
+
+      if (action === 'leave') {
+        players = players.filter((p: { id: string }) => p.id !== pid)
+      } else if (action === 'kick') {
+        if (String(body.requesterId || '') !== room.hostId) {
+          return NextResponse.json({ success: false, error: 'Only the host can remove players' }, { status: 403 })
+        }
+        players = players.filter((p: { id: string }) => p.id !== pid)
+      } else if (action === 'presence') {
+        const status = body.status === 'break' ? 'break' : 'active'
+        const idx = players.findIndex((p: { id: string }) => p.id === pid)
+        if (idx >= 0) players[idx] = { ...players[idx], status }
+      }
+
+      // If the host left or was removed, hand the host role to whoever remains.
+      let hostId = room.hostId
+      if (!players.some((p: { id: string }) => p.id === hostId) && players.length) {
+        hostId = players[0].id
+      }
+      room.players = players
+      room.hostId = hostId
+      room.updatedAt = new Date().toISOString()
+      await setTodRoom(body.roomId, room)
+      return NextResponse.json({ success: true, players, hostId })
+    }
+
     // Shared game-state update.
     if (body.roomId && body.state) {
       const room = await getTodRoom(body.roomId)

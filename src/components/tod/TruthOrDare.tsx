@@ -31,7 +31,15 @@ export default function TruthOrDare() {
           <span className="logo-sm">💋 Truth or Dare</span>
           {room.gameCode && <span className="room-code">{room.gameCode}</span>}
         </div>
-        <span className="party-count">{room.players.length} in</span>
+        <div className="room-bar-actions">
+          <span className="party-count">{room.players.length} in</span>
+          <button type="button" className="btn-ghost btn-sm" onClick={room.toggleBreak}>
+            {room.isOnBreak ? "I'm back" : 'Take a break'}
+          </button>
+          <button type="button" className="btn-ghost btn-sm" onClick={room.leaveRoom}>
+            Leave
+          </button>
+        </div>
       </header>
 
       {state.phase === 'lobby' && <Lobby room={room} />}
@@ -110,12 +118,23 @@ function Lobby({ room }: { room: Room }) {
         </div>
         <ul className="party-players">
           {room.players.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className={p.status === 'break' ? 'is-away' : ''}>
               <Avatar seed={p.avatar} size={34} />
               <span>
                 {p.name}
                 {p.id === room.playerId ? ' (you)' : ''}
+                {p.status === 'break' && <span className="away-badge">away</span>}
               </span>
+              {room.isHost && p.id !== room.playerId && (
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm kick-btn"
+                  onClick={() => room.kickPlayer(p.id)}
+                  title={`Remove ${p.name}`}
+                >
+                  ✕
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -176,8 +195,12 @@ function TurnPhase({ room }: { room: Room }) {
 
   if (!state) return null
   const isMine = state.onSpotId === room.playerId
-  // If there's nobody else, the player on the spot writes their own prompt.
-  const canWrite = state.askerId ? state.askerId === room.playerId : isMine
+  const onSpotAway = !room.isAvailable(state.onSpotId)
+  // The asker writes, unless they've gone missing — then the host can step in.
+  const askerAway = !room.isAvailable(state.askerId)
+  const canWrite = state.askerId
+    ? state.askerId === room.playerId || (askerAway && room.isHost)
+    : isMine || room.isHost
   const turnNum = state.turnIndex + 1
   const total = state.turnOrder.length
 
@@ -202,7 +225,14 @@ function TurnPhase({ room }: { room: Room }) {
         )}
       </div>
 
-      {!state.choice ? (
+      {onSpotAway ? (
+        <div className="tod-prompt-wrap">
+          <p className="lobby-sub">{onSpot?.name ?? 'This player'} has stepped away.</p>
+          <button type="button" className="btn btn-primary full" onClick={room.skipTurn}>
+            Skip them →
+          </button>
+        </div>
+      ) : !state.choice ? (
         isMine ? (
           <div className="tod-choice">
             <button type="button" className="btn tod-truth" onClick={() => room.pickChoice('truth')}>

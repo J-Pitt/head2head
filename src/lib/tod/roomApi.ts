@@ -59,6 +59,33 @@ export async function updateTodState(roomId: string, state: TodState) {
   return parseResponse(res, 'Failed to update state')
 }
 
+export async function leaveTodRoom(roomId: string, playerId: string) {
+  const res = await fetch(BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId, action: 'leave', playerId }),
+  })
+  return parseResponse(res, 'Failed to leave') as Promise<{ players: Player[]; hostId: string }>
+}
+
+export async function setTodPresence(roomId: string, playerId: string, status: 'active' | 'break') {
+  const res = await fetch(BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId, action: 'presence', playerId, status }),
+  })
+  return parseResponse(res, 'Failed to update presence') as Promise<{ players: Player[]; hostId: string }>
+}
+
+export async function kickTodPlayer(roomId: string, requesterId: string, playerId: string) {
+  const res = await fetch(BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId, action: 'kick', requesterId, playerId }),
+  })
+  return parseResponse(res, 'Failed to remove player') as Promise<{ players: Player[]; hostId: string }>
+}
+
 export async function reportTodProgress(roomId: string, round: number, progress: Progress) {
   const res = await fetch(BASE, {
     method: 'POST',

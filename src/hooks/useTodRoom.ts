@@ -10,6 +10,9 @@ import {
   getTodRoomClient,
   joinTodRoom,
   updateTodState,
+  leaveTodRoom,
+  setTodPresence,
+  kickTodPlayer,
 } from '@/lib/tod/roomApi'
 
 const POLL_MS = 600
@@ -39,8 +42,8 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function pickAsker(order: string[], onSpotId: string | null): string | null {
-  const others = order.filter((id) => id !== onSpotId)
+function pickAsker(candidates: string[], onSpotId: string | null): string | null {
+  const others = candidates.filter((id) => id !== onSpotId)
   return others.length ? others[Math.floor(Math.random() * others.length)] : null
 }
 
@@ -70,6 +73,19 @@ export function useTodRoom() {
   roomIdRef.current = roomId
 
   const isHost = !!hostId && hostId === playerId
+  const me = players.find((p) => p.id === playerId) ?? null
+  const isOnBreak = me?.status === 'break'
+
+  // A player is available for turns if they're still in the room and not on break.
+  const availableIds = useCallback(() => {
+    return playersRef.current.filter((p) => p.status !== 'break').map((p) => p.id)
+  }, [])
+
+  const isAvailable = useCallback((id: string | null) => {
+    if (!id) return false
+    const p = playersRef.current.find((x) => x.id === id)
+    return !!p && p.status !== 'break'
+  }, [])
 
   useEffect(() => {
     if (!roomId) return
@@ -120,7 +136,9 @@ export function useTodRoom() {
     (round: number) => {
       const base = stateRef.current
       if (!base) return
-      const order = shuffle(playersRef.current.map((p) => p.id))
+      // Only players who are present and not on break take turns this round.
+      const present = availableIds()
+      const order = shuffle(present.length ? present : playersRef.current.map((p) => p.id))
       const onSpotId = order[0] ?? null
       pushState({
         ...base,
@@ -129,12 +147,12 @@ export function useTodRoom() {
         turnOrder: order,
         turnIndex: 0,
         onSpotId,
-        askerId: pickAsker(order, onSpotId),
+        askerId: pickAsker(present, onSpotId),
         choice: null,
         prompt: null,
       })
     },
-    [pushState]
+    [pushState, availableIds]
   )
 
   // Host starts the game from the lobby.
@@ -158,10 +176,15 @@ export function useTodRoom() {
     [patchState]
   )
 
+  // Advance to the next still-present player, skipping anyone who left or is on
+  // break. When nobody is left in the order, the round ends.
   const nextTurn = useCallback(() => {
     const base = stateRef.current
     if (!base) return
-    const nextIndex = base.turnIndex + 1
+    let nextIndex = base.turnIndex + 1
+    while (nextIndex < base.turnOrder.length && !isAvailable(base.turnOrder[nextIndex])) {
+      nextIndex++
+    }
     if (nextIndex >= base.turnOrder.length) {
       // Round complete — every Nth round triggers picture time.
       if (base.round % PICTURE_EVERY === 0) {
@@ -175,11 +198,14 @@ export function useTodRoom() {
     patchState({
       turnIndex: nextIndex,
       onSpotId,
-      askerId: pickAsker(base.turnOrder, onSpotId),
+      askerId: pickAsker(availableIds(), onSpotId),
       choice: null,
       prompt: null,
     })
-  }, [patchState, beginRound])
+  }, [patchState, beginRound, isAvailable, availableIds])
+
+  // Host (or anyone) can skip the player on the spot if they've stepped away.
+  const skipTurn = nextTurn
 
   // After picture time, continue into the next round of turns.
   const continueFromPicture = useCallback(() => {
@@ -192,6 +218,58 @@ export function useTodRoom() {
     () => pushState({ ...initialTodState(), round: stateRef.current?.round ?? 0 }),
     [pushState]
   )
+
+  // Toggle your own break status (stepped away but still in the room).
+  const toggleBreak = useCallback(async () => {
+    const rid = roomIdRef.current
+    if (!rid) return
+    const current = playersRef.current.find((p) => p.id === playerId)
+    const nextStatus = current?.status === 'break' ? 'active' : 'break'
+    try {
+      const data = await setTodPresence(rid, playerId, nextStatus)
+      setPlayers(data.players)
+    } catch (e) {
+      console.warn('presence failed', e)
+    }
+  }, [playerId])
+
+  // Host removes another player from the room.
+  const kickPlayer = useCallback(
+    async (targetId: string) => {
+      const rid = roomIdRef.current
+      if (!rid) return
+      try {
+        const data = await kickTodPlayer(rid, playerId, targetId)
+        setPlayers(data.players)
+        setHostId(data.hostId)
+      } catch (e) {
+        console.warn('kick failed', e)
+      }
+    },
+    [playerId]
+  )
+
+  // Leave the room entirely and reset back to the join screen.
+  const leaveRoom = useCallback(async () => {
+    const rid = roomIdRef.current
+    if (rid) {
+      try {
+        await leaveTodRoom(rid, playerId)
+      } catch {
+        /* leaving is best-effort */
+      }
+    }
+    try {
+      localStorage.removeItem(TOD_KEY)
+    } catch {
+      /* ignore */
+    }
+    setRoomId(null)
+    setGameCode(null)
+    setHostId(null)
+    setPlayers([])
+    setState(null)
+  }, [playerId])
 
   async function hostRoom() {
     if (!playerName.trim()) {
@@ -234,16 +312,42 @@ export function useTodRoom() {
     }
   }
 
+  // On load, try to slip back into a saved room (e.g. after a refresh). If we're
+  // still listed as a player, restore the session; otherwise just prefill the code.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(TOD_KEY)
-      if (!raw || roomId) return
-      const saved = JSON.parse(raw) as { gameCode?: string }
-      if (saved.gameCode) setGameCodeInput(saved.gameCode)
-    } catch {
-      /* ignore */
+    let cancelled = false
+    async function rejoin() {
+      let saved: { roomId?: string; gameCode?: string } | null = null
+      try {
+        const raw = localStorage.getItem(TOD_KEY)
+        saved = raw ? JSON.parse(raw) : null
+      } catch {
+        saved = null
+      }
+      if (!saved?.gameCode) return
+      setGameCodeInput((prev) => prev || saved!.gameCode!)
+      if (!saved.roomId) return
+      try {
+        const data = await getTodRoomClient(saved.roomId)
+        if (cancelled) return
+        const stillIn = (data.players || []).some((p) => p.id === playerId)
+        if (!stillIn) return
+        setRoomId(data.roomId)
+        setGameCode(data.gameCode)
+        setHostId(data.hostId ?? null)
+        setPlayers(data.players || [])
+        setState(data.state ?? null)
+        // Coming back from a refresh marks us active again.
+        setTodPresence(data.roomId, playerId, 'active').catch(() => {})
+      } catch {
+        /* stay on the join screen */
+      }
     }
-  }, [roomId])
+    rejoin()
+    return () => {
+      cancelled = true
+    }
+  }, [playerId])
 
   return {
     playerId,
@@ -257,16 +361,23 @@ export function useTodRoom() {
     gameCode,
     hostId,
     isHost,
+    me,
+    isOnBreak,
     players,
     state,
     error,
+    isAvailable,
     hostRoom,
     joinRoom,
     startGame,
     pickChoice,
     submitPrompt,
     nextTurn,
+    skipTurn,
     continueFromPicture,
     endParty,
+    toggleBreak,
+    kickPlayer,
+    leaveRoom,
   }
 }
