@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
-import { getRedis, minigameCodeKey, getMinigameRoom, setMinigameRoom } from '@/lib/redis'
+import { getRedis, todCodeKey, getTodRoom, setTodRoom } from '@/lib/redis'
 
 export async function POST(request: Request) {
   try {
@@ -13,11 +13,11 @@ export async function POST(request: Request) {
     if (!r) {
       return NextResponse.json({ success: false, error: 'Redis not configured' }, { status: 500 })
     }
-    const roomId = await r.get(minigameCodeKey(code))
+    const roomId = await r.get(todCodeKey(code))
     if (!roomId) {
       return NextResponse.json({ success: false, error: 'Game code not found' }, { status: 404 })
     }
-    const room = await getMinigameRoom(String(roomId))
+    const room = await getTodRoom(String(roomId))
     if (!room) {
       return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
     }
@@ -25,43 +25,31 @@ export async function POST(request: Request) {
     const players = Array.isArray(room.players) ? [...room.players] : []
     const id = playerId ? String(playerId) : randomUUID()
     const name = String(playerName).trim() || 'Player'
-    const av = avatar ? String(avatar) : 'star'
+    const av = avatar ? String(avatar) : 'Maverick'
 
     const existingIdx = players.findIndex((p: { id: string }) => p.id === id)
     if (existingIdx >= 0) {
       players[existingIdx] = { ...players[existingIdx], name, avatar: av, status: 'active' }
-      room.players = players
-      room.updatedAt = new Date().toISOString()
-      await setMinigameRoom(room.roomId, room)
-      return NextResponse.json({
-        success: true,
-        rejoined: true,
-        roomId: room.roomId,
-        gameId: room.gameId,
-        players,
-        session: room.session || null,
-      })
+    } else {
+      const taken = players.some(
+        (p: { name: string; id: string }) => p.id !== id && p.name.toLowerCase() === name.toLowerCase()
+      )
+      if (taken) {
+        return NextResponse.json({ success: false, error: 'That name is already taken in this room' }, { status: 409 })
+      }
+      players.push({ id, name, avatar: av, status: 'active' })
     }
 
-    const taken = players.some(
-      (p: { name: string; id: string; status?: string }) =>
-        p.id !== id && p.name.toLowerCase() === name.toLowerCase() && p.status !== 'break'
-    )
-    if (taken) {
-      return NextResponse.json({ success: false, error: 'That name is already taken in this room' }, { status: 409 })
-    }
-
-    players.push({ id, name, avatar: av, status: 'active' })
     room.players = players
     room.updatedAt = new Date().toISOString()
-    await setMinigameRoom(room.roomId, room)
+    await setTodRoom(room.roomId, room)
 
     return NextResponse.json({
       success: true,
       roomId: room.roomId,
-      gameId: room.gameId,
+      hostId: room.hostId,
       players,
-      session: room.session || null,
+      state: room.state || null,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Server error'

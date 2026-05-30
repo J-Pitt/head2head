@@ -1,7 +1,8 @@
 import type { Player } from '@/lib/types'
-import type { Progress, ProgressMap, Session } from './types'
+import type { Progress, ProgressMap } from '@/lib/minigames/types'
+import type { TodState } from './types'
 
-const BASE = '/api/head2head/minigames/room'
+const BASE = '/api/head2head/tod/room'
 
 async function parseResponse(res: Response, fallback: string) {
   const text = await res.text()
@@ -15,65 +16,50 @@ async function parseResponse(res: Response, fallback: string) {
   return data
 }
 
-export async function createMinigameRoom(
-  gameId: string,
-  hostName: string,
-  avatar: string,
-  playerId: string
-) {
+export async function createTodRoom(hostName: string, avatar: string, playerId: string) {
   const res = await fetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ gameId, hostName, avatar, playerId }),
+    body: JSON.stringify({ hostName, avatar, playerId }),
   })
   const data = await parseResponse(res, 'Failed to create room')
-  return data as { roomId: string; gameCode: string; gameId: string; players: Player[] }
+  return data as { roomId: string; gameCode: string; hostId: string; players: Player[] }
 }
 
-export async function joinMinigameRoom(
-  gameCode: string,
-  playerName: string,
-  avatar: string,
-  playerId: string
-) {
+export async function joinTodRoom(gameCode: string, playerName: string, avatar: string, playerId: string) {
   const res = await fetch(`${BASE}/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ gameCode, playerName, avatar, playerId }),
   })
   const data = await parseResponse(res, 'Failed to join')
-  return data as {
-    roomId: string
-    gameId: string
-    players: Player[]
-    session: Session | null
-  }
+  return data as { roomId: string; hostId: string; players: Player[]; state: TodState | null }
 }
 
-export async function getMinigameRoomClient(roomId: string) {
+export async function getTodRoomClient(roomId: string) {
   const res = await fetch(`${BASE}?roomId=${encodeURIComponent(roomId)}`, { cache: 'no-store' })
   const data = await parseResponse(res, 'Failed to get room')
   return data as {
     roomId: string
     gameCode: string
-    gameId: string
+    hostId: string
     players: Player[]
-    session: Session | null
+    state: TodState | null
     progress: ProgressMap
     updatedAt: string | null
   }
 }
 
-export async function updateSession(roomId: string, session: Session) {
+export async function updateTodState(roomId: string, state: TodState) {
   const res = await fetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ roomId, session }),
+    body: JSON.stringify({ roomId, state }),
   })
-  return parseResponse(res, 'Failed to update session')
+  return parseResponse(res, 'Failed to update state')
 }
 
-export async function reportProgress(roomId: string, round: number, progress: Progress) {
+export async function reportTodProgress(roomId: string, round: number, progress: Progress) {
   const res = await fetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

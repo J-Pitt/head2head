@@ -210,7 +210,10 @@ body {
   border: 2px solid transparent;
   background: var(--surface-2);
   cursor: pointer;
-  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
   transition: transform 0.1s, border-color 0.15s;
 }
 
@@ -221,6 +224,33 @@ body {
 .avatar-option.selected {
   border-color: var(--accent);
   box-shadow: 0 0 12px var(--glow);
+}
+
+/* —— DiceBear avatars —— */
+
+.avatar-img {
+  display: inline-block;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  vertical-align: middle;
+}
+
+.avatar-option .avatar-img {
+  width: 100%;
+  height: auto;
+}
+
+.player-img {
+  width: 88%;
+  height: 88%;
+  border-radius: 50%;
+}
+
+.inline-avatar {
+  width: 1.25em;
+  height: 1.25em;
+  margin-right: 0.15rem;
 }
 
 .online-actions {
@@ -1500,4 +1530,522 @@ body {
   display: flex;
   gap: 0.5rem;
   justify-content: center;
+}
+
+/* —— Multiplayer mini-games (race / turn model) —— */
+
+.race-layout {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.race-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.phaser-canvas {
+  border: 2px solid var(--border);
+  border-radius: 0.6rem;
+  overflow: hidden;
+  line-height: 0;
+  touch-action: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.phaser-canvas canvas {
+  display: block;
+  border-radius: 0.5rem;
+}
+
+.race-status {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-height: 1.2rem;
+}
+
+.race-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+  max-width: 380px;
+  margin: 0;
+}
+
+.race-side {
+  flex: 1 1 220px;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.race-side h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.race-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.race-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.race-row.me {
+  border-color: var(--accent-dim);
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.race-row.out { opacity: 0.6; }
+.race-row.done { border-color: #22c55e; }
+
+.race-rank {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.race-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.race-score {
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+}
+
+.banner-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* On-screen controls */
+
+.dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dpad-mid {
+  display: flex;
+  gap: 3.2rem;
+}
+
+.dpad-btn {
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 1.1rem;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.dpad-btn:active { background: var(--accent-dim); }
+
+.tap-button {
+  width: min(380px, 90vw);
+  padding: 1rem;
+  border-radius: 0.8rem;
+  border: none;
+  background: var(--accent);
+  color: #04130c;
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tap-button:active { transform: scale(0.98); }
+
+/* Memory matched + locked states */
+.memory-card.matched {
+  background: #14532d;
+  border-color: #22c55e;
+}
+
+.memory-card:disabled { cursor: default; }
+
+/* Reaction big pad */
+.reaction-pad.big {
+  width: min(380px, 90vw);
+  height: 240px;
+  display: grid;
+  place-items: center;
+}
+
+/* Connect 4 */
+.c4-turn {
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
+  min-height: 1.4rem;
+}
+
+.c4-drop {
+  aspect-ratio: 1;
+  border-radius: 0.4rem;
+  border: 1px dashed var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.c4-drop:disabled { opacity: 0.35; cursor: default; }
+.c4-drop:not(:disabled):hover { background: var(--accent-dim); color: var(--text); }
+
+.c4-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.c4-players li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.5rem;
+}
+
+.c4-players li.active {
+  background: rgba(52, 211, 153, 0.14);
+  font-weight: 600;
+}
+
+.c4-chip {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+@media (max-width: 560px) {
+  .race-layout { flex-direction: column; align-items: center; }
+  .race-side { width: 100%; max-width: 420px; }
+}
+
+/* —— Party room hub —— */
+
+.party-roster-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.party-count {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.party-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.party-players li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.35rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.party-hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* The game list rows are now buttons. */
+.minigame-row {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* —— Truth or Dare —— */
+
+.tod-stage {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tod-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.tod-loser,
+.tod-onspot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tod-loser h2,
+.tod-onspot h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.tod-asker {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.tod-forfeit {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f472b6;
+  background: rgba(244, 114, 182, 0.12);
+  border: 1px solid rgba(244, 114, 182, 0.4);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin: 0;
+}
+
+.tod-choice {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  max-width: 360px;
+}
+
+.tod-choice .btn {
+  flex: 1;
+  font-size: 1.2rem;
+  font-weight: 800;
+  padding: 1.1rem;
+}
+
+.tod-truth {
+  background: #2563eb;
+  color: #fff;
+}
+
+.tod-dare {
+  background: #db2777;
+  color: #fff;
+}
+
+.tod-prompt-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.tod-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+}
+
+.tod-badge.truth {
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+}
+
+.tod-badge.dare {
+  background: rgba(219, 39, 119, 0.2);
+  color: #f9a8d4;
+}
+
+.tod-prompt {
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.tod-end {
+  margin-top: 0.25rem;
+  color: var(--muted);
+}
+
+.full {
+  width: 100%;
+}
+
+/* —— Embedded room chat + picture share —— */
+
+.chat-embed {
+  height: auto;
+  max-height: 440px;
+  margin-top: 1rem;
+  border-radius: 0.75rem;
+}
+
+.chat-embed .chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chat-embed .chat-msg {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-bottom: 0;
+}
+
+.chat-embed .chat-msg.mine {
+  flex-direction: row-reverse;
+}
+
+.chat-avatar {
+  flex: none;
+  margin-top: 2px;
+}
+
+.chat-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  padding: 0.4rem 0.6rem;
+  max-width: 80%;
+}
+
+.chat-msg.mine .chat-bubble {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: var(--accent-dim);
+}
+
+.chat-bubble .chat-name {
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.chat-text {
+  display: block;
+  word-break: break-word;
+}
+
+.chat-image {
+  display: block;
+  margin-top: 0.3rem;
+  max-width: 200px;
+  width: 100%;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.chat-image-preview {
+  position: relative;
+  display: inline-block;
+  padding: 0.5rem 0.75rem 0;
+}
+
+.chat-image-preview img {
+  max-height: 96px;
+  border-radius: 0.5rem;
+  display: block;
+}
+
+.chat-image-remove {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.chat-error {
+  color: #f87171;
+  font-size: 0.75rem;
+  padding: 0 0.75rem;
+  margin: 0.25rem 0 0;
+}
+
+.btn-chat-attach {
+  flex: none;
+  width: 2.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+
+.btn-chat-attach:hover {
+  border-color: var(--accent-dim);
 }

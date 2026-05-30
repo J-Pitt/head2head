@@ -1,6 +1,6 @@
 'use client'
 
-import { avatarEmoji } from '@/lib/avatars'
+import Avatar from '@/components/Avatar'
 import type { Player } from '@/lib/types'
 
 type Props = {
@@ -35,7 +35,7 @@ export default function PlayerCircle({ players, currentIndex, myPlayerId, buzzed
               }}
             >
               <div className="player-avatar" title={p.name}>
-                <span className="player-emoji">{avatarEmoji(p.avatar)}</span>
+                <Avatar seed={p.avatar} size={48} className="player-img" />
                 {isCurrent && <span className="turn-badge">Turn</span>}
                 {isNext && !isCurrent && !onBreak && <span className="next-badge">Next</span>}
                 {onBreak && <span className="break-badge">Break</span>}

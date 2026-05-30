@@ -1,10 +1,10 @@
-import MinigamesHub from '@/components/minigames/MinigamesHub'
+import MinigameParty from '@/components/minigames/MinigameParty'
 
 export const metadata = {
   title: 'Mini games — Head2Head',
-  description: 'Spin the wheel and play arcade mini games with friends.',
+  description: 'Join a games room and play arcade mini games with friends.',
 }
 
 export default function MinigamesPage() {
-  return <MinigamesHub />
+  return <MinigameParty />
 }

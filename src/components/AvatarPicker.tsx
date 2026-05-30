@@ -1,6 +1,7 @@
 'use client'
 
 import { AVATARS } from '@/lib/avatars'
+import Avatar from '@/components/Avatar'
 
 type Props = {
   selected: string
@@ -22,7 +23,7 @@ export default function AvatarPicker({ selected, onSelect }: Props) {
             aria-label={a.label}
             aria-pressed={selected === a.id}
           >
-            <span className="avatar-emoji">{a.emoji}</span>
+            <Avatar seed={a.id} size={52} />
           </button>
         ))}
       </div>

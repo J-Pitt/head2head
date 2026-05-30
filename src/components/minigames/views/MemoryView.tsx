@@ -1,48 +1,89 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GameViewProps } from '@/lib/minigames/types'
-import { memoryClearFlip, memoryFlip } from '@/lib/minigames/memory'
+import { seededShuffle } from '@/lib/minigames/rng'
+import { RaceLeaderboard, RoundStatusBar } from './shared'
 
-export function MemoryView({ state, players, playerId, pushState }: GameViewProps) {
-  const cards = state.cards as string[]
-  const flipped = state.flipped as number[]
-  const matched = state.matched as number[]
-  const order = state.playerOrder as string[]
-  const turn = state.turnIndex as number
-  const current = order[turn % order.length]
-  const scores = state.scores as Record<string, number>
-  const isMyTurn = current === playerId
+const FACES = ['🍎', '🚀', '🐙', '🎸', '🍕', '🌈', '👾', '⚽']
 
+export function MemoryView(props: GameViewProps) {
+  const { session, now } = props
+  const deck = useMemo(
+    () => seededShuffle([...FACES, ...FACES], session.seed || 1),
+    [session.seed]
+  )
+
+  const [flipped, setFlipped] = useState<number[]>([])
+  const [matched, setMatched] = useState<number[]>([])
+  const [busy, setBusy] = useState(false)
+  const reportedDone = useRef(false)
+
+  // Reset whenever a fresh round begins.
   useEffect(() => {
-    if (flipped.length !== 2) return
-    const [a, b] = flipped
-    if (cards[a] !== cards[b]) {
-      const t = setTimeout(() => pushState(memoryClearFlip(state)), 700)
-      return () => clearTimeout(t)
+    setFlipped([])
+    setMatched([])
+    setBusy(false)
+    reportedDone.current = false
+  }, [session.round, session.seed])
+
+  const started = session.startAt != null && now >= session.startAt
+  const locked = !started || session.status !== 'live' || busy
+
+  function flip(i: number) {
+    if (locked || flipped.includes(i) || matched.includes(i)) return
+    const next = [...flipped, i]
+    setFlipped(next)
+    if (next.length === 2) {
+      setBusy(true)
+      const [a, b] = next
+      if (deck[a] === deck[b]) {
+        const nextMatched = [...matched, a, b]
+        setMatched(nextMatched)
+        setFlipped([])
+        setBusy(false)
+        const pairs = nextMatched.length / 2
+        if (nextMatched.length === deck.length) {
+          reportedDone.current = true
+          props.report({ score: pairs, finished: true, finishAt: Date.now() - (session.startAt ?? Date.now()) })
+        } else {
+          props.report({ score: pairs })
+        }
+      } else {
+        setTimeout(() => {
+          setFlipped([])
+          setBusy(false)
+        }, 700)
+      }
     }
-  }, [flipped, cards, state, pushState])
+  }
 
   return (
-    <div className="arcade-view">
-      <p className="arcade-hint">{isMyTurn ? 'Your turn — pick two cards' : `Waiting for ${players.find((p) => p.id === current)?.name}`}</p>
-      <div className="memory-grid">
-        {cards.map((emoji, i) => {
-          const show = matched.includes(i) || flipped.includes(i)
-          return (
-            <button
-              key={i}
-              type="button"
-              className={`memory-card ${show ? 'open' : ''}`}
-              disabled={!isMyTurn || matched.includes(i) || flipped.length >= 2}
-              onClick={() => pushState(memoryFlip(state, playerId, i))}
-            >
-              {show ? emoji : '?'}
-            </button>
-          )
-        })}
+    <div className="race-layout">
+      <div className="race-main">
+        <RoundStatusBar session={session} now={now} />
+        <div className="memory-grid">
+          {deck.map((face, i) => {
+            const open = flipped.includes(i) || matched.includes(i)
+            return (
+              <button
+                key={i}
+                type="button"
+                className={`memory-card ${open ? 'open' : ''} ${matched.includes(i) ? 'matched' : ''}`}
+                onClick={() => flip(i)}
+                disabled={locked && !open}
+              >
+                {open ? face : '?'}
+              </button>
+            )
+          })}
+        </div>
+        <p className="race-hint">Same board for everyone — clear all 8 pairs before your friends.</p>
       </div>
-      <p className="arcade-hint">{players.map((p) => `${p.name}: ${scores[p.id] ?? 0}`).join(' · ')}</p>
+      <aside className="race-side">
+        <h3>Pairs found</h3>
+        <RaceLeaderboard players={props.players} progress={props.progress} playerId={props.playerId} />
+      </aside>
     </div>
   )
 }

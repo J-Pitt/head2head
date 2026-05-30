@@ -1,15 +1,13 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { WHEEL_GAMES, type MinigameMeta } from '@/lib/minigames/catalog'
 
 type Props = {
-  onPick?: (game: MinigameMeta) => void
+  onPlay: (game: MinigameMeta) => void
 }
 
-export default function SpinWheel({ onPick }: Props) {
-  const router = useRouter()
+export default function SpinWheel({ onPlay }: Props) {
   const [spinning, setSpinning] = useState(false)
   const [rotation, setRotation] = useState(0)
   const [result, setResult] = useState<MinigameMeta | null>(null)
@@ -39,13 +37,8 @@ export default function SpinWheel({ onPick }: Props) {
     window.setTimeout(() => {
       setSpinning(false)
       setResult(picked)
-      onPick?.(picked)
     }, 4200)
-  }, [spinning, n, slice, onPick])
-
-  function goToGame(game: MinigameMeta) {
-    if (game.playable) router.push(`/minigames/${game.id}`)
-  }
+  }, [spinning, n, slice])
 
   return (
     <div className="wheel-wrap">
@@ -85,13 +78,9 @@ export default function SpinWheel({ onPick }: Props) {
             <strong>{result.label}</strong>
           </p>
           <p className="wheel-result-blurb">{result.blurb}</p>
-          {result.playable ? (
-            <button type="button" className="btn btn-primary" onClick={() => goToGame(result)}>
-              Play {result.label}
-            </button>
-          ) : (
-            <p className="coming-soon-tag">Coming soon — spin again or pick from the list below</p>
-          )}
+          <button type="button" className="btn btn-primary" onClick={() => onPlay(result)}>
+            Play {result.label}
+          </button>
         </div>
       )}
     </div>

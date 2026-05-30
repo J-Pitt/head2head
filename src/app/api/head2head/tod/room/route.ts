@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import {
   getRedis,
-  minigameCodeKey,
+  todCodeKey,
   randomGameCode,
-  getMinigameRoom,
-  setMinigameRoom,
-  setMinigameProgress,
-  getMinigameProgress,
+  getTodRoom,
+  setTodRoom,
+  setTodProgress,
+  getTodProgress,
   ROOM_TTL_SEC,
 } from '@/lib/redis'
+import { initialTodState } from '@/lib/tod/types'
 
 export async function GET(request: Request) {
   try {
@@ -18,18 +19,18 @@ export async function GET(request: Request) {
     if (!roomId) {
       return NextResponse.json({ success: false, error: 'roomId required' }, { status: 400 })
     }
-    const room = await getMinigameRoom(roomId)
+    const room = await getTodRoom(roomId)
     if (!room) {
       return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
     }
-    const progress = await getMinigameProgress(roomId)
+    const progress = await getTodProgress(roomId)
     return NextResponse.json({
       success: true,
       roomId: room.roomId,
       gameCode: room.gameCode,
-      gameId: room.gameId,
+      hostId: room.hostId,
       players: room.players || [],
-      session: room.session || null,
+      state: room.state || null,
       progress,
       updatedAt: room.updatedAt || null,
     })
@@ -43,28 +44,27 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    // —— Per-player progress (high frequency, atomic per field) ——
+    // Per-player minigame progress.
     if (body.roomId && body.progress && body.field) {
-      await setMinigameProgress(String(body.roomId), String(body.field), body.progress)
+      await setTodProgress(String(body.roomId), String(body.field), body.progress)
       return NextResponse.json({ success: true })
     }
 
-    // —— Shared session/lifecycle update (host or turn-taker) ——
-    if (body.roomId && body.session) {
-      const room = await getMinigameRoom(body.roomId)
+    // Shared game-state update.
+    if (body.roomId && body.state) {
+      const room = await getTodRoom(body.roomId)
       if (!room) {
         return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
       }
-      room.session = body.session
+      room.state = body.state
       room.updatedAt = new Date().toISOString()
-      await setMinigameRoom(body.roomId, room)
+      await setTodRoom(body.roomId, room)
       return NextResponse.json({ success: true, roomId: body.roomId })
     }
 
-    // —— Create room ——
-    const gameId = body.gameId ? String(body.gameId) : 'frogger'
+    // Create room.
     const hostName = body.hostName && String(body.hostName).trim() ? String(body.hostName).trim() : 'Host'
-    const avatar = body.avatar ? String(body.avatar) : 'star'
+    const avatar = body.avatar ? String(body.avatar) : 'Maverick'
     const playerId = body.playerId ? String(body.playerId) : randomUUID()
 
     const r = getRedis()
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     let exists = true
     for (let attempt = 0; attempt < 10 && exists; attempt++) {
       code = randomGameCode()
-      const v = await r.get(minigameCodeKey(code))
+      const v = await r.get(todCodeKey(code))
       exists = v != null
     }
     if (exists) {
@@ -88,15 +88,14 @@ export async function POST(request: Request) {
     const room = {
       roomId,
       gameCode: code,
-      gameId,
-      hostName,
+      hostId: playerId,
       players: [host],
-      session: null,
+      state: initialTodState(),
       updatedAt: new Date().toISOString(),
     }
-    await setMinigameRoom(roomId, room)
-    await r.set(minigameCodeKey(code), roomId, { ex: ROOM_TTL_SEC })
-    return NextResponse.json({ success: true, roomId, gameCode: code, gameId, players: [host] })
+    await setTodRoom(roomId, room)
+    await r.set(todCodeKey(code), roomId, { ex: ROOM_TTL_SEC })
+    return NextResponse.json({ success: true, roomId, gameCode: code, hostId: playerId, players: [host] })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Server error'
     return NextResponse.json({ success: false, error: 'Server error', details: message }, { status: 500 })

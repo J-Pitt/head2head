@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import AvatarPicker from './AvatarPicker'
+import { DEFAULT_AVATAR } from '@/lib/avatars'
 import BuzzerPad from './BuzzerPad'
 import CategoryPicker from './CategoryPicker'
 import ChatBox from './ChatBox'
@@ -88,7 +89,7 @@ export default function GameApp() {
   const [booting, setBooting] = useState(true)
 
   const [playerName, setPlayerName] = useState(loadSavedName)
-  const [avatar, setAvatar] = useState('star')
+  const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR)
   const [playerId] = useState(loadPlayerId)
 
   const [selectedCategories, setSelectedCategories] = useState<CategoryId[]>(['science', 'nineties'])
@@ -622,6 +623,11 @@ export default function GameApp() {
               <span className="mode-icon">🎮</span>
               <strong>Play mini games</strong>
               <span>Spin the wheel — Frogger & more</span>
+            </Link>
+            <Link href="/truth-or-dare" className="mode-card mode-card-link">
+              <span className="mode-icon">💋</span>
+              <strong>Truth or Dare</strong>
+              <span>Mini-game forfeits & spicy turns · 18+</span>
             </Link>
           </div>
         </section>
