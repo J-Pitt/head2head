@@ -1,0 +1,24 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # Amplify injects console env vars at build time only. Next.js SSR reads
+        # process.env at runtime, so persist the server-only vars into
+        # .env.production, which the Next server loads when it boots.
+        - |
+          for v in UPSTASH_REDIS_REST_URL UPSTASH_REDIS_REST_TOKEN; do
+            if [ -n "${!v}" ]; then echo "$v=${!v}" >> .env.production; fi
+          done
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
