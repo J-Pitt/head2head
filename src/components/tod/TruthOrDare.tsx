@@ -206,7 +206,10 @@ function TurnPhase({ room }: { room: Room }) {
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (draft.trim()) room.submitPrompt(draft)
+    if (draft.trim()) {
+      room.signalTyping(false)
+      room.submitPrompt(draft)
+    }
   }
 
   return (
@@ -255,7 +258,11 @@ function TurnPhase({ room }: { room: Room }) {
             </p>
             <textarea
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value)
+                room.signalTyping(e.target.value.trim().length > 0)
+              }}
+              onBlur={() => room.signalTyping(false)}
               placeholder={state.choice === 'truth' ? 'Ask them anything…' : 'Dare them to…'}
               maxLength={400}
               rows={3}
@@ -272,6 +279,11 @@ function TurnPhase({ room }: { room: Room }) {
             <br />
             Waiting for {asker?.name ?? 'the asker'} to write a {state.choice} for{' '}
             {onSpot?.name ?? 'them'}…
+            {room.typing && (
+              <span className="typing-indicator">
+                {room.typing.name} is typing<span className="typing-dots"><i></i><i></i><i></i></span>
+              </span>
+            )}
           </p>
         )
       ) : (

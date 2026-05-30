@@ -13,6 +13,8 @@ import {
   leaveTodRoom,
   setTodPresence,
   kickTodPlayer,
+  setTodTyping,
+  type TypingSignal,
 } from '@/lib/tod/roomApi'
 
 const POLL_MS = 600
@@ -63,6 +65,7 @@ export function useTodRoom() {
   const [hostId, setHostId] = useState<string | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [state, setState] = useState<TodState | null>(null)
+  const [typing, setTyping] = useState<TypingSignal | null>(null)
   const [error, setError] = useState('')
 
   const stateRef = useRef<TodState | null>(null)
@@ -71,6 +74,9 @@ export function useTodRoom() {
   playersRef.current = players
   const roomIdRef = useRef<string | null>(null)
   roomIdRef.current = roomId
+
+  const lastTypingSentRef = useRef(0)
+  const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isHost = !!hostId && hostId === playerId
   const me = players.find((p) => p.id === playerId) ?? null
@@ -98,6 +104,8 @@ export function useTodRoom() {
         setPlayers(data.players || [])
         setHostId(data.hostId ?? null)
         setState(data.state ?? null)
+        // Show someone else's typing signal (ignore our own echo).
+        setTyping(data.typing && data.typing.id !== playerId ? data.typing : null)
       } catch {
         /* retry next poll */
       }
@@ -108,7 +116,7 @@ export function useTodRoom() {
       cancelled = true
       clearInterval(iv)
     }
-  }, [roomId])
+  }, [roomId, playerId])
 
   const pushState = useCallback(async (next: TodState) => {
     const rid = roomIdRef.current
@@ -249,6 +257,35 @@ export function useTodRoom() {
     [playerId]
   )
 
+  // Broadcast a "typing…" signal. Throttled so we send at most ~1/sec while
+  // typing, and an idle timer sends the stop signal after a short pause.
+  const signalTyping = useCallback(
+    (isTyping: boolean) => {
+      const rid = roomIdRef.current
+      if (!rid) return
+      const name = playersRef.current.find((p) => p.id === playerId)?.name ?? 'Someone'
+      if (typingStopTimerRef.current) {
+        clearTimeout(typingStopTimerRef.current)
+        typingStopTimerRef.current = null
+      }
+      if (isTyping) {
+        const nowMs = Date.now()
+        if (nowMs - lastTypingSentRef.current > 1200) {
+          lastTypingSentRef.current = nowMs
+          setTodTyping(rid, playerId, name, true)
+        }
+        typingStopTimerRef.current = setTimeout(() => {
+          lastTypingSentRef.current = 0
+          setTodTyping(rid, playerId, name, false)
+        }, 2000)
+      } else {
+        lastTypingSentRef.current = 0
+        setTodTyping(rid, playerId, name, false)
+      }
+    },
+    [playerId]
+  )
+
   // Leave the room entirely and reset back to the join screen.
   const leaveRoom = useCallback(async () => {
     const rid = roomIdRef.current
@@ -365,8 +402,10 @@ export function useTodRoom() {
     isOnBreak,
     players,
     state,
+    typing,
     error,
     isAvailable,
+    signalTyping,
     hostRoom,
     joinRoom,
     startGame,

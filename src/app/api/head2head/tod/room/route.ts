@@ -24,6 +24,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
     }
     const progress = await getTodProgress(roomId)
+    // Only surface a typing signal if it's recent (auto-expires stale signals).
+    const typing =
+      room.typing && Date.now() - room.typing.at < 5000 ? room.typing : null
     return NextResponse.json({
       success: true,
       roomId: room.roomId,
@@ -31,6 +34,7 @@ export async function GET(request: Request) {
       hostId: room.hostId,
       players: room.players || [],
       state: room.state || null,
+      typing,
       progress,
       updatedAt: room.updatedAt || null,
     })
@@ -47,6 +51,19 @@ export async function POST(request: Request) {
     // Per-player minigame progress.
     if (body.roomId && body.progress && body.field) {
       await setTodProgress(String(body.roomId), String(body.field), body.progress)
+      return NextResponse.json({ success: true })
+    }
+
+    // Lightweight typing signal for the truth/dare question box.
+    if (body.roomId && body.action === 'typing') {
+      const room = await getTodRoom(body.roomId)
+      if (!room) {
+        return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
+      }
+      room.typing = body.typing
+        ? { id: String(body.playerId || ''), name: String(body.name || ''), at: Date.now() }
+        : null
+      await setTodRoom(body.roomId, room)
       return NextResponse.json({ success: true })
     }
 

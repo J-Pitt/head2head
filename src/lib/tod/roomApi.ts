@@ -36,6 +36,8 @@ export async function joinTodRoom(gameCode: string, playerName: string, avatar: 
   return data as { roomId: string; hostId: string; players: Player[]; state: TodState | null }
 }
 
+export type TypingSignal = { id: string; name: string; at: number }
+
 export async function getTodRoomClient(roomId: string) {
   const res = await fetch(`${BASE}?roomId=${encodeURIComponent(roomId)}`, { cache: 'no-store' })
   const data = await parseResponse(res, 'Failed to get room')
@@ -45,9 +47,23 @@ export async function getTodRoomClient(roomId: string) {
     hostId: string
     players: Player[]
     state: TodState | null
+    typing: TypingSignal | null
     progress: ProgressMap
     updatedAt: string | null
   }
+}
+
+export async function setTodTyping(
+  roomId: string,
+  playerId: string,
+  name: string,
+  typing: boolean
+) {
+  await fetch(BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId, action: 'typing', playerId, name, typing }),
+  }).catch(() => {})
 }
 
 export async function updateTodState(roomId: string, state: TodState) {
