@@ -23,6 +23,28 @@ export function codeKey(gameCode: string) {
   return `${REDIS_KEY_PREFIX}code:${String(gameCode).toUpperCase()}`
 }
 
+export function minigameRoomKey(roomId: string) {
+  return `${REDIS_KEY_PREFIX}minigame:room:${roomId}`
+}
+
+export function minigameCodeKey(gameCode: string) {
+  return `${REDIS_KEY_PREFIX}minigame:code:${String(gameCode).toUpperCase()}`
+}
+
+export async function getMinigameRoom(roomId: string) {
+  const r = getRedis()
+  if (!r) return null
+  const raw = await r.get(minigameRoomKey(roomId))
+  if (!raw) return null
+  return typeof raw === 'string' ? JSON.parse(raw) : raw
+}
+
+export async function setMinigameRoom(roomId: string, room: unknown) {
+  const r = getRedis()
+  if (!r) return
+  await r.set(minigameRoomKey(roomId), JSON.stringify(room), { ex: ROOM_TTL_SEC })
+}
+
 export function randomGameCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''

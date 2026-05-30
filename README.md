@@ -22,9 +22,11 @@ Group trivia for phones and laptops — play on one device or online with a room
 
 ```bash
 npm install
-cp env.example .env.local   # add Upstash URL + token for online play
+npm run setup:env   # copies from ../truthordare/.env.local (sibling folder)
 npm run dev
 ```
+
+Or manually: copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` from truthordare into `.env.local` (see `env.example`). This file is **not** in git.
 
 Open [http://localhost:3000](http://localhost:3000).
 

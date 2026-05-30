@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import AvatarPicker from './AvatarPicker'
 import BuzzerPad from './BuzzerPad'
 import CategoryPicker from './CategoryPicker'
@@ -585,7 +586,8 @@ export default function GameApp() {
           )}
           {!multiplayerAvailable && (
             <p className="hint-banner">
-              Local play works now. For online rooms, add Upstash Redis to <code>.env.local</code>.
+              Local play works now. For online rooms, run <code>npm run setup:env</code> (copies from{' '}
+              <code>../truthordare/.env.local</code>).
             </p>
           )}
           <div className="mode-grid">
@@ -616,6 +618,11 @@ export default function GameApp() {
               <strong>Play with others</strong>
               <span>Buzz in on your own phone</span>
             </button>
+            <Link href="/minigames" className="mode-card mode-card-link">
+              <span className="mode-icon">🎮</span>
+              <strong>Play mini games</strong>
+              <span>Spin the wheel — Frogger & more</span>
+            </Link>
           </div>
         </section>
       </div>
