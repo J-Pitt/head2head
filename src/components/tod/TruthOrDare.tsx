@@ -275,20 +275,27 @@ function TurnPhase({ room }: { room: Room }) {
           </p>
         )
       ) : (
-        // Prompt submitted — everyone reads it.
+        // Prompt submitted — everyone reads it, but only the player on the spot advances.
         <div className="tod-prompt-wrap">
           <span className={`tod-badge ${state.choice}`}>{state.choice.toUpperCase()}</span>
           <p className="tod-prompt">{state.prompt}</p>
-          {asker && (
-            <p className="tod-asker">— from {asker.name}</p>
+          {asker && <p className="tod-asker">— from {asker.name}</p>}
+          {isMine ? (
+            <>
+              <p className="tod-write-label">Do your {state.choice}, then post it in the chat below 👇</p>
+              <button type="button" className="btn btn-primary full" onClick={room.nextTurn}>
+                {turnNum >= total
+                  ? state.round % 3 === 0
+                    ? "I'm done — picture time 📸"
+                    : "I'm done — finish round →"
+                  : "I'm done — next player →"}
+              </button>
+            </>
+          ) : (
+            <p className="lobby-sub">
+              Waiting for {onSpot?.name ?? 'them'} to do their {state.choice} and post it in the chat…
+            </p>
           )}
-          <button type="button" className="btn btn-primary full" onClick={room.nextTurn}>
-            {turnNum >= total
-              ? state.round % 3 === 0
-                ? 'Finish round — picture time 📸'
-                : 'Finish round →'
-              : 'Next player →'}
-          </button>
         </div>
       )}
 
