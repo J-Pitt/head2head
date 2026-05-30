@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar'
 import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
+import { randomTodPrompt } from '@/lib/tod/prompts'
 
 export default function TruthOrDare() {
   const room = useTodRoom()
@@ -269,6 +270,17 @@ function TurnPhase({ room }: { room: Room }) {
               className="tod-textarea"
               autoFocus
             />
+            <button
+              type="button"
+              className="btn-ghost btn-sm tod-generate"
+              onClick={() => {
+                const idea = randomTodPrompt(state.choice!)
+                setDraft(idea)
+                room.signalTyping(true)
+              }}
+            >
+              🎲 Can&apos;t think of one? Surprise me
+            </button>
             <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
               Submit for everyone →
             </button>

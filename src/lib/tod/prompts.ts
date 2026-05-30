@@ -1,46 +1,58 @@
-// Flirty / spicy (but tasteful) Truth or Dare prompts for an adult party game.
+// NSFW / spicy Truth or Dare prompts for an adults-only (18+) party game.
 export const TRUTHS: string[] = [
-  'Who in this room would you most want to be stuck in an elevator with?',
-  "What's the most attractive thing someone can do?",
-  'Whats your biggest turn-on?',
-  'When did you last have a crush, and on who?',
-  "What's the boldest thing you've ever done to get someone's attention?",
-  'Describe your ideal date night in detail.',
-  'Whats a secret you have never told anyone here?',
-  'Who here gives the best hugs, and why?',
-  "What's your worst kiss story?",
-  'Whats the most spontaneous romantic thing youve ever done?',
-  'If you had to rate your flirting skills out of 10, what would it be and why?',
-  'Whats something you find irresistibly attractive that others might find weird?',
-  'Who was your most embarrassing crush?',
-  'Whats the cheesiest pickup line that has actually worked on you?',
-  'Whats a fantasy you have never admitted out loud?',
-  'Whos the last person you stalked on social media?',
-  'Whats the most daring outfit youve ever worn out?',
-  'Have you ever sent a risky text? What did it say?',
+  "What's the wildest place you've ever hooked up?",
+  "What's a fantasy you've never told your partner about?",
+  "Who in this room would you most want to spend a night with?",
+  "What's the kinkiest thing you're secretly into?",
+  "When was the last time you sent or received a nude?",
+  "What's your favorite position, and why?",
+  "What's the most adventurous thing you've done in bed?",
+  "Have you ever had a one-night stand? Spill the details.",
+  "What's a turn-on you're a little embarrassed about?",
+  "What's the dirtiest thought you've had about someone here?",
+  "What's your body count, roughly?",
+  "Have you ever faked it? How often?",
+  "What's the naughtiest dream you can remember?",
+  "Where on your body do you most like to be touched?",
+  "What's the most scandalous thing in your search history?",
+  "Have you ever been caught in the act? What happened?",
+  "What's something you've always wanted to try but haven't?",
+  "Who was the best you've ever had, and what made them great?",
+  "What's your go-to move to turn someone on?",
+  "What's the most recent thing that got you hot and bothered?",
 ]
 
 export const DARES: string[] = [
-  'Do your best seductive dance for 15 seconds.',
-  'Send a flirty text to the 3rd contact in your phone.',
-  'Do your best impression of someone in this room flirting.',
-  'Whisper something flirty to the person on your left.',
-  'Let the group pick an emoji and text it to your crush.',
-  'Strike your sexiest pose and hold it for 10 seconds.',
-  'Give someone in the room a genuine compliment about how they look.',
-  'Talk in your most seductive voice until your next turn.',
-  'Do 10 squats and make them look good.',
-  'Show the group the last selfie in your camera roll.',
-  'Let someone draw a tiny heart somewhere on your skin.',
-  'Bite your lip and wink at everyone, one by one.',
-  'Reenact a romantic movie scene with a pillow.',
-  'Text "I have a confession..." to a random contact and read their reply aloud.',
-  'Do a catwalk strut across the room.',
-  'Serenade the person across from you for 10 seconds.',
+  'Give someone in the room a slow, sensual shoulder massage for 30 seconds.',
+  'Demonstrate your best moan.',
+  'Take off one item of clothing of your choice.',
+  'Whisper the dirtiest thing you can think of to the person on your right.',
+  'Do your sexiest slow dance for the group for 20 seconds.',
+  'Send a flirty "I want you" text to your crush right now.',
+  'Let the group pick someone for you to give a lap dance for 15 seconds.',
+  'Show the spiciest photo currently in your camera roll.',
+  'Suck on your finger as seductively as you can for 10 seconds.',
+  'Describe in detail what you would do to the person across from you.',
+  'Recreate your favorite intimate sound effect.',
+  'Let someone in the room leave a (clothed) handprint anywhere they choose.',
+  'Do your best striptease to one verse of any song.',
+  'Bite your lip and give every person here your most seductive look.',
+  'Text your ex something flirty and read their reply aloud.',
+  'Act out your favorite position using only your hands.',
+  'Give a hickey-free neck kiss to the person of the group\'s choice.',
+  'Read the last spicy message you sent out loud.',
+  'Crawl across the room in your most seductive way.',
+  'Let the group dare you to do one thing — no take-backs.',
 ]
 
 // The minigame loser's forfeit.
 export const FORFEIT = 'Send a sexy photo to the group chat 📸🔥'
+
+// Random prompt for the "surprise me" generator.
+export function randomTodPrompt(kind: 'truth' | 'dare'): string {
+  const list = kind === 'truth' ? TRUTHS : DARES
+  return list[Math.floor(Math.random() * list.length)]
+}
 
 export function randomPrompt(kind: 'truth' | 'dare', seed: number): string {
   const list = kind === 'truth' ? TRUTHS : DARES
