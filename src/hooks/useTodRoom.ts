@@ -68,6 +68,8 @@ export function useTodRoom() {
   })
   const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR)
   const [gameCodeInput, setGameCodeInput] = useState('')
+  const [createPassword, setCreatePassword] = useState('')
+  const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | null>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [hostId, setHostId] = useState<string | null>(null)
@@ -656,15 +658,24 @@ export function useTodRoom() {
     setState(null)
   }, [playerId])
 
-  async function hostRoom() {
+  async function hostRoom(code?: string) {
     if (!playerName.trim()) {
       setError('Enter your name')
+      return
+    }
+    const pwd = (code ?? createPassword).trim().toUpperCase()
+    if (entryMode === 'create' && !pwd) {
+      setError('Set a game password')
+      return
+    }
+    if (pwd && !/^[A-Z0-9]{4,6}$/.test(pwd)) {
+      setError('Password must be 4–6 letters or numbers')
       return
     }
     setError('')
     try {
       localStorage.setItem(NAME_KEY, playerName.trim())
-      const data = await createTodRoom(playerName.trim(), avatar, playerId)
+      const data = await createTodRoom(playerName.trim(), avatar, playerId, pwd || undefined)
       setRoomId(data.roomId)
       setGameCode(data.gameCode)
       setHostId(data.hostId)
@@ -734,11 +745,25 @@ export function useTodRoom() {
     }
   }, [playerId])
 
-  // Prefill the join code from a ?code= link (e.g. "Join a game" on the home screen).
+  // Prefill join/create mode from home-screen links (?local=1, ?code=, ?create=).
   useEffect(() => {
     try {
-      const code = new URLSearchParams(window.location.search).get('code')
-      if (code) setGameCodeInput(code.trim().toUpperCase())
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('local') === '1') {
+        setEntryMode('local')
+        return
+      }
+      const joinCode = params.get('code')
+      if (joinCode) {
+        setEntryMode('join')
+        setGameCodeInput(joinCode.trim().toUpperCase())
+        return
+      }
+      const createCode = params.get('create')
+      if (createCode) {
+        setEntryMode('create')
+        setCreatePassword(createCode.trim().toUpperCase())
+      }
     } catch {
       /* ignore */
     }
@@ -752,6 +777,9 @@ export function useTodRoom() {
     setAvatar,
     gameCodeInput,
     setGameCodeInput,
+    createPassword,
+    setCreatePassword,
+    entryMode,
     roomId,
     gameCode,
     hostId,

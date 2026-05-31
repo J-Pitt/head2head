@@ -16,11 +16,16 @@ async function parseResponse(res: Response, fallback: string) {
   return data
 }
 
-export async function createTodRoom(hostName: string, avatar: string, playerId: string) {
+export async function createTodRoom(
+  hostName: string,
+  avatar: string,
+  playerId: string,
+  gameCode?: string
+) {
   const res = await fetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hostName, avatar, playerId }),
+    body: JSON.stringify({ hostName, avatar, playerId, gameCode: gameCode?.trim().toUpperCase() || undefined }),
   })
   const data = await parseResponse(res, 'Failed to create room')
   return data as { roomId: string; gameCode: string; hostId: string; players: Player[] }

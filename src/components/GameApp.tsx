@@ -97,8 +97,9 @@ export default function GameApp() {
   const [gameMode, setGameMode] = useState<GameMode>('buzzer')
 
   const [gameCodeInput, setGameCodeInput] = useState('')
-  const [joinPwd, setJoinPwd] = useState('')
-  const [showJoin, setShowJoin] = useState(false)
+  const [onlineOpen, setOnlineOpen] = useState(false)
+  const [onlineAction, setOnlineAction] = useState<'join' | 'create' | null>(null)
+  const [roomPassword, setRoomPassword] = useState('')
   const router = useRouter()
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
@@ -584,36 +585,81 @@ export default function GameApp() {
         )}
 
         <section className="card tod-home-actions">
-          <Link href="/truth-or-dare" className="btn btn-primary full home-cta">
-            🎲 Play locally
-          </Link>
-          {!showJoin ? (
-            <button
-              type="button"
-              className="btn full home-cta"
-              onClick={() => setShowJoin(true)}
-            >
-              🔑 Join a game
-            </button>
+          {!onlineOpen ? (
+            <div className="home-play-pick">
+              <Link href="/truth-or-dare?local=1" className="btn btn-primary full home-cta">
+                📱 Play locally
+              </Link>
+              <button
+                type="button"
+                className="btn full home-cta"
+                onClick={() => setOnlineOpen(true)}
+              >
+                🌐 Play online
+              </button>
+            </div>
+          ) : !onlineAction ? (
+            <div className="home-online-pick">
+              <p className="home-online-label">Play online</p>
+              <button
+                type="button"
+                className="btn btn-primary full home-cta"
+                onClick={() => setOnlineAction('join')}
+              >
+                🔑 Join a game
+              </button>
+              <button
+                type="button"
+                className="btn full home-cta"
+                onClick={() => setOnlineAction('create')}
+              >
+                ✨ Create a game
+              </button>
+              <button
+                type="button"
+                className="btn-ghost home-back"
+                onClick={() => setOnlineOpen(false)}
+              >
+                ← Back
+              </button>
+            </div>
           ) : (
             <form
-              className="home-join"
+              className="home-online-form"
               onSubmit={(e) => {
                 e.preventDefault()
-                const code = joinPwd.trim().toUpperCase()
-                if (code) router.push(`/truth-or-dare?code=${encodeURIComponent(code)}`)
+                const pwd = roomPassword.trim().toUpperCase()
+                if (!pwd) return
+                if (onlineAction === 'join') {
+                  router.push(`/truth-or-dare?code=${encodeURIComponent(pwd)}`)
+                } else {
+                  router.push(`/truth-or-dare?create=${encodeURIComponent(pwd)}`)
+                }
               }}
             >
+              <p className="home-online-label">
+                {onlineAction === 'join' ? 'Enter password to join' : 'Set a game password'}
+              </p>
               <input
-                value={joinPwd}
-                onChange={(e) => setJoinPwd(e.target.value.toUpperCase())}
-                placeholder="Enter game password"
+                value={roomPassword}
+                onChange={(e) => setRoomPassword(e.target.value.toUpperCase())}
+                placeholder={onlineAction === 'join' ? 'GAME PASSWORD' : 'CHOOSE PASSWORD'}
                 maxLength={6}
                 className="code-input"
                 autoFocus
               />
-              <button type="submit" className="btn btn-primary" disabled={!joinPwd.trim()}>
-                Join
+              <button type="submit" className="btn btn-primary full home-cta" disabled={!roomPassword.trim()}>
+                {onlineAction === 'join' ? 'Join game' : 'Create game'}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost home-back"
+                onClick={() => {
+                  setOnlineAction(null)
+                  setRoomPassword('')
+                }}
+              >
+                ← Back
               </button>
             </form>
           )}

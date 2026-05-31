@@ -65,6 +65,8 @@ export default function TruthOrDare() {
 type Room = ReturnType<typeof useTodRoom>
 
 function TodJoin({ room }: { room: Room }) {
+  const mode = room.entryMode
+
   return (
     <div className="app-shell">
       <header className="app-header compact">
@@ -75,8 +77,13 @@ function TodJoin({ room }: { room: Room }) {
       </header>
       <section className="card setup-card">
         <p className="intro">
-          A spicy party game. Players take turns answering Truth or Dare, and every 3 rounds it&apos;s
-          picture time — everyone sends a picture to the group chat. 18+.
+          {mode === 'local'
+            ? 'Pass the phone around the room. Everyone plays on this device.'
+            : mode === 'join'
+              ? 'Enter your name, then join the game with the password from your host.'
+              : mode === 'create'
+                ? 'Pick your name and avatar, then create the room with your password.'
+                : 'A spicy party game. Create a room or join with a password. 18+.'}
         </p>
         <label className="field">
           <span>Your name</span>
@@ -85,26 +92,73 @@ function TodJoin({ room }: { room: Room }) {
             onChange={(e) => room.setPlayerName(e.target.value)}
             placeholder="Alex"
             maxLength={24}
+            autoFocus
           />
         </label>
         <AvatarPicker selected={room.avatar} onSelect={room.setAvatar} />
-        <div className="online-actions">
-          <button type="button" className="btn btn-primary" onClick={room.hostRoom}>
-            Create a room
+
+        {mode === 'local' && (
+          <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
+            Start local game
           </button>
-          <div className="join-row">
-            <input
-              value={room.gameCodeInput}
-              onChange={(e) => room.setGameCodeInput(e.target.value.toUpperCase())}
-              placeholder="CODE"
-              maxLength={6}
-              className="code-input"
-            />
-            <button type="button" className="btn" onClick={() => room.joinRoom()}>
-              Join
+        )}
+
+        {mode === 'join' && (
+          <div className="online-actions">
+            <label className="field">
+              <span>Game password</span>
+              <input
+                value={room.gameCodeInput}
+                onChange={(e) => room.setGameCodeInput(e.target.value.toUpperCase())}
+                placeholder="PASSWORD"
+                maxLength={6}
+                className="code-input"
+              />
+            </label>
+            <button type="button" className="btn btn-primary full" onClick={() => room.joinRoom()}>
+              Join game
             </button>
           </div>
-        </div>
+        )}
+
+        {mode === 'create' && (
+          <div className="online-actions">
+            <label className="field">
+              <span>Game password</span>
+              <input
+                value={room.createPassword}
+                onChange={(e) => room.setCreatePassword(e.target.value.toUpperCase())}
+                placeholder="SET PASSWORD"
+                maxLength={6}
+                className="code-input"
+              />
+            </label>
+            <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
+              Create game
+            </button>
+          </div>
+        )}
+
+        {!mode && (
+          <div className="online-actions">
+            <button type="button" className="btn btn-primary" onClick={() => room.hostRoom()}>
+              Create a room
+            </button>
+            <div className="join-row">
+              <input
+                value={room.gameCodeInput}
+                onChange={(e) => room.setGameCodeInput(e.target.value.toUpperCase())}
+                placeholder="PASSWORD"
+                maxLength={6}
+                className="code-input"
+              />
+              <button type="button" className="btn" onClick={() => room.joinRoom()}>
+                Join
+              </button>
+            </div>
+          </div>
+        )}
+
         {room.error && <p className="error">{room.error}</p>}
       </section>
     </div>
