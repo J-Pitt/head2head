@@ -26,6 +26,15 @@ export default function BoardView({ room }: { room: Room }) {
   )
 }
 
+function arrowFor(tile: BoardTile, next: BoardTile | undefined): string | null {
+  if (!next) return null
+  if (next.col > tile.col) return '→'
+  if (next.col < tile.col) return '←'
+  if (next.row > tile.row) return '↓'
+  if (next.row < tile.row) return '↑'
+  return null
+}
+
 function Spiral({ room }: { room: Room }) {
   const b = room.state!.board!
   const tokensByTile: Record<number, typeof room.players> = {}
@@ -36,21 +45,36 @@ function Spiral({ room }: { room: Room }) {
 
   return (
     <section className="card board-card">
+      <p className="board-legend">🚦 Start → follow the arrows → 🏁 Finish (center)</p>
       <div
         className="board-grid"
         style={{ gridTemplateColumns: `repeat(${b.size}, 1fr)` }}
       >
-        {b.tiles.map((tile) => (
-          <Tile key={tile.i} tile={tile} tokens={tokensByTile[tile.i] || []} />
+        {b.tiles.map((tile, idx) => (
+          <Tile
+            key={tile.i}
+            tile={tile}
+            arrow={arrowFor(tile, b.tiles[idx + 1])}
+            tokens={tokensByTile[tile.i] || []}
+          />
         ))}
       </div>
     </section>
   )
 }
 
-function Tile({ tile, tokens }: { tile: BoardTile; tokens: { id: string; name: string; avatar: string }[] }) {
+function Tile({
+  tile,
+  arrow,
+  tokens,
+}: {
+  tile: BoardTile
+  arrow: string | null
+  tokens: { id: string; name: string; avatar: string }[]
+}) {
   const meta = TILE_META[tile.type]
   const special = tile.type === 'special' && tile.special != null ? SPECIAL_CHALLENGES[tile.special] : null
+  const endpoint = tile.type === 'start' || tile.type === 'finish'
   return (
     <div
       className={`board-tile tile-${tile.type}`}
@@ -58,7 +82,12 @@ function Tile({ tile, tokens }: { tile: BoardTile; tokens: { id: string; name: s
       title={special ? special.label : meta.label}
     >
       <span className="tile-emoji">{special ? special.icon : meta.emoji}</span>
-      {tile.type !== 'start' && tile.type !== 'finish' && <span className="tile-num">{tile.i}</span>}
+      {endpoint ? (
+        <span className="tile-label">{tile.type === 'start' ? 'START' : 'FINISH'}</span>
+      ) : (
+        <span className="tile-num">{tile.i}</span>
+      )}
+      {arrow && !endpoint && <span className="tile-arrow">{arrow}</span>}
       {tokens.length > 0 && (
         <span className="tile-tokens">
           {tokens.map((t) => (

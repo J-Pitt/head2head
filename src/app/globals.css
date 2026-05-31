@@ -1937,11 +1937,24 @@ body {
   border-radius: 255px 12px 225px 12px / 12px 225px 12px 255px;
 }
 
+.board-legend {
+  text-align: center;
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #3a2f1c;
+  letter-spacing: 0.01em;
+}
+
 .board-grid {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   aspect-ratio: 1;
   width: 100%;
+  padding: 6px;
+  background: rgba(60, 44, 20, 0.18);
+  border: 2px dashed #6b5836;
+  border-radius: 14px;
 }
 
 .board-tile {
@@ -1951,10 +1964,11 @@ body {
   align-items: center;
   justify-content: center;
   background: color-mix(in srgb, var(--tile) 70%, #e8dcc0);
-  border: 2.5px solid #2c2418;
+  border: 3px solid #2c2418;
   border-radius: 255px 12px 225px 12px / 12px 225px 12px 255px;
   color: #1c160c;
   overflow: hidden;
+  box-shadow: 0 2px 0 rgba(44, 36, 24, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .board-tile:nth-child(2n) {
@@ -1971,13 +1985,54 @@ body {
 
 .tile-start,
 .tile-finish {
-  background: color-mix(in srgb, var(--tile) 60%, #fff);
-  border-width: 3.5px;
+  background: color-mix(in srgb, var(--tile) 55%, #fff);
+  border-width: 4px;
+  border-color: #0f766e;
   font-weight: 800;
+  transform: none !important;
+  z-index: 2;
+  box-shadow: 0 0 0 3px #2dd4bf, 0 0 14px 2px rgba(45, 212, 191, 0.7);
+  animation: endpoint-pulse 1.8s ease-in-out infinite;
+}
+
+.tile-finish {
+  border-color: #b45309;
+  box-shadow: 0 0 0 3px #f59e0b, 0 0 16px 3px rgba(245, 158, 11, 0.8);
+}
+
+@keyframes endpoint-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.18); }
+}
+
+.tile-label {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(0.4rem, 1.5vw, 0.6rem);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: #0b3b35;
+}
+
+.tile-finish .tile-label {
+  color: #6b3a05;
 }
 
 .tile-emoji {
   font-size: clamp(0.7rem, 2.6vw, 1.25rem);
+  line-height: 1;
+}
+
+.tile-arrow {
+  position: absolute;
+  bottom: 0px;
+  right: 2px;
+  font-size: clamp(0.5rem, 1.8vw, 0.8rem);
+  font-weight: 900;
+  color: rgba(20, 16, 8, 0.55);
   line-height: 1;
 }
 
