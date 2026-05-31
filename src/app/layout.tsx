@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Head2Head — Group Trivia",
-  description: "Science and 90's pop culture trivia for phones, laptops, and couch play.",
+  description: "Jeopardy-style trivia — science, pop culture, literature, animals, history, and more.",
 };
 
 export default function RootLayout({

@@ -40,7 +40,9 @@ export default function CategoryPicker({ selected, onChange, disabled }: Props) 
           )
         })}
       </div>
-      <p className="category-hint">Pick at least one. Up to {12} questions per round.</p>
+      <p className="category-hint">
+        Pick any mix — each category adds a $200–$1000 Jeopardy column (5 clues).
+      </p>
     </div>
   )
 }

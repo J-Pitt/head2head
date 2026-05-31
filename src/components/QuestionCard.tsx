@@ -1,11 +1,12 @@
 'use client'
 
-import type { GamePhase } from '@/lib/types'
-import type { TriviaQuestion } from '@/lib/types'
+import { getCategoryMeta } from '@/lib/trivia'
+import type { GamePhase, TriviaQuestion } from '@/lib/types'
 
 type Props = {
   question: TriviaQuestion
   phase: GamePhase
+  value?: number
   correctIndex?: number
   selectedIndex?: number | null
   onSelect?: (index: number) => void
@@ -17,6 +18,7 @@ type Props = {
 export default function QuestionCard({
   question,
   phase,
+  value,
   correctIndex,
   selectedIndex,
   onSelect,
@@ -24,13 +26,16 @@ export default function QuestionCard({
   currentPlayerName,
   subtitle,
 }: Props) {
-  const categoryLabel = question.category === 'science' ? 'Science' : "90's Pop Culture"
+  const categoryLabel = getCategoryMeta(question.category).label
   const showChoices = phase === 'question' || phase === 'answering' || phase === 'reveal'
   const choicesLocked = phase === 'reveal'
 
   return (
     <div className="question-card">
-      <span className="question-category">{categoryLabel}</span>
+      <div className="question-meta">
+        <span className="question-category">{categoryLabel}</span>
+        {value != null && <span className="question-value">${value}</span>}
+      </div>
       {(subtitle || (currentPlayerName && (phase === 'question' || phase === 'answering'))) && (
         <p className="question-turn">{subtitle ?? `${currentPlayerName}'s turn`}</p>
       )}

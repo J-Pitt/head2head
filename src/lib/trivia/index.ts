@@ -1,27 +1,83 @@
 import { firstActiveIndex } from '../players'
-import type { CategoryId, GameMode, GameState, Player } from '../types'
-import { NINETIES_QUESTIONS } from './nineties'
+import type { CategoryId, GameMode, GameState, JeopardyClue, Player } from '../types'
+import { ANIMALS_QUESTIONS } from './animals'
+import { GENERAL_QUESTIONS } from './general'
+import { HISTORY_QUESTIONS } from './history'
+import { LITERATURE_QUESTIONS } from './literature'
+import { POPCULTURE_QUESTIONS } from './popculture'
 import { SCIENCE_QUESTIONS } from './science'
 
 export const CATEGORIES = [
   { id: 'science' as const, label: 'Science', icon: '🔬' },
-  { id: 'nineties' as const, label: "90's Pop Culture", icon: '📼' },
+  { id: 'popculture' as const, label: 'Pop Culture', icon: '🎬' },
+  { id: 'literature' as const, label: 'Literature', icon: '📚' },
+  { id: 'animals' as const, label: 'Animals', icon: '🐾' },
+  { id: 'history' as const, label: 'History', icon: '🏛️' },
+  { id: 'general' as const, label: 'General', icon: '🌎' },
 ]
 
-export const TRIVIA_QUESTIONS = [...SCIENCE_QUESTIONS, ...NINETIES_QUESTIONS]
+export const TRIVIA_QUESTIONS = [
+  ...SCIENCE_QUESTIONS,
+  ...POPCULTURE_QUESTIONS,
+  ...LITERATURE_QUESTIONS,
+  ...ANIMALS_QUESTIONS,
+  ...HISTORY_QUESTIONS,
+  ...GENERAL_QUESTIONS,
+]
+
+export const JEOPARDY_VALUES = [200, 400, 600, 800, 1000] as const
 
 export const BUZZ_WINDOW_SEC = 12
 export const ANSWER_WINDOW_SEC = 18
 export const TURN_ANSWER_SEC = 25
-export const QUESTIONS_PER_GAME = 12
 
-export function questionsForCategories(categories: CategoryId[]) {
-  const pool = TRIVIA_QUESTIONS.filter((q) => categories.includes(q.category))
-  return shuffle([...pool]).slice(0, Math.min(QUESTIONS_PER_GAME, pool.length))
+export function getCategoryMeta(id: CategoryId) {
+  return CATEGORIES.find((c) => c.id === id)!
+}
+
+export function questionsForCategory(category: CategoryId) {
+  return TRIVIA_QUESTIONS.filter((q) => q.category === category)
 }
 
 export function getQuestionById(id: string) {
   return TRIVIA_QUESTIONS.find((q) => q.id === id)
+}
+
+export function getClueById(state: GameState, clueId: string | null | undefined) {
+  if (!clueId) return null
+  return state.clues.find((c) => c.id === clueId) ?? null
+}
+
+export function getActiveQuestion(state: GameState) {
+  const clue = getClueById(state, state.activeClueId)
+  return clue ? getQuestionById(clue.questionId) : null
+}
+
+export function buildJeopardyBoard(categories: CategoryId[]): JeopardyClue[] {
+  const clues: JeopardyClue[] = []
+  for (const category of categories) {
+    const pool = shuffle([...questionsForCategory(category)])
+    for (let i = 0; i < JEOPARDY_VALUES.length; i++) {
+      const q = pool[i % pool.length]
+      const value = JEOPARDY_VALUES[i]
+      clues.push({
+        id: `${category}-${value}`,
+        category,
+        value,
+        questionId: q.id,
+      })
+    }
+  }
+  return clues
+}
+
+export function isGameComplete(state: GameState) {
+  return (
+    state.clues.length > 0 &&
+    state.usedClueIds.length >= state.clues.length &&
+    state.phase === 'reveal' &&
+    !state.activeClueId
+  )
 }
 
 export function createInitialGameState(
@@ -29,21 +85,20 @@ export function createInitialGameState(
   categories: CategoryId[],
   gameMode: GameMode
 ): GameState {
-  const picked = questionsForCategories(categories)
+  const clues = buildJeopardyBoard(categories)
   const scores: Record<string, number> = {}
   for (const p of players) scores[p.id] = 0
-
-  const phase = gameMode === 'buzzer' ? 'buzzing' : 'question'
 
   return {
     gameStarted: true,
     gameMode,
-    categories,
-    questionIds: picked.map((q) => q.id),
-    questionIndex: 0,
+    categories: [...categories],
+    clues,
+    usedClueIds: [],
+    activeClueId: null,
     currentPlayerIndex: firstActiveIndex(players),
     scores,
-    phase,
+    phase: 'board',
     phaseStartedAt: Date.now(),
     buzzWindowSec: BUZZ_WINDOW_SEC,
     answerWindowSec: ANSWER_WINDOW_SEC,

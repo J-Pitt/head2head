@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import BoardPiece from '@/components/tod/BoardPiece'
-import PlayerMark from '@/components/tod/PlayerMark'
 import type { useTodRoom } from '@/hooks/useTodRoom'
 import { TILE_META, SPECIAL_CHALLENGES } from '@/lib/tod/board'
 import type { BoardTile } from '@/lib/tod/board'
@@ -15,13 +14,15 @@ import { RaceLeaderboard } from '@/components/minigames/views/shared'
 
 type Room = ReturnType<typeof useTodRoom>
 
+const PIECE_STEP_MS = 165
+
 export default function BoardView({ room }: { room: Room }) {
   const b = room.state?.board
   if (!b) return null
 
   return (
     <>
-      <Spiral room={room} />
+      <BoardTrack room={room} />
       <Resolution room={room} />
     </>
   )
@@ -36,42 +37,142 @@ function arrowFor(tile: BoardTile, next: BoardTile | undefined): string | null {
   return null
 }
 
-function Spiral({ room }: { room: Room }) {
+function BoardTrack({ room }: { room: Room }) {
   const b = room.state!.board!
-  const tokensByTile: Record<number, typeof room.players> = {}
-  for (const p of room.players) {
-    const pos = b.positions[p.id] ?? 0
-    ;(tokensByTile[pos] ||= []).push(p)
-  }
+  const cols = b.cols ?? b.size ?? 4
+  const rows = b.rows ?? b.size ?? 9
 
   return (
     <section className="card board-card">
-      <p className="board-legend">🚦 Start → follow the arrows → 🏁 Finish (center)</p>
-      <div
-        className="board-grid"
-        style={{ gridTemplateColumns: `repeat(${b.size}, 1fr)` }}
-      >
-        {b.tiles.map((tile, idx) => (
-          <Tile
-            key={tile.i}
-            tile={tile}
-            arrow={arrowFor(tile, b.tiles[idx + 1])}
-            tokens={tokensByTile[tile.i] || []}
-          />
-        ))}
+      <p className="board-legend">🚦 Start → follow the path → 🏁 Finish</p>
+      <div className="board-track">
+        <div
+          className="board-grid"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            gridTemplateRows: `repeat(${rows}, 1fr)`,
+          }}
+        >
+          {b.tiles.map((tile, idx) => (
+            <Tile
+              key={tile.i}
+              tile={tile}
+              arrow={arrowFor(tile, b.tiles[idx + 1])}
+            />
+          ))}
+        </div>
+        <AnimatedPieces room={room} />
       </div>
     </section>
+  )
+}
+
+function AnimatedPieces({ room }: { room: Room }) {
+  const b = room.state!.board!
+  const cols = b.cols ?? b.size ?? 4
+  const rows = b.rows ?? b.size ?? 9
+  const [displayPos, setDisplayPos] = useState<Record<string, number>>(() => ({ ...b.positions }))
+  const animPosRef = useRef<Record<string, number>>({ ...b.positions })
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const isFirstRef = useRef(true)
+
+  useEffect(() => {
+    if (isFirstRef.current) {
+      isFirstRef.current = false
+      animPosRef.current = { ...b.positions }
+      setDisplayPos({ ...b.positions })
+      return
+    }
+
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current = []
+
+    const prev = { ...animPosRef.current }
+    const next = b.positions
+    let maxDelay = 0
+    let anyMoving = false
+
+    for (const p of room.players) {
+      const from = prev[p.id] ?? 0
+      const to = next[p.id] ?? 0
+      if (from === to) continue
+      anyMoving = true
+
+      const step = from < to ? 1 : -1
+      let current = from
+      let delay = 0
+
+      while (current !== to) {
+        current += step
+        const tileIdx = current
+        const at = delay
+        timersRef.current.push(
+          setTimeout(() => {
+            animPosRef.current = { ...animPosRef.current, [p.id]: tileIdx }
+            setDisplayPos((d) => ({ ...d, [p.id]: tileIdx }))
+          }, at)
+        )
+        delay += PIECE_STEP_MS
+      }
+      maxDelay = Math.max(maxDelay, delay)
+    }
+
+    if (!anyMoving) {
+      animPosRef.current = { ...next }
+      setDisplayPos({ ...next })
+      return
+    }
+
+    timersRef.current.push(
+      setTimeout(() => {
+        animPosRef.current = { ...next }
+      }, maxDelay)
+    )
+
+    return () => {
+      timersRef.current.forEach(clearTimeout)
+      timersRef.current = []
+    }
+  }, [b.positions, room.players])
+
+  const byTile: Record<number, typeof room.players> = {}
+  for (const p of room.players) {
+    const idx = displayPos[p.id] ?? b.positions[p.id] ?? 0
+    ;(byTile[idx] ||= []).push(p)
+  }
+
+  return (
+    <div className="board-pieces-layer" aria-hidden="false">
+      {Object.entries(byTile).map(([idxStr, players]) => {
+        const idx = Number(idxStr)
+        const tile = b.tiles[idx]
+        if (!tile) return null
+        return players.map((p, i) => (
+          <div
+            key={p.id}
+            className="board-piece-anim"
+            style={{
+              left: `${((tile.col + 0.5) / cols) * 100}%`,
+              top: `${((tile.row + 0.5) / rows) * 100}%`,
+              ['--stack' as string]: i,
+              ['--stack-total' as string]: players.length,
+            }}
+            title={p.name}
+          >
+            <BoardPiece pieceId={p.avatar} size={28} className="tile-token board-piece-moving" />
+          </div>
+        ))
+      })}
+    </div>
   )
 }
 
 function Tile({
   tile,
   arrow,
-  tokens,
 }: {
   tile: BoardTile
   arrow: string | null
-  tokens: { id: string; name: string; avatar: string }[]
 }) {
   const meta = TILE_META[tile.type]
   const special = tile.type === 'special' && tile.special != null ? SPECIAL_CHALLENGES[tile.special] : null
@@ -89,13 +190,6 @@ function Tile({
         <span className="tile-num">{tile.i}</span>
       )}
       {arrow && !endpoint && <span className="tile-arrow">{arrow}</span>}
-      {tokens.length > 0 && (
-        <span className="tile-tokens">
-          {tokens.map((t) => (
-            <BoardPiece key={t.id} pieceId={t.avatar} size={22} className="tile-token" />
-          ))}
-        </span>
-      )}
     </div>
   )
 }

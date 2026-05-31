@@ -1,0 +1,88 @@
+import type { TriviaQuestion } from '../types'
+
+export const POPCULTURE_QUESTIONS: TriviaQuestion[] = [
+  {
+    id: 'pop-1',
+    category: 'popculture',
+    question: 'Who sang "Smells Like Teen Spirit"?',
+    choices: ['Pearl Jam', 'Nirvana', 'Soundgarden', 'Alice in Chains'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-2',
+    category: 'popculture',
+    question: 'Which sitcom followed six friends in New York City?',
+    choices: ['Seinfeld', 'Friends', 'Frasier', 'Cheers'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-3',
+    category: 'popculture',
+    question: 'Who played Neo in The Matrix (1999)?',
+    choices: ['Brad Pitt', 'Keanu Reeves', 'Tom Cruise', 'Will Smith'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-4',
+    category: 'popculture',
+    question: 'What streaming giant released "Stranger Things"?',
+    choices: ['Hulu', 'Netflix', 'Disney+', 'HBO Max'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-5',
+    category: 'popculture',
+    question: 'Which artist released the album "1989"?',
+    choices: ['Adele', 'Taylor Swift', 'Beyoncé', 'Lady Gaga'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-6',
+    category: 'popculture',
+    question: 'The Marvel Cinematic Universe began with which hero\'s film (2008)?',
+    choices: ['Thor', 'Iron Man', 'Captain America', 'Hulk'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-7',
+    category: 'popculture',
+    question: 'Which video game features a battle royale on a shrinking island?',
+    choices: ['Minecraft', 'Fortnite', 'Roblox', 'Among Us'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-8',
+    category: 'popculture',
+    question: 'Who is the host of "The Tonight Show" after Jimmy Fallon?',
+    choices: ['Stephen Colbert', 'Conan O\'Brien', 'Jimmy Fallon still hosts', 'John Oliver'],
+    correctIndex: 2,
+  },
+  {
+    id: 'pop-9',
+    category: 'popculture',
+    question: 'Which animated series features Bart, Lisa, and Maggie?',
+    choices: ['Family Guy', 'The Simpsons', 'South Park', 'Bob\'s Burgers'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-10',
+    category: 'popculture',
+    question: 'TikTok was originally launched internationally under what name?',
+    choices: ['Vine', 'Musical.ly', 'Triller', 'Byte'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-11',
+    category: 'popculture',
+    question: 'Which film won Best Picture at the Oscars in 2020?',
+    choices: ['1917', 'Parasite', 'Joker', 'Once Upon a Time in Hollywood'],
+    correctIndex: 1,
+  },
+  {
+    id: 'pop-12',
+    category: 'popculture',
+    question: 'What is the name of the wizard school in Harry Potter?',
+    choices: ['Durmstrang', 'Hogwarts', 'Beauxbatons', 'Ilvermorny'],
+    correctIndex: 1,
+  },
+]

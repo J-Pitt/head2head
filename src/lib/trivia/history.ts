@@ -1,0 +1,88 @@
+import type { TriviaQuestion } from '../types'
+
+export const HISTORY_QUESTIONS: TriviaQuestion[] = [
+  {
+    id: 'his-1',
+    category: 'history',
+    question: 'In which year did World War II end?',
+    choices: ['1943', '1945', '1947', '1950'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-2',
+    category: 'history',
+    question: 'Who was the first president of the United States?',
+    choices: ['Thomas Jefferson', 'George Washington', 'John Adams', 'Abraham Lincoln'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-3',
+    category: 'history',
+    question: 'The Great Wall is located in which country?',
+    choices: ['Japan', 'China', 'Mongolia', 'India'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-4',
+    category: 'history',
+    question: 'Ancient Egyptian rulers were called…',
+    choices: ['Emperors', 'Pharaohs', 'Sultans', 'Tsars'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-5',
+    category: 'history',
+    question: 'The Renaissance began in which country?',
+    choices: ['France', 'Italy', 'England', 'Spain'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-6',
+    category: 'history',
+    question: 'Who was assassinated in Dallas in 1963?',
+    choices: ['Martin Luther King Jr.', 'John F. Kennedy', 'Robert Kennedy', 'Abraham Lincoln'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-7',
+    category: 'history',
+    question: 'The Berlin Wall fell in which year?',
+    choices: ['1987', '1989', '1991', '1993'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-8',
+    category: 'history',
+    question: 'Which ancient civilization built Machu Picchu?',
+    choices: ['Aztec', 'Maya', 'Inca', 'Olmec'],
+    correctIndex: 2,
+  },
+  {
+    id: 'his-9',
+    category: 'history',
+    question: 'The Titanic sank in which year?',
+    choices: ['1905', '1912', '1918', '1923'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-10',
+    category: 'history',
+    question: 'Who led India\'s nonviolent independence movement?',
+    choices: ['Nehru', 'Gandhi', 'Jinnah', 'Bose'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-11',
+    category: 'history',
+    question: 'The Magna Carta was signed in which country?',
+    choices: ['France', 'England', 'Germany', 'Spain'],
+    correctIndex: 1,
+  },
+  {
+    id: 'his-12',
+    category: 'history',
+    question: 'Which empire was ruled by Julius Caesar?',
+    choices: ['Greek', 'Roman', 'Ottoman', 'Byzantine'],
+    correctIndex: 1,
+  },
+]

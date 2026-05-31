@@ -1,8 +1,8 @@
 import type { Player } from '@/lib/types'
 import type { Session } from '@/lib/minigames/types'
 
-// A spiral race board: START on the outer corner, FINISH in the center. Each
-// tile triggers an action when a player lands on it.
+// Linear race board: START at one corner, FINISH at the opposite end. Tiles
+// snake row-by-row (left→right, then right→left, …).
 export type TileType =
   | 'start'
   | 'finish'
@@ -54,7 +54,10 @@ export type BoardPhase =
   | 'finished'
 
 export type BoardState = {
-  size: number
+  cols: number
+  rows: number
+  /** Legacy spiral boards used `size` for both dimensions. */
+  size?: number
   tiles: BoardTile[]
   positions: Record<string, number>
   order: string[]
@@ -87,10 +90,10 @@ export type BoardState = {
   winnerName: string | null
 }
 
-export const BOARD_SIZE = 6
+export const BOARD_COLS = 4
+export const BOARD_ROWS = 9
 
-// Tile types for the inner path (everything between START and FINISH). Tuned to
-// spread the colors like the cardboard template.
+// Tile types for the path between START and FINISH.
 const MIDDLE_PATTERN: TileType[] = [
   'truth', 'dare', 'trivia', 'minigame', 'special', 'dare',
   'truth', 'trivia', 'dare', 'special', 'truth', 'minigame',
@@ -100,28 +103,21 @@ const MIDDLE_PATTERN: TileType[] = [
   'dare', 'trivia', 'special', 'truth',
 ]
 
-// Ordered coordinates of a square spiral that winds inward to the center.
-function spiralCoords(size: number): { row: number; col: number }[] {
+// Serpentine path: row 0 left→right, row 1 right→left, etc.
+function serpentineCoords(cols: number, rows: number): { row: number; col: number }[] {
   const res: { row: number; col: number }[] = []
-  let top = 0
-  let bottom = size - 1
-  let left = 0
-  let right = size - 1
-  while (top <= bottom && left <= right) {
-    for (let c = left; c <= right; c++) res.push({ row: top, col: c })
-    for (let r = top + 1; r <= bottom; r++) res.push({ row: r, col: right })
-    if (top < bottom) for (let c = right - 1; c >= left; c--) res.push({ row: bottom, col: c })
-    if (left < right) for (let r = bottom - 1; r >= top + 1; r--) res.push({ row: r, col: left })
-    top++
-    bottom--
-    left++
-    right--
+  for (let row = 0; row < rows; row++) {
+    if (row % 2 === 0) {
+      for (let col = 0; col < cols; col++) res.push({ row, col })
+    } else {
+      for (let col = cols - 1; col >= 0; col--) res.push({ row, col })
+    }
   }
   return res
 }
 
-export function buildTiles(size = BOARD_SIZE): BoardTile[] {
-  const coords = spiralCoords(size)
+export function buildTiles(cols = BOARD_COLS, rows = BOARD_ROWS): BoardTile[] {
+  const coords = serpentineCoords(cols, rows)
   const total = coords.length
   let specialCounter = 0
   return coords.map((c, i) => {
@@ -154,7 +150,8 @@ export function createBoardState(players: Player[]): BoardState {
   const positions: Record<string, number> = {}
   for (const p of players) positions[p.id] = 0
   return {
-    size: BOARD_SIZE,
+    cols: BOARD_COLS,
+    rows: BOARD_ROWS,
     tiles,
     positions,
     order: fallback,

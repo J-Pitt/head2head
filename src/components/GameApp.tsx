@@ -10,9 +10,10 @@ import CategoryPicker from './CategoryPicker'
 import ChatBox from './ChatBox'
 import GameTimer from './GameTimer'
 import PlayerCircle from './PlayerCircle'
+import JeopardyBoard from './JeopardyBoard'
 import QuestionCard from './QuestionCard'
-import { getQuestionById, phaseDeadline } from '@/lib/trivia'
-import { advanceRound, applyAnswer, applyBuzz, applyTimeout, startNewGame } from '@/lib/gameLogic'
+import { getActiveQuestion, getClueById, isGameComplete, phaseDeadline } from '@/lib/trivia'
+import { advanceRound, applyAnswer, applyBuzz, applyTimeout, selectClue, startNewGame } from '@/lib/gameLogic'
 import { isActivePlayer } from '@/lib/players'
 import {
   addRoomMessage,
@@ -93,7 +94,11 @@ export default function GameApp() {
   const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR)
   const [playerId] = useState(loadPlayerId)
 
-  const [selectedCategories, setSelectedCategories] = useState<CategoryId[]>(['science', 'nineties'])
+  const [selectedCategories, setSelectedCategories] = useState<CategoryId[]>([
+    'science',
+    'popculture',
+    'general',
+  ])
   const [gameMode, setGameMode] = useState<GameMode>('buzzer')
 
   const [gameCodeInput, setGameCodeInput] = useState('')
@@ -212,7 +217,7 @@ export default function GameApp() {
         if (data.state) {
           setGameState(data.state)
           const qPhase = data.state.phase
-          if (qPhase === 'question' || qPhase === 'buzzing' || qPhase === 'answering') {
+          if (qPhase === 'board' || qPhase === 'question' || qPhase === 'buzzing' || qPhase === 'answering') {
             setSelectedChoice(null)
           } else if (data.state.lastAnswer) {
             setSelectedChoice(
@@ -403,10 +408,8 @@ export default function GameApp() {
     pushState(state)
   }
 
-  const currentQ =
-    gameState && gameState.questionIds[gameState.questionIndex]
-      ? getQuestionById(gameState.questionIds[gameState.questionIndex])
-      : null
+  const currentQ = gameState ? getActiveQuestion(gameState) : null
+  const activeClue = gameState ? getClueById(gameState, gameState.activeClueId) : null
 
   const currentPlayer = gameState ? players[gameState.currentPlayerIndex] : null
   const buzzedPlayer = gameState?.buzzedBy
@@ -434,6 +437,22 @@ export default function GameApp() {
       (gameState.gameMode === 'buzzer' &&
         gameState.phase === 'answering' &&
         gameState.buzzedBy === playerId))
+
+  const canPickClue =
+    gameState?.phase === 'board' &&
+    (mode === 'local' ||
+      (!!currentPlayer &&
+        currentPlayer.id === playerId &&
+        imActive &&
+        isActivePlayer(currentPlayer)))
+
+  function handleSelectClue(clueId: string) {
+    if (!gameState || !canPickClue) return
+    const next = selectClue(gameState, clueId, players)
+    if (next === gameState) return
+    setSelectedChoice(null)
+    pushState(next)
+  }
 
   function handleBuzz() {
     if (!gameState || gameState.phase !== 'buzzing') return
@@ -518,7 +537,11 @@ export default function GameApp() {
     setIsHost(false)
   }
 
-  const gameOver = !!(gameState && gameState.questionIndex >= gameState.questionIds.length)
+  const gameOver = !!(gameState && isGameComplete(gameState))
+
+  const isLastClueReveal =
+    !!gameState?.activeClueId &&
+    gameState.usedClueIds.length + 1 >= gameState.clues.length
 
   const timerActive =
     gameState?.gameStarted &&
@@ -692,7 +715,7 @@ export default function GameApp() {
             >
               <span className="mode-icon">🧠</span>
               <strong>Trivia</strong>
-              <span>Science & 90s pop</span>
+              <span>Jeopardy-style · 6 categories</span>
             </button>
             <Link href="/minigames" className="mode-card mode-card-link mode-card-hot mode-minigames">
               <span className="mode-icon">🎮</span>
@@ -890,7 +913,7 @@ export default function GameApp() {
                 <ol className="scoreboard">
                   {sortedScores.map((p, i) => (
                     <li key={p.id}>
-                      #{i + 1} {p.name} — {gameState.scores[p.id] ?? 0}
+                      #{i + 1} {p.name} — ${gameState.scores[p.id] ?? 0}
                     </li>
                   ))}
                 </ol>
@@ -902,7 +925,16 @@ export default function GameApp() {
               </div>
             )}
 
-            {gameState?.gameStarted && !gameOver && currentQ && (
+            {gameState?.gameStarted && !gameOver && gameState.phase === 'board' && (
+              <JeopardyBoard
+                state={gameState}
+                pickerName={currentPlayer?.name ?? null}
+                canPick={canPickClue}
+                onSelect={handleSelectClue}
+              />
+            )}
+
+            {gameState?.gameStarted && !gameOver && gameState.phase !== 'board' && currentQ && (
               <>
                 {timerActive && gameState && (
                   <GameTimer
@@ -947,6 +979,7 @@ export default function GameApp() {
                 <QuestionCard
                   question={currentQ}
                   phase={gameState.phase}
+                  value={activeClue?.value}
                   correctIndex={currentQ.correctIndex}
                   selectedIndex={selectedChoice}
                   onSelect={handleAnswer}
@@ -963,7 +996,7 @@ export default function GameApp() {
 
                 {gameState.phase === 'reveal' && (mode === 'local' || isHost) && (
                   <button type="button" className="btn btn-primary next-btn" onClick={advanceAfterReveal}>
-                    Next question →
+                    {isLastClueReveal ? 'Final scores →' : 'Back to board →'}
                   </button>
                 )}
                 {gameState.phase === 'reveal' && mode === 'online' && !isHost && (

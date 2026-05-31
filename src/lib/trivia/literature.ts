@@ -1,0 +1,88 @@
+import type { TriviaQuestion } from '../types'
+
+export const LITERATURE_QUESTIONS: TriviaQuestion[] = [
+  {
+    id: 'lit-1',
+    category: 'literature',
+    question: 'Who wrote "Pride and Prejudice"?',
+    choices: ['Charlotte Brontë', 'Jane Austen', 'Emily Dickinson', 'Virginia Woolf'],
+    correctIndex: 1,
+  },
+  {
+    id: 'lit-2',
+    category: 'literature',
+    question: 'In "1984", who is the all-seeing leader?',
+    choices: ['Big Brother', 'Goldstein', 'O\'Brien', 'Winston'],
+    correctIndex: 0,
+  },
+  {
+    id: 'lit-3',
+    category: 'literature',
+    question: 'Who wrote "The Great Gatsby"?',
+    choices: ['Ernest Hemingway', 'F. Scott Fitzgerald', 'John Steinbeck', 'Mark Twain'],
+    correctIndex: 1,
+  },
+  {
+    id: 'lit-4',
+    category: 'literature',
+    question: 'Hamlet is a play by…',
+    choices: ['Marlowe', 'Shakespeare', 'Molière', 'Ibsen'],
+    correctIndex: 1,
+  },
+  {
+    id: 'lit-5',
+    category: 'literature',
+    question: 'Who wrote the "Harry Potter" series?',
+    choices: ['J.R.R. Tolkien', 'J.K. Rowling', 'C.S. Lewis', 'Philip Pullman'],
+    correctIndex: 1,
+  },
+  {
+    id: 'lit-6',
+    category: 'literature',
+    question: '"To Kill a Mockingbird" is set in which U.S. state?',
+    choices: ['Georgia', 'Alabama', 'Mississippi', 'Louisiana'],
+    correctIndex: 1,
+  },
+  {
+    id: 'lit-7',
+    category: 'literature',
+    question: 'Who wrote "The Odyssey"?',
+    choices: ['Homer', 'Virgil', 'Sophocles', 'Plato'],
+    correctIndex: 0,
+  },
+  {
+    id: 'lit-8',
+    category: 'literature',
+    question: 'In "The Hobbit", what is the dragon\'s name?',
+    choices: ['Smaug', 'Ancalagon', 'Glaurung', 'Norbert'],
+    correctIndex: 0,
+  },
+  {
+    id: 'lit-9',
+    category: 'literature',
+    question: 'Who wrote "One Hundred Years of Solitude"?',
+    choices: ['Gabriel García Márquez', 'Isabel Allende', 'Jorge Luis Borges', 'Pablo Neruda'],
+    correctIndex: 0,
+  },
+  {
+    id: 'lit-10',
+    category: 'literature',
+    question: '"The Catcher in the Rye" is narrated by…',
+    choices: ['Holden Caulfield', 'Nick Carraway', 'Scout Finch', 'Humbert Humbert'],
+    correctIndex: 0,
+  },
+  {
+    id: 'lit-11',
+    category: 'literature',
+    question: 'Who wrote "Frankenstein"?',
+    choices: ['Mary Shelley', 'Bram Stoker', 'Edgar Allan Poe', 'Emily Brontë'],
+    correctIndex: 0,
+  },
+  {
+    id: 'lit-12',
+    category: 'literature',
+    question: 'In "Lord of the Flies", what object represents order?',
+    choices: ['The conch', 'The knife', 'The fire', 'The glasses'],
+    correctIndex: 0,
+  },
+]

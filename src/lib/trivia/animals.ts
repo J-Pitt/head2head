@@ -1,0 +1,88 @@
+import type { TriviaQuestion } from '../types'
+
+export const ANIMALS_QUESTIONS: TriviaQuestion[] = [
+  {
+    id: 'ani-1',
+    category: 'animals',
+    question: 'What is the largest mammal on Earth?',
+    choices: ['African elephant', 'Blue whale', 'Giraffe', 'Polar bear'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-2',
+    category: 'animals',
+    question: 'How many legs does an insect have?',
+    choices: ['4', '6', '8', '10'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-3',
+    category: 'animals',
+    question: 'Which bird is known for mimicking human speech?',
+    choices: ['Crow', 'Parrot', 'Owl', 'Eagle'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-4',
+    category: 'animals',
+    question: 'A group of lions is called a…',
+    choices: ['Pack', 'Pride', 'Herd', 'Flock'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-5',
+    category: 'animals',
+    question: 'Which animal has black and white stripes?',
+    choices: ['Tiger', 'Zebra', 'Panda', 'Skunk'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-6',
+    category: 'animals',
+    question: 'What do you call a baby kangaroo?',
+    choices: ['Cub', 'Joey', 'Pup', 'Calf'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-7',
+    category: 'animals',
+    question: 'Which is the fastest land animal?',
+    choices: ['Lion', 'Cheetah', 'Horse', 'Antelope'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-8',
+    category: 'animals',
+    question: 'Octopuses have how many hearts?',
+    choices: ['1', '2', '3', '4'],
+    correctIndex: 2,
+  },
+  {
+    id: 'ani-9',
+    category: 'animals',
+    question: 'Which animal is known as "man\'s best friend"?',
+    choices: ['Cat', 'Dog', 'Horse', 'Rabbit'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-10',
+    category: 'animals',
+    question: 'Bats are the only mammals that can…',
+    choices: ['Swim', 'Fly', 'Climb trees', 'See in infrared'],
+    correctIndex: 1,
+  },
+  {
+    id: 'ani-11',
+    category: 'animals',
+    question: 'What color is a polar bear\'s skin (under the fur)?',
+    choices: ['White', 'Pink', 'Black', 'Gray'],
+    correctIndex: 2,
+  },
+  {
+    id: 'ani-12',
+    category: 'animals',
+    question: 'Which reptile can change its skin color?',
+    choices: ['Gecko', 'Chameleon', 'Iguana', 'Komodo dragon'],
+    correctIndex: 1,
+  },
+]

@@ -1,6 +1,21 @@
-export type CategoryId = 'science' | 'nineties'
+export type CategoryId =
+  | 'science'
+  | 'popculture'
+  | 'literature'
+  | 'animals'
+  | 'history'
+  | 'general'
+
+export type GamePhase = 'board' | 'question' | 'buzzing' | 'answering' | 'reveal'
+
+export type JeopardyClue = {
+  id: string
+  category: CategoryId
+  value: number
+  questionId: string
+}
+
 export type GameMode = 'turns' | 'buzzer'
-export type GamePhase = 'question' | 'buzzing' | 'answering' | 'reveal'
 
 export type PlayerStatus = 'active' | 'break'
 
@@ -31,8 +46,9 @@ export type GameState = {
   gameStarted: boolean
   gameMode: GameMode
   categories: CategoryId[]
-  questionIds: string[]
-  questionIndex: number
+  clues: JeopardyClue[]
+  usedClueIds: string[]
+  activeClueId: string | null
   currentPlayerIndex: number
   scores: Record<string, number>
   phase: GamePhase

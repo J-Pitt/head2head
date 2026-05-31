@@ -1,0 +1,88 @@
+import type { TriviaQuestion } from '../types'
+
+export const GENERAL_QUESTIONS: TriviaQuestion[] = [
+  {
+    id: 'gen-1',
+    category: 'general',
+    question: 'How many continents are there on Earth?',
+    choices: ['5', '6', '7', '8'],
+    correctIndex: 2,
+  },
+  {
+    id: 'gen-2',
+    category: 'general',
+    question: 'What is the capital of France?',
+    choices: ['Lyon', 'Paris', 'Marseille', 'Nice'],
+    correctIndex: 1,
+  },
+  {
+    id: 'gen-3',
+    category: 'general',
+    question: 'How many days are in a leap year?',
+    choices: ['365', '366', '364', '367'],
+    correctIndex: 1,
+  },
+  {
+    id: 'gen-4',
+    category: 'general',
+    question: 'Which sport uses a puck?',
+    choices: ['Soccer', 'Ice hockey', 'Cricket', 'Rugby'],
+    correctIndex: 1,
+  },
+  {
+    id: 'gen-5',
+    category: 'general',
+    question: 'What currency is used in Japan?',
+    choices: ['Won', 'Yuan', 'Yen', 'Ringgit'],
+    correctIndex: 2,
+  },
+  {
+    id: 'gen-6',
+    category: 'general',
+    question: 'How many sides does a hexagon have?',
+    choices: ['5', '6', '7', '8'],
+    correctIndex: 1,
+  },
+  {
+    id: 'gen-7',
+    category: 'general',
+    question: 'Which planet is closest to the Sun?',
+    choices: ['Venus', 'Mercury', 'Mars', 'Earth'],
+    correctIndex: 1,
+  },
+  {
+    id: 'gen-8',
+    category: 'general',
+    question: 'What is the largest ocean on Earth?',
+    choices: ['Atlantic', 'Indian', 'Arctic', 'Pacific'],
+    correctIndex: 3,
+  },
+  {
+    id: 'gen-9',
+    category: 'general',
+    question: 'In chess, which piece can only move diagonally?',
+    choices: ['Rook', 'Knight', 'Bishop', 'Queen'],
+    correctIndex: 2,
+  },
+  {
+    id: 'gen-10',
+    category: 'general',
+    question: 'What is the boiling point of water at sea level (°C)?',
+    choices: ['90', '100', '110', '120'],
+    correctIndex: 1,
+  },
+  {
+    id: 'gen-11',
+    category: 'general',
+    question: 'Which country hosted the 2016 Summer Olympics?',
+    choices: ['China', 'Brazil', 'UK', 'Russia'],
+    correctIndex: 1,
+  },
+  {
+    id: 'gen-12',
+    category: 'general',
+    question: 'How many minutes are in an hour?',
+    choices: ['30', '45', '60', '90'],
+    correctIndex: 2,
+  },
+]
