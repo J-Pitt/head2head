@@ -51,4 +51,13 @@ describe('minigame registry', () => {
     expect(cfg.mode).toBe('race')
     expect(cfg.durationMs).toBe(90000)
   })
+
+  it('arcade games breakout meteor pong use race config', () => {
+    for (const id of ['breakout', 'meteor', 'pong'] as const) {
+      const cfg = getGameConfig(id)
+      expect(cfg.mode).toBe('race')
+      expect(cfg.endWhen).toBe('all')
+      expect(cfg.durationMs).toBe(90000)
+    }
+  })
 })

@@ -8,6 +8,9 @@ import { FlappyView } from './FlappyView'
 import { MemoryView } from './MemoryView'
 import { Connect4View } from './Connect4View'
 import { DinoView } from './DinoView'
+import { BreakoutView } from './BreakoutView'
+import { MeteorView } from './MeteorView'
+import { PongView } from './PongView'
 
 export function GameViewRouter({ gameId, ...props }: GameViewProps & { gameId: MinigameId }) {
   switch (gameId) {
@@ -23,6 +26,12 @@ export function GameViewRouter({ gameId, ...props }: GameViewProps & { gameId: M
       return <Connect4View {...props} />
     case 'dino':
       return <DinoView {...props} />
+    case 'breakout':
+      return <BreakoutView {...props} />
+    case 'meteor':
+      return <MeteorView {...props} />
+    case 'pong':
+      return <PongView {...props} />
     default:
       return <p>Game not found.</p>
   }

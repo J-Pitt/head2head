@@ -2,9 +2,12 @@ export type MinigameId =
   | 'frogger'
   | 'snake'
   | 'flappy'
+  | 'dino'
+  | 'breakout'
+  | 'meteor'
+  | 'pong'
   | 'memory'
   | 'connect4'
-  | 'dino'
 
 export type MinigameMeta = {
   id: MinigameId
@@ -23,11 +26,23 @@ export const WHEEL_GAMES: MinigameMeta[] = [
   { id: 'memory', label: 'Memory', emoji: '🃏', color: '#fb923c', playable: true, blurb: 'Same deck for everyone — first to clear it wins', tag: 'Speed race' },
   { id: 'connect4', label: 'Connect 4', emoji: '🔴', color: '#ef4444', playable: true, blurb: 'Take turns — four of your color in a row', tag: 'Turn-based' },
   { id: 'dino', label: 'Dino Run', emoji: '🦖', color: '#78716c', playable: true, blurb: 'Jump the cacti — run as far as you can before time runs out', tag: 'Live race' },
+  { id: 'breakout', label: 'Breakout', emoji: '🧱', color: '#22d3ee', playable: true, blurb: 'Smash bricks with the ball — don\'t drop it', tag: 'Live race' },
+  { id: 'meteor', label: 'Meteor Dodge', emoji: '☄️', color: '#6366f1', playable: true, blurb: 'Weave left and right — survive the falling rocks', tag: 'Live race' },
+  { id: 'pong', label: 'Pong Rally', emoji: '🏓', color: '#4ade80', playable: true, blurb: 'Keep the ball in play — longest rally wins', tag: 'Live race' },
 ]
 
 // Games used as Truth-or-Dare round openers — only those with a clear single
 // loser (no turn-based games like Connect 4).
-export const TOD_MINIGAMES: MinigameId[] = ['frogger', 'snake', 'flappy', 'memory', 'dino']
+export const TOD_MINIGAMES: MinigameId[] = [
+  'frogger',
+  'snake',
+  'flappy',
+  'memory',
+  'dino',
+  'breakout',
+  'meteor',
+  'pong',
+]
 
 export function randomTodMinigame(): MinigameId {
   return TOD_MINIGAMES[Math.floor(Math.random() * TOD_MINIGAMES.length)]

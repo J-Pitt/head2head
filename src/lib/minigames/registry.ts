@@ -27,6 +27,9 @@ export const GAME_CONFIG: Record<MinigameId, GameConfig> = {
   flappy: { mode: 'race', countdownMs: 3200, durationMs: 90000, endWhen: 'all' },
   memory: { mode: 'race', countdownMs: 3200, durationMs: 120000, endWhen: 'any' },
   dino: { mode: 'race', countdownMs: 3200, durationMs: 90000, endWhen: 'all' },
+  breakout: { mode: 'race', countdownMs: 3200, durationMs: 90000, endWhen: 'all' },
+  meteor: { mode: 'race', countdownMs: 3200, durationMs: 90000, endWhen: 'all' },
+  pong: { mode: 'race', countdownMs: 3200, durationMs: 90000, endWhen: 'all' },
   connect4: {
     mode: 'turn',
     countdownMs: 600,
