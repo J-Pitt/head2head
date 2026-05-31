@@ -10,7 +10,6 @@ import type { Progress, Session } from '@/lib/minigames/types'
 import { getGameConfig, computeRaceLoser, isRoundComplete } from '@/lib/minigames/registry'
 import { randomTodMinigame } from '@/lib/minigames/catalog'
 import { TRIVIA_QUESTIONS, getQuestionById } from '@/lib/trivia'
-import { DEFAULT_AVATAR } from '@/lib/avatars'
 import { DEFAULT_BOARD_PIECE, isBoardPiece } from '@/lib/tod/boardPieces'
 import {
   createTodRoom,
@@ -67,7 +66,7 @@ export function useTodRoom() {
       return ''
     }
   })
-  const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR)
+  const [avatar, setAvatar] = useState<string>(DEFAULT_BOARD_PIECE)
   const [gameCodeInput, setGameCodeInput] = useState('')
   const [createPassword, setCreatePassword] = useState('')
   const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | null>(null)

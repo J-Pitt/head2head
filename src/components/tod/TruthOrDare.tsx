@@ -67,6 +67,37 @@ type Room = ReturnType<typeof useTodRoom>
 function TodJoin({ room }: { room: Room }) {
   const mode = room.entryMode
 
+  if (!mode) {
+    return (
+      <div className="app-shell">
+        <header className="app-header compact">
+          <Link href="/" className="btn-ghost">
+            ← Home
+          </Link>
+          <h1>💋 Truth or Dare</h1>
+        </header>
+        <section className="card setup-card">
+          <p className="intro">Choose Play locally or Play online from the home screen to get started.</p>
+          <Link href="/" className="btn btn-primary full">
+            Back to home
+          </Link>
+        </section>
+      </div>
+    )
+  }
+
+  const intro =
+    mode === 'local'
+      ? 'Enter your name and pick a game piece. Everyone plays on this device.'
+      : mode === 'join'
+        ? 'Enter your name and pick a game piece to join the room.'
+        : 'Enter your name and pick a game piece. You\'ll wait in the lobby for friends to join.'
+
+  function enterLobby() {
+    if (mode === 'join') room.joinRoom()
+    else room.hostRoom()
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header compact">
@@ -76,15 +107,7 @@ function TodJoin({ room }: { room: Room }) {
         <h1>💋 Truth or Dare</h1>
       </header>
       <section className="card setup-card">
-        <p className="intro">
-          {mode === 'local'
-            ? 'Pass the phone around the room. Everyone plays the board game on this device.'
-            : mode === 'join'
-              ? 'Enter your name, then join the game with the password from your host.'
-              : mode === 'create'
-                ? 'Pick your name and avatar. You\'ll wait in the lobby for friends to join before starting the board game.'
-                : 'A spicy party game. Create a room or join with a password. 18+.'}
-        </p>
+        <p className="intro">{intro}</p>
         <label className="field">
           <span>Your name</span>
           <input
@@ -97,67 +120,9 @@ function TodJoin({ room }: { room: Room }) {
         </label>
         <BoardPiecePicker selected={room.avatar} onSelect={room.setAvatar} />
 
-        {mode === 'local' && (
-          <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
-            Enter lobby
-          </button>
-        )}
-
-        {mode === 'join' && (
-          <div className="online-actions">
-            <label className="field">
-              <span>Game password</span>
-              <input
-                value={room.gameCodeInput}
-                onChange={(e) => room.setGameCodeInput(e.target.value.toUpperCase())}
-                placeholder="PASSWORD"
-                maxLength={6}
-                className="code-input"
-              />
-            </label>
-            <button type="button" className="btn btn-primary full" onClick={() => room.joinRoom()}>
-              Join game
-            </button>
-          </div>
-        )}
-
-        {mode === 'create' && (
-          <div className="online-actions">
-            <label className="field">
-              <span>Game password</span>
-              <input
-                value={room.createPassword}
-                onChange={(e) => room.setCreatePassword(e.target.value.toUpperCase())}
-                placeholder="SET PASSWORD"
-                maxLength={6}
-                className="code-input"
-              />
-            </label>
-            <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
-              Enter lobby
-            </button>
-          </div>
-        )}
-
-        {!mode && (
-          <div className="online-actions">
-            <button type="button" className="btn btn-primary" onClick={() => room.hostRoom()}>
-              Create a room
-            </button>
-            <div className="join-row">
-              <input
-                value={room.gameCodeInput}
-                onChange={(e) => room.setGameCodeInput(e.target.value.toUpperCase())}
-                placeholder="PASSWORD"
-                maxLength={6}
-                className="code-input"
-              />
-              <button type="button" className="btn" onClick={() => room.joinRoom()}>
-                Join
-              </button>
-            </div>
-          </div>
-        )}
+        <button type="button" className="btn btn-primary full" onClick={enterLobby}>
+          {mode === 'join' ? 'Join lobby' : 'Enter lobby'}
+        </button>
 
         {room.error && <p className="error">{room.error}</p>}
       </section>
@@ -202,20 +167,25 @@ function Lobby({ room }: { room: Room }) {
       </section>
       <section className="card tod-stage">
         {room.isHost ? (
-          <button type="button" className="btn btn-primary full" onClick={room.startBoardGame}>
-            🎲 Start board game
+          <button
+            type="button"
+            className="btn btn-primary full tod-lets-go"
+            disabled={isOnlineBoard && room.players.length < 2}
+            onClick={room.startBoardGame}
+          >
+            Let&apos;s go!
           </button>
         ) : (
-          <p className="lobby-sub">Waiting for the host to start the board game…</p>
+          <p className="lobby-sub">Waiting for the host to start…</p>
         )}
         {isOnlineBoard && (
           <p className="party-hint">
             Share the password <strong>{room.gameCode}</strong> so friends can join.
-            {room.isHost && ' When everyone\'s in, start the board game.'}
+            {room.isHost && ' When everyone\'s in, hit Let\'s go!'}
           </p>
         )}
         {!isOnlineBoard && (
-          <p className="party-hint">Add players, then start the board game when you&apos;re ready.</p>
+          <p className="party-hint">When you&apos;re ready, hit Let&apos;s go! to start the board.</p>
         )}
       </section>
     </>

@@ -2523,6 +2523,18 @@ body {
   color: #fda4cf;
 }
 
+.board-piece-hint {
+  margin: -0.25rem 0 0.75rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.4;
+}
+
+.board-piece-random {
+  margin-top: 0.75rem;
+  align-self: center;
+}
+
 .board-piece-grid {
   grid-template-columns: repeat(6, 1fr);
 }

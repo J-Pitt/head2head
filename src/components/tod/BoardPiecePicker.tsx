@@ -9,9 +9,16 @@ type Props = {
 }
 
 export default function BoardPiecePicker({ selected, onSelect }: Props) {
+  function pickRandom() {
+    const others = BOARD_PIECES.filter((p) => p.id !== selected)
+    const pool = others.length ? others : BOARD_PIECES
+    onSelect(pool[Math.floor(Math.random() * pool.length)]!.id)
+  }
+
   return (
     <div className="avatar-picker board-piece-picker">
       <p className="label">Pick your game piece</p>
+      <p className="board-piece-hint">Cute, silly, or totally random — choose what represents you.</p>
       <div className="avatar-grid board-piece-grid">
         {BOARD_PIECES.map((p) => (
           <button
@@ -27,6 +34,9 @@ export default function BoardPiecePicker({ selected, onSelect }: Props) {
           </button>
         ))}
       </div>
+      <button type="button" className="btn-ghost btn-sm board-piece-random" onClick={pickRandom}>
+        🎲 Surprise me
+      </button>
     </div>
   )
 }

@@ -603,7 +603,7 @@ export default function GameApp() {
           {!onlineOpen ? (
             <div className="home-play-pick">
               <Link href="/truth-or-dare?local=1" className="btn full home-cta home-cta-local">
-                🎲 Board game locally
+                📱 Play locally
               </Link>
               <button
                 type="button"
@@ -621,14 +621,14 @@ export default function GameApp() {
                 className="btn full home-cta home-cta-join"
                 onClick={() => setOnlineAction('join')}
               >
-                🔑 Join a game
+                🔑 Join game
               </button>
               <button
                 type="button"
                 className="btn full home-cta home-cta-create"
                 onClick={() => setOnlineAction('create')}
               >
-                ✨ Create a game
+                ✨ Start game
               </button>
               <button
                 type="button"
@@ -653,7 +653,7 @@ export default function GameApp() {
               }}
             >
               <p className="home-online-label">
-                {onlineAction === 'join' ? 'Enter password to join' : 'Set a game password'}
+                {onlineAction === 'join' ? 'Enter the game password' : 'Create a password for others to join'}
               </p>
               <input
                 value={roomPassword}
@@ -668,7 +668,7 @@ export default function GameApp() {
                 className={`btn full home-cta ${onlineAction === 'join' ? 'home-cta-join' : 'home-cta-create'}`}
                 disabled={!roomPassword.trim()}
               >
-                {onlineAction === 'join' ? 'Join game' : 'Continue'}
+                {onlineAction === 'join' ? 'Join game' : 'Start game'}
               </button>
               <button
                 type="button"
