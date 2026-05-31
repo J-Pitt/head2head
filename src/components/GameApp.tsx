@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import AvatarPicker from './AvatarPicker'
@@ -42,6 +42,7 @@ function HomeQuickModeTile({
   subtitle,
   selected,
   onSelect,
+  pickPanel,
 }: {
   className: string
   icon: string
@@ -49,6 +50,7 @@ function HomeQuickModeTile({
   subtitle: string
   selected: boolean
   onSelect: () => void
+  pickPanel?: ReactNode
 }) {
   return (
     <div className={`mode-card mode-card-hot ${className} ${selected ? 'selected' : ''}`}>
@@ -57,6 +59,11 @@ function HomeQuickModeTile({
         <strong>{title}</strong>
         <span>{subtitle}</span>
       </button>
+      {selected && pickPanel && (
+        <div className="mode-card-overlay" onClick={(e) => e.stopPropagation()}>
+          {pickPanel}
+        </div>
+      )}
     </div>
   )
 }
@@ -71,6 +78,7 @@ function HomeQuickPickPanel({
   onJoinCodeBack,
   onCollapse,
   onJoinSubmit,
+  overlay = false,
 }: {
   title: string
   onlineAction: 'join' | null
@@ -81,11 +89,12 @@ function HomeQuickPickPanel({
   onJoinCodeBack: () => void
   onCollapse: () => void
   onJoinSubmit: (code: string) => void
+  overlay?: boolean
 }) {
   if (onlineAction === 'join') {
     return (
       <form
-        className="home-quick-pick home-online-form"
+        className={overlay ? 'mode-card-overlay-inner home-online-form' : 'home-quick-pick home-online-form'}
         onSubmit={(e) => {
           e.preventDefault()
           const code = joinCode.trim().toUpperCase()
@@ -124,8 +133,8 @@ function HomeQuickPickPanel({
   }
 
   return (
-    <div className="home-quick-pick">
-      <p className="home-online-label">{title}</p>
+    <div className={overlay ? 'mode-card-overlay-inner' : 'home-quick-pick'}>
+      {!overlay && <p className="home-online-label">{title}</p>}
       <button type="button" className="btn full home-cta home-cta-join" onClick={onPickJoin}>
         Join game
       </button>
@@ -850,6 +859,34 @@ export default function GameApp() {
               subtitle="Jeopardy-style · 6 categories"
               selected={triviaOpen}
               onSelect={() => openQuickMode('trivia')}
+              pickPanel={
+                triviaOpen ? (
+                  <HomeQuickPickPanel
+                    overlay
+                    title="Trivia"
+                    onlineAction={triviaJoinAction ? 'join' : null}
+                    joinCode={triviaJoinCode}
+                    onPickJoin={() => setTriviaJoinAction(true)}
+                    onPickCreate={() => {
+                      setMode('online')
+                      setGameCodeInput('')
+                      setOnlineIntent('create')
+                      setScreen('setup')
+                      closeQuickModes()
+                    }}
+                    onJoinCodeChange={setTriviaJoinCode}
+                    onJoinCodeBack={() => setTriviaJoinAction(false)}
+                    onCollapse={closeQuickModes}
+                    onJoinSubmit={(code) => {
+                      setMode('online')
+                      setGameCodeInput(code)
+                      setOnlineIntent('join')
+                      setScreen('setup')
+                      closeQuickModes()
+                    }}
+                  />
+                ) : undefined
+              }
             />
             <HomeQuickModeTile
               className="mode-tod"
@@ -858,6 +895,28 @@ export default function GameApp() {
               subtitle="Turns · PG or NSFW · picture dares"
               selected={classicOpen}
               onSelect={() => openQuickMode('classic')}
+              pickPanel={
+                classicOpen ? (
+                  <HomeQuickPickPanel
+                    overlay
+                    title="Classic ToD"
+                    onlineAction={classicJoinAction ? 'join' : null}
+                    joinCode={classicJoinCode}
+                    onPickJoin={() => setClassicJoinAction(true)}
+                    onPickCreate={() => {
+                      closeQuickModes()
+                      router.push('/truth-or-dare?classic=1&host=1')
+                    }}
+                    onJoinCodeChange={setClassicJoinCode}
+                    onJoinCodeBack={() => setClassicJoinAction(false)}
+                    onCollapse={closeQuickModes}
+                    onJoinSubmit={(code) => {
+                      closeQuickModes()
+                      router.push(`/truth-or-dare?classic=1&code=${encodeURIComponent(code)}`)
+                    }}
+                  />
+                ) : undefined
+              }
             />
             <HomeQuickModeTile
               className="mode-minigames"
@@ -866,74 +925,30 @@ export default function GameApp() {
               subtitle="Frogger, Snake & more"
               selected={minigamesOpen}
               onSelect={() => openQuickMode('minigames')}
+              pickPanel={
+                minigamesOpen ? (
+                  <HomeQuickPickPanel
+                    overlay
+                    title="Mini games"
+                    onlineAction={minigamesJoinAction ? 'join' : null}
+                    joinCode={minigamesJoinCode}
+                    onPickJoin={() => setMinigamesJoinAction(true)}
+                    onPickCreate={() => {
+                      closeQuickModes()
+                      router.push('/minigames?host=1')
+                    }}
+                    onJoinCodeChange={setMinigamesJoinCode}
+                    onJoinCodeBack={() => setMinigamesJoinAction(false)}
+                    onCollapse={closeQuickModes}
+                    onJoinSubmit={(code) => {
+                      closeQuickModes()
+                      router.push(`/minigames?code=${encodeURIComponent(code)}`)
+                    }}
+                  />
+                ) : undefined
+              }
             />
           </div>
-
-          {triviaOpen && (
-            <HomeQuickPickPanel
-              title="Trivia"
-              onlineAction={triviaJoinAction ? 'join' : null}
-              joinCode={triviaJoinCode}
-              onPickJoin={() => setTriviaJoinAction(true)}
-              onPickCreate={() => {
-                setMode('online')
-                setGameCodeInput('')
-                setOnlineIntent('create')
-                setScreen('setup')
-                closeQuickModes()
-              }}
-              onJoinCodeChange={setTriviaJoinCode}
-              onJoinCodeBack={() => setTriviaJoinAction(false)}
-              onCollapse={closeQuickModes}
-              onJoinSubmit={(code) => {
-                setMode('online')
-                setGameCodeInput(code)
-                setOnlineIntent('join')
-                setScreen('setup')
-                closeQuickModes()
-              }}
-            />
-          )}
-
-          {classicOpen && (
-            <HomeQuickPickPanel
-              title="Classic ToD"
-              onlineAction={classicJoinAction ? 'join' : null}
-              joinCode={classicJoinCode}
-              onPickJoin={() => setClassicJoinAction(true)}
-              onPickCreate={() => {
-                closeQuickModes()
-                router.push('/truth-or-dare?classic=1&host=1')
-              }}
-              onJoinCodeChange={setClassicJoinCode}
-              onJoinCodeBack={() => setClassicJoinAction(false)}
-              onCollapse={closeQuickModes}
-              onJoinSubmit={(code) => {
-                closeQuickModes()
-                router.push(`/truth-or-dare?classic=1&code=${encodeURIComponent(code)}`)
-              }}
-            />
-          )}
-
-          {minigamesOpen && (
-            <HomeQuickPickPanel
-              title="Mini games"
-              onlineAction={minigamesJoinAction ? 'join' : null}
-              joinCode={minigamesJoinCode}
-              onPickJoin={() => setMinigamesJoinAction(true)}
-              onPickCreate={() => {
-                closeQuickModes()
-                router.push('/minigames?host=1')
-              }}
-              onJoinCodeChange={setMinigamesJoinCode}
-              onJoinCodeBack={() => setMinigamesJoinAction(false)}
-              onCollapse={closeQuickModes}
-              onJoinSubmit={(code) => {
-                closeQuickModes()
-                router.push(`/minigames?code=${encodeURIComponent(code)}`)
-              }}
-            />
-          )}
         </section>
         </div>
       </div>

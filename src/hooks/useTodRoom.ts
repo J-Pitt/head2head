@@ -10,9 +10,10 @@ import { createBoardState, rollDie, SPECIAL_CHALLENGES } from '@/lib/tod/board'
 import type { Progress, Session } from '@/lib/minigames/types'
 import { getGameConfig, computeRaceLoser, isRoundComplete } from '@/lib/minigames/registry'
 import { randomTodMinigame } from '@/lib/minigames/catalog'
-import { TRIVIA_QUESTIONS, getQuestionById } from '@/lib/trivia'
+import { pickRandomQuestion, getQuestionById } from '@/lib/trivia'
 import { DEFAULT_BOARD_PIECE, isBoardPiece } from '@/lib/tod/boardPieces'
 import type { ClassicListMode } from '@/lib/tod/classic/lists'
+import { findPromptIndex, getDaresForMode, getTruthsForMode } from '@/lib/tod/classic/lists'
 import {
   createTodRoom,
   getTodRoomClient,
@@ -368,7 +369,18 @@ export function useTodRoom() {
         prompt: null,
       })
     } else if (type === 'trivia') {
-      const q = TRIVIA_QUESTIONS[Math.floor(Math.random() * TRIVIA_QUESTIONS.length)]
+      const usedQ = b.usedQuestionIds ?? []
+      const q = pickRandomQuestion(usedQ)
+      if (!q) {
+        patchBoard({
+          dice,
+          positions,
+          phase: 'event',
+          tileType: 'trivia',
+          message: '🧠 No new trivia left — keep rolling!',
+        })
+        return
+      }
       patchBoard({
         dice,
         positions,
@@ -378,6 +390,7 @@ export function useTodRoom() {
         answeredBy: playerId,
         answerIndex: null,
         answerCorrect: null,
+        usedQuestionIds: [...usedQ, q.id],
       })
     } else if (type === 'minigame') {
       const gameId = randomTodMinigame()
@@ -477,7 +490,25 @@ export function useTodRoom() {
   }, [playerId, patchBoard, pickAskerExcl])
 
   const boardPickChoice = useCallback(
-    (choice: 'truth' | 'dare') => patchBoard({ choice, prompt: null }),
+    (choice: 'truth' | 'dare') => {
+      const b = stateRef.current?.board
+      if (!b || !b.onSpotId) return
+      const local = roomIdRef.current === 'local'
+      if (!local && b.onSpotId !== playerId) return
+      patchBoard({ choice, prompt: null })
+    },
+    [patchBoard, playerId]
+  )
+
+  const boardMarkPromptUsed = useCallback(
+    (choice: 'truth' | 'dare', idx: number) => {
+      const b = stateRef.current?.board
+      if (!b) return
+      const key = choice === 'truth' ? 'usedTruths' : 'usedDares'
+      const used = b[key] ?? []
+      if (used.includes(idx)) return
+      patchBoard({ [key]: [...used, idx] })
+    },
     [patchBoard]
   )
 
@@ -487,12 +518,19 @@ export function useTodRoom() {
       if (!t) return
       const b = stateRef.current?.board
       const patch: Partial<BoardState> = { prompt: t.slice(0, 400) }
-      if (fromList && b) {
-        if (fromList.choice === 'truth') {
-          patch.usedTruths = [...(b.usedTruths ?? []), fromList.idx]
-        } else {
-          patch.usedDares = [...(b.usedDares ?? []), fromList.idx]
-        }
+      let source = fromList
+      if (!source && b?.choice) {
+        const pool =
+          b.choice === 'truth'
+            ? getTruthsForMode(b.listMode ?? 'nsfw')
+            : getDaresForMode(b.listMode ?? 'nsfw')
+        const idx = findPromptIndex(pool, t)
+        if (idx != null) source = { choice: b.choice, idx }
+      }
+      if (source && b) {
+        const key = source.choice === 'truth' ? 'usedTruths' : 'usedDares'
+        const used = b[key] ?? []
+        if (!used.includes(source.idx)) patch[key] = [...used, source.idx]
       }
       patchBoard(patch)
     },
@@ -503,10 +541,12 @@ export function useTodRoom() {
     (idx: number) => {
       const b = stateRef.current?.board
       if (!b || !b.questionId || b.answerIndex != null) return
+      const local = roomIdRef.current === 'local'
+      if (!local && b.answeredBy !== playerId) return
       const q = getQuestionById(b.questionId)
       patchBoard({ answerIndex: idx, answerCorrect: !!q && q.correctIndex === idx })
     },
-    [patchBoard]
+    [patchBoard, playerId]
   )
 
   const setBoardMinigameSession = useCallback(
@@ -546,6 +586,16 @@ export function useTodRoom() {
     const base = stateRef.current
     const b = base?.board
     if (!base || !b) return
+    const rid = roomIdRef.current
+    const local = rid === 'local'
+    if (b.phase === 'prompt' || b.phase === 'forfeit') {
+      if (!b.onSpotId) return
+      if (!local && b.onSpotId !== playerId) return
+    }
+    if (b.phase === 'trivia' && b.answerIndex != null) {
+      if (!b.answeredBy) return
+      if (!local && b.answeredBy !== playerId) return
+    }
     let positions = b.positions
     // Trivia bonus: a correct answer nudges you one tile forward.
     if (b.phase === 'trivia' && b.answerCorrect && b.answeredBy) {
@@ -554,7 +604,7 @@ export function useTodRoom() {
       positions = { ...positions, [b.answeredBy]: Math.min(cur + 1, last - 1) }
     }
     advanceRoll(b, positions)
-  }, [advanceRoll])
+  }, [advanceRoll, playerId])
 
   const restartBoard = useCallback(() => {
     const base = stateRef.current
@@ -938,6 +988,7 @@ export function useTodRoom() {
     setBoardListMode,
     rollDice,
     boardPickChoice,
+    boardMarkPromptUsed,
     boardSubmitPrompt,
     boardAnswerTrivia,
     boardContinue,

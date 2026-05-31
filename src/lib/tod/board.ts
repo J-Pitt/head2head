@@ -93,6 +93,7 @@ export type BoardState = {
   listMode: ClassicListMode
   usedTruths: number[]
   usedDares: number[]
+  usedQuestionIds: string[]
 }
 
 export const BOARD_COLS = 6
@@ -209,6 +210,7 @@ export function createBoardState(
     listMode,
     usedTruths: [],
     usedDares: [],
+    usedQuestionIds: [],
   }
 }
 

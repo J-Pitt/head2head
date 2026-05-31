@@ -1,5 +1,5 @@
 import { firstActiveIndex } from '../players'
-import type { CategoryId, GameMode, GameState, JeopardyClue, Player } from '../types'
+import type { CategoryId, GameMode, GameState, JeopardyClue, Player, TriviaQuestion } from '../types'
 import { ANIMALS_QUESTIONS } from './animals'
 import { GENERAL_QUESTIONS } from './general'
 import { HISTORY_QUESTIONS } from './history'
@@ -24,6 +24,15 @@ export const TRIVIA_QUESTIONS = [
   ...HISTORY_QUESTIONS,
   ...GENERAL_QUESTIONS,
 ]
+
+/** Pick a trivia question not yet used this board game. */
+export function pickRandomQuestion(usedIds: string[]): TriviaQuestion | null {
+  if (TRIVIA_QUESTIONS.length === 0) return null
+  const used = new Set(usedIds)
+  const available = TRIVIA_QUESTIONS.filter((q) => !used.has(q.id))
+  if (available.length === 0) return null
+  return available[Math.floor(Math.random() * available.length)]
+}
 
 export const JEOPARDY_VALUES = [200, 400, 600, 800, 1000] as const
 

@@ -17,6 +17,7 @@ import { RaceLeaderboard } from '@/components/minigames/views/shared'
 type Room = ReturnType<typeof useTodRoom>
 
 const PIECE_STEP_MS = 165
+const PROMPT_REROLLS = 3
 
 export default function BoardView({
   room,
@@ -386,11 +387,12 @@ function BoardPrompt({ room }: { room: Room }) {
   const [draft, setDraft] = useState('')
   const [promptMode, setPromptMode] = useState<'list' | 'custom'>('list')
   const [suggestion, setSuggestion] = useState<{ text: string; idx: number } | null>(null)
+  const [rerollsLeft, setRerollsLeft] = useState(PROMPT_REROLLS)
 
   const isMine = b.onSpotId === room.playerId
   const askerAway = !room.isAvailable(b.askerId)
   const canWrite = b.askerId ? b.askerId === room.playerId || (askerAway && room.isHost) : isMine || room.isHost
-  const canAdvance = isMine || room.isHost
+  const canAdvance = isMine || (room.isLocal && !!b.onSpotId)
   const forfeit = b.phase === 'forfeit'
 
   const listMode = b.listMode ?? 'nsfw'
@@ -400,18 +402,36 @@ function BoardPrompt({ room }: { room: Room }) {
     if (!choice || b.prompt) return
     const pool = choice === 'truth' ? getTruthsForMode(listMode) : getDaresForMode(listMode)
     const used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
-    setSuggestion(pickRandomPrompt(pool, used))
-    setPromptMode('list')
+    const pick = pickRandomPrompt(pool, used)
+    if (pick) {
+      setSuggestion(pick)
+      setPromptMode('list')
+    } else {
+      setSuggestion(null)
+      setPromptMode('custom')
+    }
     setDraft('')
+    setRerollsLeft(PROMPT_REROLLS)
   }, [choice, b.prompt, listMode, b.usedTruths, b.usedDares])
 
   function pickAnother() {
-    if (!choice) return
+    if (!choice || rerollsLeft <= 0) return
     const pool = choice === 'truth' ? getTruthsForMode(listMode) : getDaresForMode(listMode)
-    const used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
-    const exclude = suggestion ? [...used, suggestion.idx] : used
-    setSuggestion(pickRandomPrompt(pool, exclude))
+    let used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
+    if (suggestion && !used.includes(suggestion.idx)) {
+      used = [...used, suggestion.idx]
+      room.boardMarkPromptUsed(choice, suggestion.idx)
+    }
+    const next = pickRandomPrompt(pool, used)
+    setRerollsLeft((n) => n - 1)
+    if (next) setSuggestion(next)
+    else {
+      setSuggestion(null)
+      setPromptMode('custom')
+    }
   }
+
+  const canReroll = rerollsLeft > 0 && promptMode === 'list' && !!suggestion
 
   function useSuggestion() {
     if (!suggestion || !choice) return
@@ -452,7 +472,7 @@ function BoardPrompt({ room }: { room: Room }) {
       </div>
 
       {!b.choice ? (
-        isMine ? (
+        isMine || (room.isLocal && !!b.onSpotId) ? (
           <div className="tod-choice">
             <button type="button" className="btn tod-truth" onClick={() => room.boardPickChoice('truth')}>
               Truth
@@ -469,7 +489,9 @@ function BoardPrompt({ room }: { room: Room }) {
           <div className="tod-write">
             <span className={`tod-badge ${b.choice}`}>{b.choice!.toUpperCase()}</span>
             <p className="tod-write-label">
-              Pick a {b.choice} for {targetName}:
+              {promptMode === 'list' && suggestion
+                ? `Suggested ${b.choice} for ${targetName}:`
+                : `Pick a ${b.choice} for ${targetName}:`}
             </p>
             {promptMode === 'list' && suggestion ? (
               <>
@@ -479,43 +501,54 @@ function BoardPrompt({ room }: { room: Room }) {
                 <button type="button" className="btn btn-primary full" onClick={useSuggestion}>
                   Use this prompt →
                 </button>
-                <button type="button" className="btn-ghost btn-sm" onClick={pickAnother}>
-                  🎲 Pick another
-                </button>
-                <button type="button" className="btn-ghost btn-sm" onClick={() => setPromptMode('custom')}>
-                  ✏️ Write your own
-                </button>
+                <div className="tod-prompt-alt">
+                  {canReroll && (
+                    <button type="button" className="btn-ghost btn-sm" onClick={pickAnother}>
+                      🎲 Get a new one ({rerollsLeft} left)
+                    </button>
+                  )}
+                  <button type="button" className="btn-ghost btn-sm" onClick={() => setPromptMode('custom')}>
+                    ✏️ Write your own
+                  </button>
+                </div>
               </>
             ) : (
-              <form className="tod-write-custom" onSubmit={submitCustom}>
-                <textarea
-                  value={draft}
-                  onChange={(e) => {
-                    setDraft(e.target.value)
-                    room.signalTyping(e.target.value.trim().length > 0)
-                  }}
-                  onBlur={() => room.signalTyping(false)}
-                  placeholder={b.choice === 'truth' ? 'Ask them anything…' : 'Dare them to…'}
-                  maxLength={400}
-                  rows={3}
-                  className="tod-textarea"
-                  autoFocus
-                />
-                <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
-                  Submit for everyone →
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost btn-sm"
-                  onClick={() => {
-                    setPromptMode('list')
-                    setDraft('')
-                    room.signalTyping(false)
-                  }}
-                >
-                  ← Back to suggestions
-                </button>
-              </form>
+              <>
+                {promptMode === 'list' && !suggestion && (
+                  <p className="lobby-sub">All suggested prompts have been used — write your own:</p>
+                )}
+                <form className="tod-write-custom" onSubmit={submitCustom}>
+                  <textarea
+                    value={draft}
+                    onChange={(e) => {
+                      setDraft(e.target.value)
+                      room.signalTyping(e.target.value.trim().length > 0)
+                    }}
+                    onBlur={() => room.signalTyping(false)}
+                    placeholder={b.choice === 'truth' ? 'Ask them anything…' : 'Dare them to…'}
+                    maxLength={400}
+                    rows={3}
+                    className="tod-textarea"
+                    autoFocus
+                  />
+                  <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
+                    Submit for everyone →
+                  </button>
+                  {suggestion && (
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
+                      onClick={() => {
+                        setPromptMode('list')
+                        setDraft('')
+                        room.signalTyping(false)
+                      }}
+                    >
+                      ← Back to suggestions
+                    </button>
+                  )}
+                </form>
+              </>
             )}
           </div>
         ) : (
@@ -537,9 +570,9 @@ function BoardPrompt({ room }: { room: Room }) {
           {asker && <p className="tod-asker">— from {asker.name}</p>}
           {canAdvance ? (
             <>
-              <p className="tod-write-label">Do your {b.choice}, then post it in the chat →</p>
+              <p className="tod-write-label">Do your {b.choice}, then post your answer in the chat →</p>
               <button type="button" className="btn btn-primary full" onClick={room.boardContinue}>
-                I&apos;m done — next player →
+                Done — next player →
               </button>
             </>
           ) : (
@@ -557,7 +590,7 @@ function BoardTrivia({ room }: { room: Room }) {
   const answerer = room.players.find((p) => p.id === b.answeredBy)
   const isMine = b.answeredBy === room.playerId
   const answered = b.answerIndex != null
-  const canAdvance = isMine || room.isHost
+  const canAdvance = isMine || (room.isLocal && !!b.answeredBy)
 
   if (!q) {
     return (

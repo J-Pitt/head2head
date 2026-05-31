@@ -216,14 +216,26 @@ export function useClassicTod() {
     if (!s || s.subPhase !== 'playing' || s.turnPhase !== 'choose' || s.onSpotId !== playerId) return
     const pool = choice === 'truth' ? getTruthsForMode(s.listMode) : getDaresForMode(s.listMode)
     const used = choice === 'truth' ? s.usedTruths : s.usedDares
-    const { text, idx } = pickRandomPrompt(pool, used)
+    const pick = pickRandomPrompt(pool, used)
+    if (!pick) {
+      pushState({
+        ...s,
+        turnPhase: 'answer',
+        chosenCategory: choice,
+        prompt:
+          choice === 'truth'
+            ? 'Make up your own truth — everyone else judges if you answered honestly!'
+            : 'Make up your own dare — do something the group agrees on!',
+      })
+      return
+    }
     pushState({
       ...s,
       turnPhase: 'answer',
       chosenCategory: choice,
-      prompt: text,
-      usedTruths: choice === 'truth' ? [...s.usedTruths, idx] : s.usedTruths,
-      usedDares: choice === 'dare' ? [...s.usedDares, idx] : s.usedDares,
+      prompt: pick.text,
+      usedTruths: choice === 'truth' ? [...s.usedTruths, pick.idx] : s.usedTruths,
+      usedDares: choice === 'dare' ? [...s.usedDares, pick.idx] : s.usedDares,
     })
   }
 

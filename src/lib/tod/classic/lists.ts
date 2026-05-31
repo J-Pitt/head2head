@@ -66,13 +66,18 @@ export function getDaresForMode(mode: ClassicListMode): string[] {
   return mode === 'nsfw' ? NSFW_DARES : PG_DARES
 }
 
+export function findPromptIndex(pool: string[], text: string): number | null {
+  const idx = pool.indexOf(text.trim())
+  return idx >= 0 ? idx : null
+}
+
 export function pickRandomPrompt(
   pool: string[],
   used: number[]
-): { text: string; idx: number } {
+): { text: string; idx: number } | null {
+  if (pool.length === 0) return null
   const usedSet = new Set(used)
   const available = pool.map((text, idx) => ({ text, idx })).filter((x) => !usedSet.has(x.idx))
-  const pickFrom = available.length > 0 ? available : pool.map((text, idx) => ({ text, idx }))
-  const pick = pickFrom[Math.floor(Math.random() * pickFrom.length)]
-  return pick
+  if (available.length === 0) return null
+  return available[Math.floor(Math.random() * available.length)]
 }

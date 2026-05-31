@@ -23,10 +23,8 @@ describe('classic lists', () => {
     expect(idx).toBe(2)
   })
 
-  it('pickRandomPrompt recycles when all used', () => {
+  it('pickRandomPrompt returns null when all used', () => {
     const pool = ['only']
-    const { text, idx } = pickRandomPrompt(pool, [0])
-    expect(text).toBe('only')
-    expect(idx).toBe(0)
+    expect(pickRandomPrompt(pool, [0])).toBeNull()
   })
 })
