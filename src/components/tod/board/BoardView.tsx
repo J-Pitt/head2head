@@ -17,7 +17,12 @@ import { RaceLeaderboard } from '@/components/minigames/views/shared'
 type Room = ReturnType<typeof useTodRoom>
 
 const PIECE_STEP_MS = 165
-const PROMPT_REROLLS = 3
+
+function boardPromptSessionKey(b: NonNullable<Room['state']>['board']) {
+  if (!b || !b.onSpotId || !b.choice || b.prompt) return null
+  const pos = b.positions[b.onSpotId] ?? 0
+  return `${b.onSpotId}:${pos}:${b.choice}:${b.dice ?? 0}`
+}
 
 export default function BoardView({
   room,
@@ -255,7 +260,7 @@ function AnimatedPieces({ room }: { room: Room }) {
             }}
             title={p.name}
           >
-            <BoardPiece pieceId={p.avatar} size={22} className="tile-token board-piece-moving" />
+            <BoardPiece pieceId={p.avatar} size={32} className="tile-token board-piece-moving" />
           </div>
         ))
       })}
@@ -278,19 +283,26 @@ function Tile({
   const special = tile.type === 'special' && tile.special != null ? SPECIAL_CHALLENGES[tile.special] : null
   const endpoint = tile.type === 'start' || tile.type === 'finish'
   const pathCls = tilePathClasses(tile, prev, next)
+  const label = special ? 'Special' : meta.label
   return (
     <div
       className={`board-tile tile-${tile.type} ${pathCls}`}
       style={{ gridColumn: tile.col + 1, gridRow: tile.row + 1, ['--tile' as string]: meta.color }}
       title={special ? special.label : meta.label}
     >
-      <span className="tile-emoji">{special ? special.icon : meta.emoji}</span>
-      {endpoint ? (
-        <span className="tile-label">{tile.type === 'start' ? 'START' : 'FINISH'}</span>
-      ) : (
-        <span className="tile-num">{tile.i}</span>
+      <div className="board-tile-inner">
+        <span className="tile-emoji" aria-hidden>
+          {special ? special.icon : meta.emoji}
+        </span>
+        <span className={endpoint ? 'tile-label' : 'tile-type-name'}>
+          {endpoint ? (tile.type === 'start' ? 'START' : 'FINISH') : label}
+        </span>
+      </div>
+      {arrow && !endpoint && (
+        <span className="tile-arrow" aria-hidden>
+          {arrow}
+        </span>
       )}
-      {arrow && !endpoint && <span className="tile-arrow">{arrow}</span>}
     </div>
   )
 }
@@ -391,7 +403,6 @@ function BoardPrompt({ room }: { room: Room }) {
   const [draft, setDraft] = useState('')
   const [promptMode, setPromptMode] = useState<'list' | 'custom'>('list')
   const [suggestion, setSuggestion] = useState<{ text: string; idx: number } | null>(null)
-  const [rerollsLeft, setRerollsLeft] = useState(PROMPT_REROLLS)
 
   const isMine = b.onSpotId === room.playerId
   const askerAway = !room.isAvailable(b.askerId)
@@ -405,9 +416,10 @@ function BoardPrompt({ room }: { room: Room }) {
 
   const listMode = b.listMode ?? 'nsfw'
   const choice = b.choice
+  const promptSessionKey = boardPromptSessionKey(b)
 
   useEffect(() => {
-    if (!choice || b.prompt) return
+    if (!promptSessionKey || !choice) return
     const pool = choice === 'truth' ? getTruthsForMode(listMode) : getDaresForMode(listMode)
     const used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
     const pick = pickRandomPrompt(pool, used)
@@ -419,27 +431,24 @@ function BoardPrompt({ room }: { room: Room }) {
       setPromptMode('custom')
     }
     setDraft('')
-    setRerollsLeft(PROMPT_REROLLS)
-  }, [choice, b.prompt, listMode, b.usedTruths, b.usedDares])
+    // Only re-pick when a new truth/dare round starts — not when refreshing or marking used.
+  }, [promptSessionKey, listMode, choice])
 
-  function pickAnother() {
-    if (!choice || rerollsLeft <= 0) return
+  function refreshSuggestion() {
+    if (!choice) return
     const pool = choice === 'truth' ? getTruthsForMode(listMode) : getDaresForMode(listMode)
-    let used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
-    if (suggestion && !used.includes(suggestion.idx)) {
-      used = [...used, suggestion.idx]
-      room.boardMarkPromptUsed(choice, suggestion.idx)
-    }
-    const next = pickRandomPrompt(pool, used)
-    setRerollsLeft((n) => n - 1)
-    if (next) setSuggestion(next)
-    else {
+    const used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
+    const next = pickRandomPrompt(pool, used, suggestion?.idx)
+    if (next) {
+      setSuggestion(next)
+      setPromptMode('list')
+    } else {
       setSuggestion(null)
       setPromptMode('custom')
     }
   }
 
-  const canReroll = rerollsLeft > 0 && promptMode === 'list' && !!suggestion
+  const canRefresh = promptMode === 'list'
 
   function useSuggestion() {
     if (!suggestion || !choice) return
@@ -510,9 +519,9 @@ function BoardPrompt({ room }: { room: Room }) {
                   Use this prompt →
                 </button>
                 <div className="tod-prompt-alt">
-                  {canReroll && (
-                    <button type="button" className="btn-ghost btn-sm" onClick={pickAnother}>
-                      🎲 Get a new one ({rerollsLeft} left)
+                  {canRefresh && suggestion && (
+                    <button type="button" className="btn-ghost btn-sm" onClick={refreshSuggestion}>
+                      🔄 Refresh
                     </button>
                   )}
                   <button type="button" className="btn-ghost btn-sm" onClick={() => setPromptMode('custom')}>

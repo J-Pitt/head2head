@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useLatest } from '@/lib/useLatest'
 import type { Player } from '@/lib/types'
 import type { BoardTodState } from '@/lib/tod/types'
-import { initialTodState, isBoardTodState, isClassicTodState, PICTURE_EVERY } from '@/lib/tod/types'
+import { initialTodState, isBoardTodState, PICTURE_EVERY } from '@/lib/tod/types'
 import type { BoardState, TileType } from '@/lib/tod/board'
 import { createBoardState, rollDie, SPECIAL_CHALLENGES } from '@/lib/tod/board'
 import type { Progress, Session } from '@/lib/minigames/types'
@@ -62,8 +62,13 @@ function pickAsker(candidates: string[], onSpotId: string | null): string | null
   return others.length ? others[Math.floor(Math.random() * others.length)] : null
 }
 
+function urlBootstrapFromSearch(search: string) {
+  return parseBoardTodUrlSearch(search.startsWith('?') ? search : `?${search}`)
+}
+
 export function useTodRoom() {
   const searchParams = useSearchParams()
+  const urlBoot = urlBootstrapFromSearch(searchParams.toString())
   const [playerId] = useState(loadPlayerId)
   const [playerName, setPlayerName] = useState(() => {
     try {
@@ -74,10 +79,8 @@ export function useTodRoom() {
   })
   const [avatar, setAvatar] = useState<string>(DEFAULT_BOARD_PIECE)
   const [boardListMode, setBoardListMode] = useState<ClassicListMode>('nsfw')
-  const [gameCodeInput, setGameCodeInput] = useState(() => readBoardTodUrlBootstrap().joinCode)
-  const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | null>(
-    () => readBoardTodUrlBootstrap().entryMode
-  )
+  const [gameCodeInput, setGameCodeInput] = useState(urlBoot.joinCode)
+  const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | null>(urlBoot.entryMode)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [hostId, setHostId] = useState<string | null>(null)
@@ -91,6 +94,7 @@ export function useTodRoom() {
   const stateRef = useLatest(state)
   const playersRef = useLatest(players)
   const roomIdRef = useLatest(roomId)
+  const gameCodeRef = useLatest(gameCode)
   const progressRef = useLatest(progress)
   const ownProgressRef = useRef<Progress | null>(null)
   const lastReportRef = useRef(0)
@@ -104,24 +108,50 @@ export function useTodRoom() {
   const isOnBreak = me?.status === 'break'
   const isLocal = entryMode === 'local' || roomId === 'local'
 
+  const clearOnlineRoom = useCallback(() => {
+    setRoomId(null)
+    setGameCode(null)
+    setHostId(null)
+    setPlayers([])
+    setState(null)
+  }, [])
+
   // Keep join/create intent in sync when the URL changes (same route, new query).
   useEffect(() => {
-    const boot = parseBoardTodUrlSearch(`?${searchParams.toString()}`)
+    const boot = urlBootstrapFromSearch(searchParams.toString())
     if (boot.entryMode === 'join' && boot.joinCode) {
       setEntryMode('join')
       setGameCodeInput(boot.joinCode)
+      const rid = roomIdRef.current
+      const code = gameCodeRef.current
+      if (rid && rid !== 'local' && code !== boot.joinCode) {
+        clearOnlineRoom()
+        try {
+          localStorage.removeItem(TOD_KEY)
+        } catch {
+          /* ignore */
+        }
+      }
       return
     }
     if (boot.entryMode === 'create') {
       setEntryMode('create')
       setGameCodeInput('')
+      if (roomIdRef.current && roomIdRef.current !== 'local') {
+        clearOnlineRoom()
+      }
+      try {
+        localStorage.removeItem(TOD_KEY)
+      } catch {
+        /* ignore */
+      }
       return
     }
     if (boot.entryMode === 'local') {
       setEntryMode('local')
       setGameCodeInput('')
     }
-  }, [searchParams])
+  }, [searchParams, clearOnlineRoom])
 
   // A player is available for turns if they're still in the room and not on break.
   const availableIds = useCallback(() => {
@@ -802,13 +832,21 @@ export function useTodRoom() {
     setPlayers((prev) => prev.map((p) => (p.id === targetId ? { ...p, name: trimmed } : p)))
   }
 
+  function setLocalPlayerPiece(targetId: string, pieceId: string) {
+    if (roomIdRef.current !== 'local') return
+    if (!isBoardPiece(pieceId)) return
+    setPlayers((prev) => prev.map((p) => (p.id === targetId ? { ...p, avatar: pieceId } : p)))
+    if (targetId === playerId) setAvatar(pieceId)
+  }
+
   async function hostRoom() {
     if (!playerName.trim()) {
       setError('Enter your name')
       return
     }
-    const joinCode = gameCodeInput.trim().toUpperCase()
-    if (joinCode && entryMode === 'join') {
+    const urlJoinCode = urlBootstrapFromSearch(searchParams.toString()).joinCode
+    const joinCode = gameCodeInput.trim().toUpperCase() || urlJoinCode
+    if (joinCode && (entryMode === 'join' || urlJoinCode)) {
       return joinRoom(joinCode)
     }
     setError('')
@@ -850,7 +888,7 @@ export function useTodRoom() {
       setPlayers(data.players)
       if (isBoardTodState(data.state)) {
         setState(data.state)
-      } else if (!data.state || isClassicTodState(data.state)) {
+      } else {
         setState(initialTodState())
       }
       setEntryMode('join')
@@ -863,24 +901,21 @@ export function useTodRoom() {
     }
   }
 
-  // On load: honor home-screen intent (?create=, ?code=, etc.) or restore a saved session.
+  const searchKey = searchParams.toString()
+
+  // On load / URL change: restore a saved session unless the URL points elsewhere.
   useEffect(() => {
     let cancelled = false
 
     async function init() {
-      const urlIntent = readBoardTodUrlBootstrap()
+      const urlIntent = urlBootstrapFromSearch(searchKey)
 
       if (urlIntent.entryMode === 'create') {
-        localStorage.removeItem(TOD_KEY)
-        setEntryMode('create')
-        setGameCodeInput('')
         setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
         return
       }
 
       if (urlIntent.entryMode === 'join' && urlIntent.joinCode) {
-        setEntryMode('join')
-        setGameCodeInput(urlIntent.joinCode)
         setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
 
         let savedJoin: { roomId?: string; gameCode?: string } | null = null
@@ -902,8 +937,11 @@ export function useTodRoom() {
               setHostId(data.hostId ?? null)
               setPlayers(data.players || [])
               if (isBoardTodState(data.state)) setState(data.state)
+              else setState(initialTodState())
               setEntryMode('join')
               setTodPresence(data.roomId, playerId, 'active').catch(() => {})
+            } else {
+              localStorage.removeItem(TOD_KEY)
             }
           } catch {
             localStorage.removeItem(TOD_KEY)
@@ -915,8 +953,6 @@ export function useTodRoom() {
       }
 
       if (urlIntent.entryMode === 'local') {
-        localStorage.removeItem(TOD_KEY)
-        setEntryMode('local')
         setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
         return
       }
@@ -951,17 +987,19 @@ export function useTodRoom() {
         const data = await getTodRoomClient(saved.roomId)
         if (cancelled) return
         const stillIn = (data.players || []).some((p) => p.id === playerId)
-        if (!stillIn) return
+        if (!stillIn) {
+          localStorage.removeItem(TOD_KEY)
+          return
+        }
         setRoomId(data.roomId)
         setGameCode(data.gameCode)
         setHostId(data.hostId ?? null)
         setPlayers(data.players || [])
-        if (isBoardTodState(data.state)) {
-          setState(data.state)
-        }
+        if (isBoardTodState(data.state)) setState(data.state)
+        else setState(initialTodState())
         setTodPresence(data.roomId, playerId, 'active').catch(() => {})
       } catch {
-        /* stay on the join screen */
+        localStorage.removeItem(TOD_KEY)
       }
     }
 
@@ -969,7 +1007,7 @@ export function useTodRoom() {
     return () => {
       cancelled = true
     }
-  }, [playerId])
+  }, [playerId, searchKey])
 
   return {
     playerId,
@@ -999,6 +1037,7 @@ export function useTodRoom() {
     enterLocalLobby,
     addLocalPlayer,
     renameLocalPlayer,
+    setLocalPlayerPiece,
     joinRoom,
     startGame,
     pickChoice,

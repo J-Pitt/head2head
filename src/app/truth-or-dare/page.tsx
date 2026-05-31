@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import TruthOrDareRouter from './TruthOrDareRouter'
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 }
 
 export default function TruthOrDarePage() {
-  return <TruthOrDareRouter />
+  return (
+    <Suspense fallback={null}>
+      <TruthOrDareRouter />
+    </Suspense>
+  )
 }

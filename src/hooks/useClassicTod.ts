@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { readClassicUrlBootstrap } from '@/lib/classicUrl'
+import { useSearchParams } from 'next/navigation'
+import { parseClassicUrlSearch } from '@/lib/classicUrl'
 import { useLatest } from '@/lib/useLatest'
 import { DEFAULT_BOARD_PIECE } from '@/lib/tod/boardPieces'
 import {
@@ -43,6 +44,8 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function useClassicTod() {
+  const searchParams = useSearchParams()
+  const urlBoot = parseClassicUrlSearch(`?${searchParams.toString()}`)
   const [playerId] = useState(loadPlayerId)
   const [playerName, setPlayerName] = useState(() => {
     try {
@@ -54,10 +57,8 @@ export function useClassicTod() {
   const [avatar] = useState(DEFAULT_BOARD_PIECE)
   const [listMode, setListMode] = useState<ClassicListMode>('pg')
   const [error, setError] = useState('')
-  const [joinCode, setJoinCode] = useState(() => readClassicUrlBootstrap()?.joinCode ?? '')
-  const [intent, setIntent] = useState<'create' | 'join' | 'solo' | null>(
-    () => readClassicUrlBootstrap()?.intent ?? null
-  )
+  const [joinCode, setJoinCode] = useState(urlBoot?.joinCode ?? '')
+  const [intent, setIntent] = useState<'create' | 'join' | 'solo' | null>(urlBoot?.intent ?? null)
 
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
@@ -72,6 +73,13 @@ export function useClassicTod() {
   const isLocal = roomId === 'classic-local'
   const inRoom = !!roomId && !!state
   const isHost = hostId === playerId
+
+  useEffect(() => {
+    const boot = parseClassicUrlSearch(`?${searchParams.toString()}`)
+    if (!boot) return
+    setIntent(boot.intent)
+    setJoinCode(boot.joinCode)
+  }, [searchParams])
 
   const pushState = useCallback(async (next: ClassicTodState) => {
     setState(next)
@@ -129,19 +137,23 @@ export function useClassicTod() {
     }
 
     const classic = initialClassicTodState(listMode)
+    const boot = parseClassicUrlSearch(`?${searchParams.toString()}`)
+    const code = joinCode.trim().toUpperCase() || boot?.joinCode || ''
+    const mode = intent ?? boot?.intent ?? null
 
-    if (intent === 'join' && joinCode) {
+    if (code && (mode === 'join' || !!searchParams.get('code'))) {
       try {
-        const data = await joinTodRoom(joinCode, name, avatar, playerId)
+        const data = await joinTodRoom(code, name, avatar, playerId)
         const st = isClassicTodState(data.state) ? data.state : classic
         setRoomId(data.roomId)
-        setGameCode(joinCode)
+        setGameCode(code)
         setHostId(data.hostId)
         setPlayers(data.players)
         setState(st)
+        setIntent('join')
         localStorage.setItem(
           TOD_KEY,
-          JSON.stringify({ roomId: data.roomId, gameCode: joinCode, entryMode: 'classic' })
+          JSON.stringify({ roomId: data.roomId, gameCode: code, entryMode: 'classic' })
         )
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not join room')
@@ -149,7 +161,7 @@ export function useClassicTod() {
       return
     }
 
-    if (intent === 'create') {
+    if (mode === 'create') {
       try {
         const data = await createTodRoom(name, avatar, playerId, joinCode || undefined)
         await updateTodState(data.roomId, classic)

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import AvatarPicker from './AvatarPicker'
 import { DEFAULT_AVATAR } from '@/lib/avatars'
 import BuzzerPad from './BuzzerPad'
@@ -23,11 +23,12 @@ import {
   getRoom,
   joinRoom,
   leaveRoom,
+  resolveGameCode,
   setPlayerPresence,
   updateRoomState,
 } from '@/lib/roomApi'
 import type { CategoryId, ChatMessage, GameMode, GameState, Player, RejoinSession } from '@/lib/types'
-import { readTriviaUrlBootstrap } from '@/lib/triviaUrl'
+import { parseTriviaUrlSearch } from '@/lib/triviaUrl'
 
 const POLL_MS = 2000
 const SESSION_PLAYER_KEY = 'head2head_player_id'
@@ -92,49 +93,53 @@ function HomeQuickPickPanel({
   onJoinSubmit: (code: string) => void
   overlay?: boolean
 }) {
+  const shellClass = overlay ? 'mode-card-overlay-inner' : 'home-quick-pick'
+
+  function goBackFromJoin() {
+    onJoinCodeBack()
+    onJoinCodeChange('')
+  }
+
   if (onlineAction === 'join') {
     return (
-      <form
-        className={overlay ? 'mode-card-overlay-inner home-online-form' : 'home-quick-pick home-online-form'}
-        onSubmit={(e) => {
-          e.preventDefault()
-          const code = joinCode.trim().toUpperCase()
-          if (!code) return
-          onJoinSubmit(code)
-        }}
-      >
-        <p className="home-online-label">Enter the game code</p>
-        <input
-          value={joinCode}
-          onChange={(e) => onJoinCodeChange(e.target.value.toUpperCase())}
-          placeholder="GAME CODE"
-          maxLength={6}
-          className="code-input home-pwd-input"
-          autoFocus
-        />
-        <button
-          type="submit"
-          className="btn full home-cta home-cta-join"
-          disabled={!joinCode.trim()}
-        >
-          Continue to join
-        </button>
-        <button
-          type="button"
-          className="btn-ghost home-back"
-          onClick={() => {
-            onJoinCodeBack()
-            onJoinCodeChange('')
+      <div className={shellClass}>
+        <div className="home-quick-panel-head">
+          <p className="home-online-label">{title} — join</p>
+          <button type="button" className="btn-ghost home-back home-back-inline" onClick={goBackFromJoin}>
+            ← Back
+          </button>
+        </div>
+        <form
+          className="home-online-form home-online-form-compact"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const code = joinCode.trim().toUpperCase()
+            if (!code) return
+            onJoinSubmit(code)
           }}
         >
-          ← Back
-        </button>
-      </form>
+          <input
+            value={joinCode}
+            onChange={(e) => onJoinCodeChange(e.target.value.toUpperCase())}
+            placeholder="GAME CODE"
+            maxLength={6}
+            className="code-input home-pwd-input"
+            autoFocus
+          />
+          <button
+            type="submit"
+            className="btn full home-cta home-cta-join"
+            disabled={!joinCode.trim()}
+          >
+            Continue to join
+          </button>
+        </form>
+      </div>
     )
   }
 
   return (
-    <div className={overlay ? 'mode-card-overlay-inner' : 'home-quick-pick'}>
+    <div className={shellClass}>
       {!overlay && <p className="home-online-label">{title}</p>}
       <button type="button" className="btn full home-cta home-cta-join" onClick={onPickJoin}>
         Join game
@@ -198,10 +203,10 @@ function clearRejoinSession() {
 }
 
 export default function GameApp() {
-  const [screen, setScreen] = useState<Screen>(() => readTriviaUrlBootstrap()?.screen ?? 'home')
-  const [mode, setMode] = useState<'local' | 'online' | null>(
-    () => readTriviaUrlBootstrap()?.mode ?? null
-  )
+  const searchParams = useSearchParams()
+  const triviaBoot = parseTriviaUrlSearch(`?${searchParams.toString()}`)
+  const [screen, setScreen] = useState<Screen>(() => triviaBoot?.screen ?? 'home')
+  const [mode, setMode] = useState<'local' | 'online' | null>(() => triviaBoot?.mode ?? null)
   const [multiplayerAvailable, setMultiplayerAvailable] = useState(false)
   const [pendingRejoin, setPendingRejoin] = useState<RejoinSession | null>(null)
   const [onBreak, setOnBreak] = useState(false)
@@ -218,9 +223,7 @@ export default function GameApp() {
   ])
   const [gameMode, setGameMode] = useState<GameMode>('buzzer')
 
-  const [gameCodeInput, setGameCodeInput] = useState(
-    () => readTriviaUrlBootstrap()?.gameCodeInput ?? ''
-  )
+  const [gameCodeInput, setGameCodeInput] = useState(() => triviaBoot?.gameCodeInput ?? '')
   const [onlineOpen, setOnlineOpen] = useState(false)
   const [onlineAction, setOnlineAction] = useState<'join' | 'create' | null>(null)
   const [triviaOpen, setTriviaOpen] = useState(false)
@@ -233,10 +236,19 @@ export default function GameApp() {
   const [minigamesJoinAction, setMinigamesJoinAction] = useState(false)
   const [minigamesJoinCode, setMinigamesJoinCode] = useState('')
   const [onlineIntent, setOnlineIntent] = useState<'join' | 'create' | null>(
-    () => readTriviaUrlBootstrap()?.onlineIntent ?? null
+    () => triviaBoot?.onlineIntent ?? null
   )
   const [joinGameCode, setJoinGameCode] = useState('')
   const router = useRouter()
+
+  useEffect(() => {
+    const boot = parseTriviaUrlSearch(`?${searchParams.toString()}`)
+    if (!boot) return
+    setScreen(boot.screen)
+    setMode(boot.mode)
+    setOnlineIntent(boot.onlineIntent)
+    setGameCodeInput(boot.gameCodeInput)
+  }, [searchParams])
 
   function closeQuickModes() {
     setTriviaOpen(false)
@@ -251,6 +263,14 @@ export default function GameApp() {
   }
 
   function openQuickMode(mode: 'trivia' | 'classic' | 'minigames') {
+    const alreadyOpen =
+      (mode === 'trivia' && triviaOpen) ||
+      (mode === 'classic' && classicOpen) ||
+      (mode === 'minigames' && minigamesOpen)
+    if (alreadyOpen) {
+      closeQuickModes()
+      return
+    }
     closeQuickModes()
     if (mode === 'trivia') setTriviaOpen(true)
     if (mode === 'classic') setClassicOpen(true)
@@ -822,11 +842,12 @@ export default function GameApp() {
           ) : (
             <form
               className="home-online-form"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault()
                 const code = joinGameCode.trim().toUpperCase()
                 if (!code) return
-                router.push(`/truth-or-dare?code=${encodeURIComponent(code)}`)
+                const resolved = await resolveGameCode(code)
+                router.push(resolved?.joinPath ?? `/truth-or-dare?code=${encodeURIComponent(code)}`)
               }}
             >
               <p className="home-online-label">Enter the game code</p>

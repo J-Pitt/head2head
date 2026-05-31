@@ -11,7 +11,11 @@ async function parseResponse(res: Response, fallback: string) {
   } catch {
     data = {}
   }
-  if (!res.ok) throw new Error((data.error as string) || res.statusText || fallback)
+  if (!res.ok) {
+    const msg = (data.error as string) || res.statusText || fallback
+    const joinPath = data.joinPath as string | undefined
+    throw new Error(joinPath ? `${msg} Try opening ${joinPath}` : msg)
+  }
   return data
 }
 

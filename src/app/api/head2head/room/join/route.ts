@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { getRedis, codeKey, getRoom, setRoom } from '@/lib/redis'
+import { resolveGameByCode, wrongGameMessage } from '@/lib/resolveGameCode'
 
 export async function POST(request: Request) {
   try {
@@ -15,6 +16,11 @@ export async function POST(request: Request) {
     }
     const roomId = await r.get(codeKey(code))
     if (!roomId) {
+      const resolved = await resolveGameByCode(code)
+      if (resolved && resolved.game !== 'trivia') {
+        const hint = wrongGameMessage(resolved.game, 'trivia', code)
+        return NextResponse.json({ success: false, ...hint }, { status: 409 })
+      }
       return NextResponse.json({ success: false, error: 'Game code not found' }, { status: 404 })
     }
     const room = await getRoom(String(roomId))

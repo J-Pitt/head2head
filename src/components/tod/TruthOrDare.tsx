@@ -4,12 +4,11 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import RatingPicker from '@/components/tod/RatingPicker'
 import BoardPiecePicker from '@/components/tod/BoardPiecePicker'
-import PlayerMark from '@/components/tod/PlayerMark'
 import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
 import BoardView from '@/components/tod/board/BoardView'
-import LocalPlayerName from '@/components/LocalPlayerName'
+import LocalPlayerEditor from '@/components/LocalPlayerEditor'
 
 function TodSideLayout({ main, chat }: { main: ReactNode; chat: ReactNode | null }) {
   if (!chat) {
@@ -152,8 +151,8 @@ function TodJoin({ room }: { room: Room }) {
   function enterLobby() {
     const joinCode = room.gameCodeInput.trim()
     if (mode === 'local') room.enterLocalLobby()
-    else if (mode === 'join' || joinCode) room.joinRoom(joinCode || undefined)
-    else if (mode === 'create') room.hostRoom()
+    else if (mode === 'join' || joinCode) void room.joinRoom(joinCode || undefined)
+    else if (mode === 'create') void room.hostRoom()
   }
 
   return (
@@ -216,7 +215,7 @@ function Lobby({ room }: { room: Room }) {
             Share the code <strong>{room.gameCode}</strong> so friends can join on their devices.
           </>
         ) : (
-          <>Add everyone playing on this device, then start the board.</>
+          <>Add everyone playing on this device. Each player can edit their name and pick a game piece.</>
         )}
       </p>
 
@@ -224,11 +223,12 @@ function Lobby({ room }: { room: Room }) {
       <ul className="party-players">
         {room.players.map((p) => (
           <li key={p.id} className={p.status === 'break' ? 'is-away' : ''}>
-            <PlayerMark avatar={p.avatar} size={34} board />
-            <LocalPlayerName
+            <LocalPlayerEditor
               name={p.name}
-              editable={!online && p.id !== room.playerId}
+              pieceId={p.avatar}
+              editable={!online}
               onRename={(name) => room.renameLocalPlayer(p.id, name)}
+              onPieceChange={(pieceId) => room.setLocalPlayerPiece(p.id, pieceId)}
             />
             <span className="local-player-meta">
               {p.id === room.playerId ? ' (you)' : ''}

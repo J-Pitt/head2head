@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useLatest } from '@/lib/useLatest'
-import { readMinigamesUrlBootstrap, parseMinigamesUrlSearch } from '@/lib/minigamesUrl'
+import { parseMinigamesUrlSearch } from '@/lib/minigamesUrl'
 import type { Player } from '@/lib/types'
 import type { MinigameId } from '@/lib/minigames/catalog'
 import type { Progress, ProgressMap, Session } from '@/lib/minigames/types'
@@ -67,6 +67,7 @@ export type PartyScreen = 'join' | 'hub' | 'game'
 // between the hub (choosing) and individual games together.
 export function useMinigameParty() {
   const searchParams = useSearchParams()
+  const urlBoot = parseMinigamesUrlSearch(searchParams.toString())
   const [playerId] = useState(loadPlayerId)
   const [playerName, setPlayerName] = useState(() => {
     try {
@@ -77,9 +78,11 @@ export function useMinigameParty() {
   })
   const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR)
   const [gameCodeInput, setGameCodeInput] = useState(
-    () => readMinigamesUrlBootstrap()?.joinCode || loadSavedPartyCode()
+    urlBoot?.joinCode || loadSavedPartyCode()
   )
-  const [entryIntent, setEntryIntent] = useState(() => readMinigamesUrlBootstrap()?.intent ?? null)
+  const [entryIntent, setEntryIntent] = useState<'join' | 'create' | 'solo' | null>(
+    urlBoot?.intent ?? null
+  )
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
@@ -229,8 +232,9 @@ export function useMinigameParty() {
       setError('Enter your name')
       return
     }
-    const joinCode = gameCodeInput.trim().toUpperCase()
-    if (joinCode && entryIntent === 'join') {
+    const urlJoinCode = parseMinigamesUrlSearch(searchParams.toString())?.joinCode ?? ''
+    const joinCode = gameCodeInput.trim().toUpperCase() || urlJoinCode
+    if (joinCode && (entryIntent === 'join' || urlJoinCode)) {
       return joinRoom(joinCode)
     }
     setError('')

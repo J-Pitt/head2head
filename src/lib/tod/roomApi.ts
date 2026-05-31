@@ -12,8 +12,14 @@ async function parseResponse(res: Response, fallback: string) {
   } catch {
     data = {}
   }
-  if (!res.ok) throw new Error((data.error as string) || res.statusText || fallback)
+  if (!res.ok) throw new Error(formatJoinError(data, fallback, res))
   return data
+}
+
+function formatJoinError(data: Record<string, unknown>, fallback: string, res: Response) {
+  const msg = (data.error as string) || res.statusText || fallback
+  const joinPath = data.joinPath as string | undefined
+  return joinPath ? `${msg} Try opening ${joinPath}` : msg
 }
 
 export async function createTodRoom(

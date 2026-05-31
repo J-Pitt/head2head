@@ -12,7 +12,8 @@ async function parseResponse(res: Response, fallbackError: string) {
   }
   if (!res.ok) {
     const msg = (data.error as string) || (data.message as string) || res.statusText || fallbackError
-    throw new Error(msg)
+    const joinPath = data.joinPath as string | undefined
+    throw new Error(joinPath ? `${msg} Try opening ${joinPath}` : msg)
   }
   return data
 }
@@ -116,6 +117,29 @@ export async function getMultiplayerStatus(): Promise<{ available: boolean }> {
     return data as { available: boolean }
   } catch {
     return { available: false }
+  }
+}
+
+export type ResolvedCode = {
+  game: 'trivia' | 'tod' | 'minigame'
+  gameLabel: string
+  joinPath: string
+  roomId: string
+}
+
+/** Look up which game mode owns a room code so join can route to the right screen. */
+export async function resolveGameCode(code: string): Promise<ResolvedCode | null> {
+  const c = code.trim().toUpperCase()
+  if (!c) return null
+  try {
+    const res = await fetchRoom(`${ROOM_PATH}/resolve?code=${encodeURIComponent(c)}`, {
+      cache: 'no-store',
+    })
+    const data = await parseResponse(res, 'Could not resolve code')
+    if (!data.found) return null
+    return data as ResolvedCode
+  } catch {
+    return null
   }
 }
 

@@ -23,6 +23,12 @@ describe('classic lists', () => {
     expect(idx).toBe(2)
   })
 
+  it('pickRandomPrompt can exclude one index (refresh without reusing same line)', () => {
+    const pool = ['a', 'b', 'c']
+    const pick = pickRandomPrompt(pool, [], 1)
+    expect(pick?.idx).not.toBe(1)
+  })
+
   it('pickRandomPrompt returns null when all used', () => {
     const pool = ['only']
     expect(pickRandomPrompt(pool, [0])).toBeNull()

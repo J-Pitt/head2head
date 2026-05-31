@@ -73,11 +73,19 @@ export function findPromptIndex(pool: string[], text: string): number | null {
 
 export function pickRandomPrompt(
   pool: string[],
-  used: number[]
+  used: number[],
+  excludeIdx?: number
 ): { text: string; idx: number } | null {
   if (pool.length === 0) return null
   const usedSet = new Set(used)
-  const available = pool.map((text, idx) => ({ text, idx })).filter((x) => !usedSet.has(x.idx))
+  let available = pool
+    .map((text, idx) => ({ text, idx }))
+    .filter((x) => !usedSet.has(x.idx) && x.idx !== excludeIdx)
+  if (available.length === 0) {
+    available = pool
+      .map((text, idx) => ({ text, idx }))
+      .filter((x) => !usedSet.has(x.idx))
+  }
   if (available.length === 0) return null
   return available[Math.floor(Math.random() * available.length)]
 }
