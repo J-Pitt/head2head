@@ -157,7 +157,7 @@ body {
 .tod-home {
   position: relative;
   overflow: hidden;
-  max-width: 640px;
+  max-width: 520px;
 }
 
 .tod-home-bg {
@@ -166,81 +166,8 @@ body {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255, 45, 120, 0.35) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 50% at 100% 50%, rgba(168, 85, 247, 0.22) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 40% at 0% 80%, rgba(255, 107, 53, 0.2) 0%, transparent 45%),
-    linear-gradient(165deg, #0a0612 0%, #140818 35%, #0c0e14 70%, #080510 100%);
-}
-
-.tod-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.55;
-  animation: tod-orb-drift 12s ease-in-out infinite;
-}
-
-.tod-orb-1 {
-  width: 280px;
-  height: 280px;
-  background: #ff2d78;
-  top: -80px;
-  left: -60px;
-}
-
-.tod-orb-2 {
-  width: 220px;
-  height: 220px;
-  background: #a855f7;
-  top: 40%;
-  right: -80px;
-  animation-delay: -4s;
-}
-
-.tod-orb-3 {
-  width: 200px;
-  height: 200px;
-  background: #ff6b35;
-  bottom: 10%;
-  left: 20%;
-  animation-delay: -8s;
-}
-
-@keyframes tod-orb-drift {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(20px, -15px) scale(1.08);
-  }
-  66% {
-    transform: translate(-15px, 20px) scale(0.95);
-  }
-}
-
-.tod-float {
-  position: absolute;
-  font-size: clamp(1.25rem, 4vw, 1.75rem);
-  opacity: 0.35;
-  animation: tod-float 8s ease-in-out infinite;
-  filter: drop-shadow(0 0 12px rgba(255, 95, 158, 0.5));
-}
-
-.tod-float-1 { top: 12%; left: 8%; animation-delay: 0s; }
-.tod-float-2 { top: 22%; right: 10%; animation-delay: -1.5s; font-size: 1.5em; opacity: 0.45; }
-.tod-float-3 { bottom: 35%; left: 6%; animation-delay: -3s; }
-.tod-float-4 { bottom: 18%; right: 12%; animation-delay: -5s; }
-.tod-float-5 { top: 55%; left: 50%; animation-delay: -2s; opacity: 0.25; }
-
-@keyframes tod-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-5deg);
-  }
-  50% {
-    transform: translateY(-18px) rotate(8deg);
-  }
+    radial-gradient(ellipse 70% 45% at 50% -5%, rgba(244, 114, 182, 0.12) 0%, transparent 55%),
+    linear-gradient(180deg, #0c0c0f 0%, #111116 45%, #0a0a0d 100%);
 }
 
 .tod-home-content {
@@ -250,106 +177,66 @@ body {
 
 .tod-home-header {
   text-align: center;
-  margin-bottom: 1.75rem;
-  padding-top: 0.5rem;
+  margin-bottom: 2rem;
+  padding-top: 1rem;
 }
 
 .tod-badge {
   display: inline-block;
-  margin-bottom: 1rem;
-  padding: 0.35rem 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.3rem 0.85rem;
   border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #ffe4f0;
-  background: linear-gradient(135deg, rgba(255, 45, 120, 0.45), rgba(168, 85, 247, 0.45));
-  border: 1px solid rgba(255, 95, 158, 0.55);
-  box-shadow: 0 0 24px rgba(255, 45, 120, 0.35);
-  animation: tod-badge-pulse 3s ease-in-out infinite;
-}
-
-@keyframes tod-badge-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 24px rgba(255, 45, 120, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 36px rgba(255, 45, 120, 0.55), 0 0 60px rgba(168, 85, 247, 0.25);
-  }
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .tod-logo {
-  font-size: clamp(3rem, 13vw, 5rem);
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  line-height: 0.95;
-  margin: 0 0 0.75rem;
-  background: linear-gradient(
-    110deg,
-    #ff2d78 0%,
-    #ff6b9d 18%,
-    #ff8a3d 38%,
-    #ffd23d 55%,
-    #ff5f9e 72%,
-    #e879f9 88%,
-    #ff2d78 100%
-  );
-  background-size: 250% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: tod-shimmer 5s linear infinite;
-  filter: drop-shadow(0 4px 28px rgba(255, 45, 120, 0.45));
+  font-size: clamp(2.5rem, 11vw, 3.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin: 0 0 0.85rem;
+  color: #f8fafc;
 }
 
 .tod-logo-or {
   display: inline-block;
-  font-size: 0.42em;
-  font-weight: 800;
+  font-size: 0.5em;
+  font-weight: 700;
   font-style: italic;
   vertical-align: middle;
-  background: linear-gradient(180deg, #e879f9, #c084fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0 0.12em;
-  transform: rotate(-8deg);
-  filter: drop-shadow(0 0 8px rgba(232, 121, 249, 0.6));
+  color: #f472b6;
+  margin: 0 0.1em;
+  transform: rotate(-6deg);
 }
 
 .tod-tagline {
   margin: 0 auto;
-  max-width: 22rem;
-  font-size: clamp(0.95rem, 3.5vw, 1.1rem);
-  line-height: 1.5;
-  color: #f0b4d0;
-  text-shadow: 0 0 20px rgba(255, 95, 158, 0.25);
-}
-
-@keyframes tod-shimmer {
-  to {
-    background-position: 250% center;
-  }
+  max-width: 20rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 400;
 }
 
 .tod-glass {
-  background: rgba(20, 8, 24, 0.72);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 95, 158, 0.28);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(168, 85, 247, 0.12) inset,
-    0 0 40px rgba(255, 45, 120, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
 
 .tod-home-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  margin-bottom: 1.25rem;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .home-play-pick,
@@ -357,13 +244,13 @@ body {
 .home-online-form {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.75rem;
 }
 
 .home-play-pick {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 @media (max-width: 480px) {
@@ -375,54 +262,53 @@ body {
 .home-online-label {
   margin: 0;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: #e879f9;
+  color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
 }
 
 .home-pwd-input,
 .home-online-form .code-input {
   text-align: center;
-  letter-spacing: 0.25em;
-  font-weight: 700;
+  letter-spacing: 0.2em;
+  font-weight: 600;
   text-transform: uppercase;
-  background: rgba(10, 6, 18, 0.8);
-  border: 1px solid rgba(255, 95, 158, 0.45);
-  box-shadow: 0 0 20px rgba(255, 45, 120, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .home-pwd-input:focus,
 .home-online-form .code-input:focus {
-  border-color: #ff5f9e;
-  box-shadow: 0 0 24px rgba(255, 45, 120, 0.35);
+  border-color: rgba(244, 114, 182, 0.5);
+  box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.12);
   outline: none;
 }
 
 .home-back {
   align-self: center;
-  font-size: 0.9rem;
-  color: #c084fc;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .home-back:hover {
-  color: #f0abfc;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .home-cta {
-  font-size: 1.1rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  padding: 1.05rem 1.25rem;
+  letter-spacing: 0.1em;
+  padding: 1rem 1.25rem;
   text-align: center;
   border: none;
-  border-radius: 0.85rem;
-  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  border-radius: 0.65rem;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
 }
 
 .home-cta:hover:not(:disabled) {
-  transform: translateY(-2px);
-  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .home-cta:active:not(:disabled) {
@@ -431,50 +317,56 @@ body {
 
 .home-cta-local {
   color: #fff;
-  background: linear-gradient(135deg, #ff2d78 0%, #ff6b9d 50%, #ff8a3d 100%);
-  box-shadow: 0 6px 28px rgba(255, 45, 120, 0.45);
+  background: #e11d48;
 }
 
 .home-cta-local:hover {
-  box-shadow: 0 10px 36px rgba(255, 45, 120, 0.55);
+  background: #f43f5e;
 }
 
 .home-cta-online {
-  color: #fff;
-  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);
-  box-shadow: 0 6px 28px rgba(124, 58, 237, 0.4);
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .home-cta-online:hover {
-  box-shadow: 0 10px 36px rgba(168, 85, 247, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .home-cta-join {
   color: #fff;
-  background: linear-gradient(135deg, #db2777 0%, #ec4899 100%);
-  box-shadow: 0 6px 24px rgba(219, 39, 119, 0.4);
+  background: #be185d;
+}
+
+.home-cta-join:hover {
+  background: #db2777;
 }
 
 .home-cta-create {
   color: #fff;
-  background: linear-gradient(135deg, #9333ea 0%, #d946ef 100%);
-  box-shadow: 0 6px 24px rgba(147, 51, 234, 0.4);
+  background: #7c3aed;
+}
+
+.home-cta-create:hover {
+  background: #8b5cf6;
 }
 
 .home-cta:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none;
 }
 
 .home-divider {
   text-align: center;
-  color: #c084fc;
-  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin: 0 0 1rem;
+  letter-spacing: 0.14em;
+  margin: 0 0 0.85rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -485,85 +377,96 @@ body {
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 95, 158, 0.5), transparent);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .home-quick-card {
-  padding: 1.25rem;
+  padding: 1rem;
 }
 
 .mode-grid.three {
   grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
 }
 
 .mode-grid.three .mode-card {
-  align-items: center;
-  text-align: center;
-  padding: 1.15rem 0.65rem;
+  align-items: flex-start;
+  text-align: left;
+  padding: 1rem 0.85rem;
+  gap: 0.25rem;
 }
 
 .mode-card-hot {
-  border-radius: 0.85rem;
-  transition: transform 0.15s, box-shadow 0.15s;
+  border-radius: 0.65rem;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .mode-card-hot:hover:not(:disabled) {
-  transform: translateY(-3px) scale(1.02);
+  transform: none;
 }
 
 .mode-trivia {
-  background: linear-gradient(160deg, rgba(59, 130, 246, 0.2), rgba(20, 8, 24, 0.9));
-  border-color: rgba(96, 165, 250, 0.45);
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  border-top: 2px solid #60a5fa;
 }
 
 .mode-trivia:hover {
-  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.3);
-  border-color: rgba(96, 165, 250, 0.7);
+  background: rgba(96, 165, 250, 0.06);
+  border-color: rgba(96, 165, 250, 0.25);
+  border-top-color: #60a5fa;
 }
 
 .mode-trivia strong {
-  color: #93c5fd;
+  color: #e2e8f0;
 }
 
 .mode-minigames {
-  background: linear-gradient(160deg, rgba(34, 197, 94, 0.18), rgba(20, 8, 24, 0.9));
-  border-color: rgba(74, 222, 128, 0.4);
-  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  border-top: 2px solid #4ade80;
 }
 
 .mode-minigames:hover {
-  box-shadow: 0 8px 28px rgba(34, 197, 94, 0.28);
-  border-color: rgba(74, 222, 128, 0.65);
+  background: rgba(74, 222, 128, 0.06);
+  border-color: rgba(74, 222, 128, 0.25);
+  border-top-color: #4ade80;
 }
 
 .mode-minigames strong {
-  color: #86efac;
+  color: #e2e8f0;
 }
 
 .mode-tod {
-  background: linear-gradient(160deg, rgba(255, 45, 120, 0.28), rgba(20, 8, 24, 0.9));
-  border-color: rgba(255, 95, 158, 0.55);
-  box-shadow: 0 4px 24px rgba(255, 45, 120, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  border-top: 2px solid #f472b6;
 }
 
 .mode-tod:hover {
-  box-shadow: 0 8px 32px rgba(255, 45, 120, 0.4);
-  border-color: rgba(255, 95, 158, 0.85);
+  background: rgba(244, 114, 182, 0.06);
+  border-color: rgba(244, 114, 182, 0.25);
+  border-top-color: #f472b6;
 }
 
 .mode-tod strong {
-  color: #fda4cf;
+  color: #e2e8f0;
 }
 
 .mode-card-hot .mode-icon {
-  font-size: 2rem;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
+  font-size: 1.35rem;
+  filter: none;
+  margin-bottom: 0.15rem;
+}
+
+.mode-grid.three .mode-card span:last-child {
+  font-size: 0.75rem;
+  line-height: 1.35;
 }
 
 .tod-home .rejoin-card {
-  background: rgba(20, 8, 24, 0.85);
-  border-color: rgba(255, 95, 158, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
   margin-bottom: 1rem;
 }
 

@@ -544,25 +544,16 @@ export default function GameApp() {
   if (screen === 'home') {
     return (
       <div className="app-shell tod-home">
-        <div className="tod-home-bg" aria-hidden="true">
-          <span className="tod-orb tod-orb-1" />
-          <span className="tod-orb tod-orb-2" />
-          <span className="tod-orb tod-orb-3" />
-          <span className="tod-float tod-float-1">💋</span>
-          <span className="tod-float tod-float-2">🔥</span>
-          <span className="tod-float tod-float-3">😈</span>
-          <span className="tod-float tod-float-4">💕</span>
-          <span className="tod-float tod-float-5">🌶️</span>
-        </div>
+        <div className="tod-home-bg" aria-hidden="true" />
 
         <div className="tod-home-content">
           <header className="app-header tod-home-header">
-            <span className="tod-badge">Spicy · 18+ only</span>
+            <span className="tod-badge">18+ party game</span>
             <h1 className="tod-logo">
               Truth <span className="tod-logo-or">or</span> Dare
             </h1>
             <p className="tod-tagline">
-              Truths get personal. Dares get wild. Nobody leaves innocent. 🔥
+              Spill secrets, take dares, survive the board.
             </p>
           </header>
 
@@ -603,14 +594,14 @@ export default function GameApp() {
           {!onlineOpen ? (
             <div className="home-play-pick">
               <Link href="/truth-or-dare?local=1" className="btn full home-cta home-cta-local">
-                📱 Play locally
+                PLAY LOCALLY
               </Link>
               <button
                 type="button"
                 className="btn full home-cta home-cta-online"
                 onClick={() => setOnlineOpen(true)}
               >
-                🌐 Play online
+                PLAY ONLINE
               </button>
             </div>
           ) : !onlineAction ? (
@@ -621,14 +612,14 @@ export default function GameApp() {
                 className="btn full home-cta home-cta-join"
                 onClick={() => setOnlineAction('join')}
               >
-                🔑 Join game
+                Join game
               </button>
               <button
                 type="button"
                 className="btn full home-cta home-cta-create"
                 onClick={() => setOnlineAction('create')}
               >
-                ✨ Start game
+                Start game
               </button>
               <button
                 type="button"
@@ -684,7 +675,7 @@ export default function GameApp() {
           )}
         </section>
 
-        <p className="home-divider">or jump straight into one</p>
+        <p className="home-divider">More games</p>
 
         <section className="card hero-card tod-glass home-quick-card">
           <div className="mode-grid three">
