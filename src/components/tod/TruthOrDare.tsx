@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import AvatarPicker from '@/components/AvatarPicker'
-import Avatar from '@/components/Avatar'
+import BoardPiecePicker from '@/components/tod/BoardPiecePicker'
+import PlayerMark from '@/components/tod/PlayerMark'
 import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
@@ -79,12 +79,10 @@ function TodJoin({ room }: { room: Room }) {
         <p className="intro">
           {mode === 'local'
             ? 'Pass the phone around the room. Everyone plays the board game on this device.'
-            : mode === 'classic'
-              ? 'Classic Truth or Dare — take turns, spill secrets, take dares. 18+.'
-              : mode === 'join'
+            : mode === 'join'
               ? 'Enter your name, then join the game with the password from your host.'
               : mode === 'create'
-                ? 'Pick your name and avatar, then create the room with your password.'
+                ? 'Pick your name and avatar. You\'ll wait in the lobby for friends to join before starting the board game.'
                 : 'A spicy party game. Create a room or join with a password. 18+.'}
         </p>
         <label className="field">
@@ -97,17 +95,11 @@ function TodJoin({ room }: { room: Room }) {
             autoFocus
           />
         </label>
-        <AvatarPicker selected={room.avatar} onSelect={room.setAvatar} />
+        <BoardPiecePicker selected={room.avatar} onSelect={room.setAvatar} />
 
         {mode === 'local' && (
           <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
-            Start board game
-          </button>
-        )}
-
-        {mode === 'classic' && (
-          <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
-            Start game
+            Enter lobby
           </button>
         )}
 
@@ -142,7 +134,7 @@ function TodJoin({ room }: { room: Room }) {
               />
             </label>
             <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
-              Create game
+              Enter lobby
             </button>
           </div>
         )}
@@ -174,20 +166,21 @@ function TodJoin({ room }: { room: Room }) {
 }
 
 function Lobby({ room }: { room: Room }) {
-  const isClassic = room.entryMode === 'classic'
+  const isOnlineBoard = room.entryMode !== 'local'
 
   return (
     <>
       <section className="card party-roster">
         <div className="party-roster-head">
           <span>
-            Room code: <strong className="room-code-display">{room.gameCode}</strong>
+            {isOnlineBoard ? 'Game password' : 'Room code'}:{' '}
+            <strong className="room-code-display">{room.gameCode}</strong>
           </span>
         </div>
         <ul className="party-players">
           {room.players.map((p) => (
             <li key={p.id} className={p.status === 'break' ? 'is-away' : ''}>
-              <Avatar seed={p.avatar} size={34} />
+              <PlayerMark avatar={p.avatar} size={34} board />
               <span>
                 {p.name}
                 {p.id === room.playerId ? ' (you)' : ''}
@@ -209,22 +202,20 @@ function Lobby({ room }: { room: Room }) {
       </section>
       <section className="card tod-stage">
         {room.isHost ? (
-          isClassic ? (
-            <button type="button" className="btn btn-primary full" onClick={room.startGame}>
-              💬 Start Truth or Dare
-            </button>
-          ) : (
-            <button type="button" className="btn btn-primary full" onClick={room.startBoardGame}>
-              🎲 Start board game
-            </button>
-          )
+          <button type="button" className="btn btn-primary full" onClick={room.startBoardGame}>
+            🎲 Start board game
+          </button>
         ) : (
-          <p className="lobby-sub">
-            Waiting for the host to start{isClassic ? '' : ' the board game'}…
+          <p className="lobby-sub">Waiting for the host to start the board game…</p>
+        )}
+        {isOnlineBoard && (
+          <p className="party-hint">
+            Share the password <strong>{room.gameCode}</strong> so friends can join.
+            {room.isHost && ' When everyone\'s in, start the board game.'}
           </p>
         )}
-        {!isClassic && (
-          <p className="party-hint">Share the code so everyone can join before you start.</p>
+        {!isOnlineBoard && (
+          <p className="party-hint">Add players, then start the board game when you&apos;re ready.</p>
         )}
       </section>
     </>
@@ -297,11 +288,11 @@ function TurnPhase({ room }: { room: Room }) {
       </p>
 
       <div className="tod-onspot">
-        {onSpot && <Avatar seed={onSpot.avatar} size={72} />}
+        {onSpot && <PlayerMark avatar={onSpot.avatar} size={72} />}
         <h2>{isMine ? "You're up!" : `${onSpot?.name ?? 'Someone'} is on the spot`}</h2>
         {asker && (
           <p className="tod-asker">
-            asked by <Avatar seed={asker.avatar} size={20} className="inline-avatar" /> {asker.name}
+            asked by <PlayerMark avatar={asker.avatar} size={20} className="inline-avatar" /> {asker.name}
           </p>
         )}
       </div>

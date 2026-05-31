@@ -668,7 +668,7 @@ export default function GameApp() {
                 className={`btn full home-cta ${onlineAction === 'join' ? 'home-cta-join' : 'home-cta-create'}`}
                 disabled={!roomPassword.trim()}
               >
-                {onlineAction === 'join' ? 'Join game' : 'Create game'}
+                {onlineAction === 'join' ? 'Join game' : 'Continue'}
               </button>
               <button
                 type="button"

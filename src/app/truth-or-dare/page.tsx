@@ -1,4 +1,4 @@
-import TruthOrDare from '@/components/tod/TruthOrDare'
+import TruthOrDareRouter from './TruthOrDareRouter'
 
 export const metadata = {
   title: 'Truth or Dare — Head2Head',
@@ -6,5 +6,5 @@ export const metadata = {
 }
 
 export default function TruthOrDarePage() {
-  return <TruthOrDare />
+  return <TruthOrDareRouter />
 }

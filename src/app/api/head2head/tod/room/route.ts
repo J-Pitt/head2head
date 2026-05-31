@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 
     // Create room.
     const hostName = body.hostName && String(body.hostName).trim() ? String(body.hostName).trim() : 'Host'
-    const avatar = body.avatar ? String(body.avatar) : 'Maverick'
+    const avatar = body.avatar ? String(body.avatar) : 'duck'
     const playerId = body.playerId ? String(body.playerId) : randomUUID()
     const requestedCode = body.gameCode ? String(body.gameCode).trim().toUpperCase() : ''
 

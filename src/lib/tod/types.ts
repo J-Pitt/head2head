@@ -1,27 +1,35 @@
 import type { BoardState } from './board'
+import { isClassicTodState, type ClassicTodState } from './classic/types'
+
+export type { ClassicTodState } from './classic/types'
+export { isClassicTodState, initialClassicTodState } from './classic/types'
 
 export type TodPhase = 'lobby' | 'turn' | 'picture' | 'board'
 export type TodMode = 'classic' | 'board'
 
-export type TodState = {
+export type BoardTodState = {
   phase: TodPhase
   mode: TodMode
   round: number
-  // Turn tracking for the classic truth-or-dare phase.
   turnOrder: string[]
   turnIndex: number
   onSpotId: string | null
   askerId: string | null
   choice: 'truth' | 'dare' | null
   prompt: string | null
-  // Board game state (null in classic mode).
   board: BoardState | null
 }
 
-export function initialTodState(): TodState {
+export type TodState = BoardTodState | ClassicTodState
+
+export function isBoardTodState(state: unknown): state is BoardTodState {
+  return !!state && typeof state === 'object' && !isClassicTodState(state)
+}
+
+export function initialTodState(): BoardTodState {
   return {
     phase: 'lobby',
-    mode: 'classic',
+    mode: 'board',
     round: 0,
     turnOrder: [],
     turnIndex: 0,

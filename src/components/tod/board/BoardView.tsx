@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import Avatar from '@/components/Avatar'
+import BoardPiece from '@/components/tod/BoardPiece'
+import PlayerMark from '@/components/tod/PlayerMark'
 import type { useTodRoom } from '@/hooks/useTodRoom'
 import { TILE_META, SPECIAL_CHALLENGES } from '@/lib/tod/board'
 import type { BoardTile } from '@/lib/tod/board'
@@ -91,7 +92,7 @@ function Tile({
       {tokens.length > 0 && (
         <span className="tile-tokens">
           {tokens.map((t) => (
-            <Avatar key={t.id} seed={t.avatar} size={20} className="tile-token" />
+            <BoardPiece key={t.id} pieceId={t.avatar} size={22} className="tile-token" />
           ))}
         </span>
       )}
@@ -110,7 +111,7 @@ function Resolution({ room }: { room: Room }) {
       <section className="card tod-stage">
         <p className="tod-kicker">🏁 Race over</p>
         <div className="tod-onspot">
-          {winner && <Avatar seed={winner.avatar} size={72} />}
+          {winner && <BoardPiece pieceId={winner.avatar} size={72} />}
           <h2>{b.winnerName ?? 'Someone'} reached the finish! 🎉</h2>
         </div>
         {room.isHost ? (
@@ -130,7 +131,7 @@ function Resolution({ room }: { room: Room }) {
       <section className="card tod-stage">
         <p className="tod-kicker">Roll the dice 🎲</p>
         <div className="tod-onspot">
-          {roller && <Avatar seed={roller.avatar} size={64} />}
+          {roller && <BoardPiece pieceId={roller.avatar} size={64} />}
           <h2>{myTurn ? "Your roll!" : `${roller?.name ?? 'Someone'}'s turn`}</h2>
         </div>
         {myTurn ? (
@@ -240,7 +241,7 @@ function BoardPrompt({ room }: { room: Room }) {
         {forfeit ? 'Mini game forfeit' : TILE_META[b.tileType ?? 'truth'].label + ' tile'}
       </p>
       <div className="tod-onspot">
-        {onSpot && <Avatar seed={onSpot.avatar} size={72} />}
+        {onSpot && <BoardPiece pieceId={onSpot.avatar} size={72} />}
         <h2>
           {forfeit
             ? `${onSpot?.name ?? 'Loser'} came last 💀`
@@ -250,7 +251,8 @@ function BoardPrompt({ room }: { room: Room }) {
         </h2>
         {asker && (
           <p className="tod-asker">
-            asked by <Avatar seed={asker.avatar} size={20} className="inline-avatar" /> {asker.name}
+            asked by <BoardPiece pieceId={asker.avatar} size={20} className="inline-avatar tile-token" />{' '}
+            {asker.name}
           </p>
         )}
       </div>

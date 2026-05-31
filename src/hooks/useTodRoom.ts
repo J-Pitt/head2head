@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Player } from '@/lib/types'
-import type { TodState } from '@/lib/tod/types'
-import { initialTodState, PICTURE_EVERY } from '@/lib/tod/types'
+import type { BoardTodState } from '@/lib/tod/types'
+import { initialTodState, isBoardTodState, isClassicTodState, PICTURE_EVERY } from '@/lib/tod/types'
 import type { BoardState, TileType } from '@/lib/tod/board'
 import { createBoardState, rollDie, SPECIAL_CHALLENGES } from '@/lib/tod/board'
 import type { Progress, Session } from '@/lib/minigames/types'
@@ -11,6 +11,7 @@ import { getGameConfig, computeRaceLoser, isRoundComplete } from '@/lib/minigame
 import { randomTodMinigame } from '@/lib/minigames/catalog'
 import { TRIVIA_QUESTIONS, getQuestionById } from '@/lib/trivia'
 import { DEFAULT_AVATAR } from '@/lib/avatars'
+import { DEFAULT_BOARD_PIECE, isBoardPiece } from '@/lib/tod/boardPieces'
 import {
   createTodRoom,
   getTodRoomClient,
@@ -69,18 +70,18 @@ export function useTodRoom() {
   const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR)
   const [gameCodeInput, setGameCodeInput] = useState('')
   const [createPassword, setCreatePassword] = useState('')
-  const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | 'classic' | null>(null)
+  const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | null>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [hostId, setHostId] = useState<string | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
-  const [state, setState] = useState<TodState | null>(null)
+  const [state, setState] = useState<BoardTodState | null>(null)
   const [typing, setTyping] = useState<TypingSignal | null>(null)
   const [progress, setProgress] = useState<Record<string, Progress>>({})
   const [now, setNow] = useState(() => Date.now())
   const [error, setError] = useState('')
 
-  const stateRef = useRef<TodState | null>(null)
+  const stateRef = useRef<BoardTodState | null>(null)
   stateRef.current = state
   const playersRef = useRef<Player[]>([])
   playersRef.current = players
@@ -126,11 +127,13 @@ export function useTodRoom() {
         if (cancelled) return
         setPlayers(data.players || [])
         setHostId(data.hostId ?? null)
-        setState(data.state ?? null)
+        if (isBoardTodState(data.state)) {
+          setState(data.state)
+        }
         // Show someone else's typing signal (ignore our own echo).
         setTyping(data.typing && data.typing.id !== playerId ? data.typing : null)
         // Merge per-player board minigame progress for the current round.
-        const mgRound = data.state?.board?.mgRound ?? 0
+        const mgRound = isBoardTodState(data.state) ? (data.state.board?.mgRound ?? 0) : 0
         const merged: Record<string, Progress> = {}
         for (const [key, value] of Object.entries(data.progress || {})) {
           if (!value || typeof value !== 'object') continue
@@ -157,7 +160,7 @@ export function useTodRoom() {
     }
   }, [roomId, playerId])
 
-  const pushState = useCallback(async (next: TodState) => {
+  const pushState = useCallback(async (next: BoardTodState) => {
     const rid = roomIdRef.current
     if (!rid) return
     setState(next)
@@ -169,7 +172,7 @@ export function useTodRoom() {
   }, [])
 
   const patchState = useCallback(
-    (partial: Partial<TodState>) => {
+    (partial: Partial<BoardTodState>) => {
       const base = stateRef.current
       if (!base) return
       pushState({ ...base, ...partial })
@@ -675,6 +678,11 @@ export function useTodRoom() {
     setError('')
     try {
       localStorage.setItem(NAME_KEY, playerName.trim())
+      setRoomId(null)
+      setGameCode(null)
+      setHostId(null)
+      setPlayers([])
+      setState(null)
       const data = await createTodRoom(playerName.trim(), avatar, playerId, pwd || undefined)
       setRoomId(data.roomId)
       setGameCode(data.gameCode)
@@ -704,7 +712,11 @@ export function useTodRoom() {
       setGameCode(c)
       setHostId(data.hostId)
       setPlayers(data.players)
-      setState(data.state ?? null)
+      if (isBoardTodState(data.state)) {
+        setState(data.state)
+      } else if (!data.state || isClassicTodState(data.state)) {
+        setState(initialTodState())
+      }
       localStorage.setItem(
         TOD_KEY,
         JSON.stringify({ roomId: data.roomId, gameCode: c, entryMode })
@@ -714,12 +726,53 @@ export function useTodRoom() {
     }
   }
 
-  // On load, try to slip back into a saved room (e.g. after a refresh). If we're
-  // still listed as a player, restore the session; otherwise just prefill the code.
+  // On load: honor home-screen intent (?create=, ?code=, etc.) or restore a saved session.
   useEffect(() => {
     let cancelled = false
-    async function rejoin() {
-      let saved: { roomId?: string; gameCode?: string; entryMode?: typeof entryMode } | null = null
+
+    function readUrlIntent():
+      | { mode: 'local' }
+      | { mode: 'join'; code: string }
+      | { mode: 'create'; code: string }
+      | null {
+      try {
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('classic') === '1') return null
+        if (params.get('local') === '1') return { mode: 'local' }
+        const joinCode = params.get('code')
+        if (joinCode) return { mode: 'join', code: joinCode.trim().toUpperCase() }
+        const createCode = params.get('create')
+        if (createCode) return { mode: 'create', code: createCode.trim().toUpperCase() }
+      } catch {
+        /* ignore */
+      }
+      return null
+    }
+
+    async function init() {
+      const urlIntent = readUrlIntent()
+
+      if (urlIntent?.mode === 'create') {
+        localStorage.removeItem(TOD_KEY)
+        setEntryMode('create')
+        setCreatePassword(urlIntent.code)
+        setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
+        return
+      }
+
+      if (urlIntent?.mode === 'join') {
+        setEntryMode('join')
+        setGameCodeInput(urlIntent.code)
+        setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
+        return
+      }
+
+      if (urlIntent?.mode === 'local') {
+        setEntryMode('local')
+        setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
+      }
+
+      let saved: { roomId?: string; gameCode?: string; entryMode?: string } | null = null
       try {
         const raw = localStorage.getItem(TOD_KEY)
         saved = raw ? JSON.parse(raw) : null
@@ -727,8 +780,11 @@ export function useTodRoom() {
         saved = null
       }
       if (!saved?.gameCode) return
+      if (saved.entryMode === 'classic') return
       setGameCodeInput((prev) => prev || saved!.gameCode!)
-      if (saved.entryMode) setEntryMode(saved.entryMode)
+      if (saved.entryMode === 'local' || saved.entryMode === 'join' || saved.entryMode === 'create') {
+        setEntryMode(saved.entryMode)
+      }
       if (!saved.roomId) return
       try {
         const data = await getTodRoomClient(saved.roomId)
@@ -739,46 +795,20 @@ export function useTodRoom() {
         setGameCode(data.gameCode)
         setHostId(data.hostId ?? null)
         setPlayers(data.players || [])
-        setState(data.state ?? null)
-        // Coming back from a refresh marks us active again.
+        if (isBoardTodState(data.state)) {
+          setState(data.state)
+        }
         setTodPresence(data.roomId, playerId, 'active').catch(() => {})
       } catch {
         /* stay on the join screen */
       }
     }
-    rejoin()
+
+    init()
     return () => {
       cancelled = true
     }
   }, [playerId])
-
-  // Prefill join/create/classic mode from home-screen links.
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      if (params.get('classic') === '1') {
-        setEntryMode('classic')
-        return
-      }
-      if (params.get('local') === '1') {
-        setEntryMode('local')
-        return
-      }
-      const joinCode = params.get('code')
-      if (joinCode) {
-        setEntryMode('join')
-        setGameCodeInput(joinCode.trim().toUpperCase())
-        return
-      }
-      const createCode = params.get('create')
-      if (createCode) {
-        setEntryMode('create')
-        setCreatePassword(createCode.trim().toUpperCase())
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [])
 
   return {
     playerId,

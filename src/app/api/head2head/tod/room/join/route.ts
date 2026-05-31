@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const players = Array.isArray(room.players) ? [...room.players] : []
     const id = playerId ? String(playerId) : randomUUID()
     const name = String(playerName).trim() || 'Player'
-    const av = avatar ? String(avatar) : 'Maverick'
+    const av = avatar ? String(avatar) : 'duck'
 
     const existingIdx = players.findIndex((p: { id: string }) => p.id === id)
     if (existingIdx >= 0) {
