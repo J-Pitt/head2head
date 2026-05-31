@@ -8,6 +8,7 @@ import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
 import { randomTodPrompt } from '@/lib/tod/prompts'
+import BoardView from '@/components/tod/board/BoardView'
 
 export default function TruthOrDare() {
   const room = useTodRoom()
@@ -48,6 +49,8 @@ export default function TruthOrDare() {
       {state.phase === 'turn' && <TurnPhase room={room} />}
 
       {state.phase === 'picture' && <PicturePhase room={room} />}
+
+      {state.phase === 'board' && <BoardView room={room} />}
 
       <ChatPanel
         messages={chat.messages}
@@ -142,9 +145,14 @@ function Lobby({ room }: { room: Room }) {
       </section>
       <section className="card tod-stage">
         {room.isHost ? (
-          <button type="button" className="btn btn-primary full" onClick={room.startGame}>
-            Start round 1 →
-          </button>
+          <div className="tod-mode-pick">
+            <button type="button" className="btn btn-primary full" onClick={room.startBoardGame}>
+              🎲 Play the Board game
+            </button>
+            <button type="button" className="btn full" onClick={room.startGame}>
+              💬 Classic Truth or Dare
+            </button>
+          </div>
         ) : (
           <p className="lobby-sub">Waiting for the host to start…</p>
         )}

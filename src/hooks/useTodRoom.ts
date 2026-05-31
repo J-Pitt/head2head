@@ -4,6 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Player } from '@/lib/types'
 import type { TodState } from '@/lib/tod/types'
 import { initialTodState, PICTURE_EVERY } from '@/lib/tod/types'
+import type { BoardState, TileType } from '@/lib/tod/board'
+import { createBoardState, rollDie } from '@/lib/tod/board'
+import type { Progress, Session } from '@/lib/minigames/types'
+import { getGameConfig, computeRaceLoser, isRoundComplete } from '@/lib/minigames/registry'
+import { randomTodMinigame } from '@/lib/minigames/catalog'
+import { TRIVIA_QUESTIONS, getQuestionById } from '@/lib/trivia'
 import { DEFAULT_AVATAR } from '@/lib/avatars'
 import {
   createTodRoom,
@@ -14,10 +20,12 @@ import {
   setTodPresence,
   kickTodPlayer,
   setTodTyping,
+  reportTodProgress,
   type TypingSignal,
 } from '@/lib/tod/roomApi'
 
 const POLL_MS = 600
+const REPORT_THROTTLE_MS = 220
 const PLAYER_KEY = 'head2head_player_id'
 const NAME_KEY = 'head2head_player_name'
 const TOD_KEY = 'head2head_tod_room'
@@ -66,6 +74,8 @@ export function useTodRoom() {
   const [players, setPlayers] = useState<Player[]>([])
   const [state, setState] = useState<TodState | null>(null)
   const [typing, setTyping] = useState<TypingSignal | null>(null)
+  const [progress, setProgress] = useState<Record<string, Progress>>({})
+  const [now, setNow] = useState(() => Date.now())
   const [error, setError] = useState('')
 
   const stateRef = useRef<TodState | null>(null)
@@ -74,6 +84,11 @@ export function useTodRoom() {
   playersRef.current = players
   const roomIdRef = useRef<string | null>(null)
   roomIdRef.current = roomId
+  const progressRef = useRef<Record<string, Progress>>({})
+  progressRef.current = progress
+  const ownProgressRef = useRef<Progress | null>(null)
+  const lastReportRef = useRef(0)
+  const finalizingRef = useRef(false)
 
   const lastTypingSentRef = useRef(0)
   const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -95,6 +110,12 @@ export function useTodRoom() {
 
   useEffect(() => {
     if (!roomId) return
+    const id = setInterval(() => setNow(Date.now()), 100)
+    return () => clearInterval(id)
+  }, [roomId])
+
+  useEffect(() => {
+    if (!roomId) return
     const rid = roomId
     let cancelled = false
     async function poll() {
@@ -106,6 +127,22 @@ export function useTodRoom() {
         setState(data.state ?? null)
         // Show someone else's typing signal (ignore our own echo).
         setTyping(data.typing && data.typing.id !== playerId ? data.typing : null)
+        // Merge per-player board minigame progress for the current round.
+        const mgRound = data.state?.board?.mgRound ?? 0
+        const merged: Record<string, Progress> = {}
+        for (const [key, value] of Object.entries(data.progress || {})) {
+          if (!value || typeof value !== 'object') continue
+          const p = value as Progress
+          const sep = key.indexOf(':')
+          const keyRound = sep >= 0 ? Number(key.slice(0, sep)) : NaN
+          if (!Number.isNaN(keyRound) && keyRound !== mgRound) continue
+          if (p.playerId) merged[p.playerId] = p
+        }
+        const own = ownProgressRef.current
+        if (own?.playerId && (!merged[own.playerId] || merged[own.playerId].at < own.at)) {
+          merged[own.playerId] = own
+        }
+        setProgress(merged)
       } catch {
         /* retry next poll */
       }
@@ -226,6 +263,296 @@ export function useTodRoom() {
     () => pushState({ ...initialTodState(), round: stateRef.current?.round ?? 0 }),
     [pushState]
   )
+
+  // ---------------------------------------------------------------------------
+  // Board game
+  // ---------------------------------------------------------------------------
+  const patchBoard = useCallback(
+    (partial: Partial<BoardState>) => {
+      const base = stateRef.current
+      if (!base || !base.board) return
+      pushState({ ...base, board: { ...base.board, ...partial } })
+    },
+    [pushState]
+  )
+
+  const pickAskerExcl = useCallback((excludeId: string | null) => {
+    const cands = playersRef.current
+      .filter((p) => p.status !== 'break' && p.id !== excludeId)
+      .map((p) => p.id)
+    return cands.length ? cands[Math.floor(Math.random() * cands.length)] : null
+  }, [])
+
+  const startBoardGame = useCallback(() => {
+    const base = stateRef.current
+    if (!base) return
+    ownProgressRef.current = null
+    setProgress({})
+    const board = createBoardState(playersRef.current)
+    pushState({ ...base, phase: 'board', mode: 'board', board })
+  }, [pushState])
+
+  // Advance the roll to the next present, non-jailed player.
+  const advanceRoll = useCallback(
+    (b: BoardState, positions: Record<string, number>) => {
+      const jail = { ...b.jail }
+      let turn = b.turn
+      let rollerId: string | null = null
+      for (let steps = 0; steps < b.order.length * 3 + 1; steps++) {
+        turn = (turn + 1) % b.order.length
+        const cand = b.order[turn]
+        const present = !!cand && playersRef.current.some((p) => p.id === cand && p.status !== 'break')
+        if (!present) continue
+        if ((jail[cand] ?? 0) > 0) {
+          jail[cand] = jail[cand] - 1
+          if (jail[cand] <= 0) delete jail[cand]
+          continue
+        }
+        rollerId = cand
+        break
+      }
+      patchBoard({
+        turn,
+        rollerId,
+        dice: null,
+        phase: 'rolling',
+        tileType: null,
+        onSpotId: null,
+        askerId: null,
+        choice: null,
+        prompt: null,
+        questionId: null,
+        answeredBy: null,
+        answerIndex: null,
+        answerCorrect: null,
+        message: null,
+        loserId: null,
+        loserName: null,
+        minigame: null,
+        positions,
+        jail,
+      })
+    },
+    [patchBoard]
+  )
+
+  const rollDice = useCallback(() => {
+    const base = stateRef.current
+    const b = base?.board
+    if (!base || !b || b.phase !== 'rolling' || b.rollerId !== playerId) return
+    const dice = rollDie()
+    const last = b.tiles.length - 1
+    const pos = b.positions[playerId] ?? 0
+    const newPos = pos + dice
+    const name = playersRef.current.find((p) => p.id === playerId)?.name ?? 'Player'
+    const positions = { ...b.positions, [playerId]: Math.min(newPos, last) }
+
+    if (newPos >= last) {
+      patchBoard({ dice, positions, phase: 'finished', winnerId: playerId, winnerName: name })
+      return
+    }
+
+    const type: TileType = b.tiles[newPos].type
+
+    if (type === 'truth' || type === 'dare' || type === 'wild') {
+      patchBoard({
+        dice,
+        positions,
+        phase: 'prompt',
+        tileType: type,
+        onSpotId: playerId,
+        askerId: pickAskerExcl(playerId),
+        choice: type === 'wild' ? null : type,
+        prompt: null,
+      })
+    } else if (type === 'trivia') {
+      const q = TRIVIA_QUESTIONS[Math.floor(Math.random() * TRIVIA_QUESTIONS.length)]
+      patchBoard({
+        dice,
+        positions,
+        phase: 'trivia',
+        tileType: 'trivia',
+        questionId: q.id,
+        answeredBy: playerId,
+        answerIndex: null,
+        answerCorrect: null,
+      })
+    } else if (type === 'minigame') {
+      const gameId = randomTodMinigame()
+      const config = getGameConfig(gameId)
+      const startAt = Date.now() + config.countdownMs
+      const seed = Math.floor(Math.random() * 1_000_000)
+      const extras = config.buildSession?.(playersRef.current, seed) ?? {}
+      const minigame: Session = {
+        gameId,
+        status: 'live',
+        mode: config.mode,
+        round: b.mgRound + 1,
+        startAt,
+        endAt: config.durationMs ? startAt + config.durationMs : null,
+        seed,
+        goAt: config.mode === 'reaction' ? startAt + 1500 + (seed % 3500) : null,
+        connect4: null,
+        winnerId: null,
+        winnerName: null,
+        ...extras,
+      }
+      ownProgressRef.current = null
+      lastReportRef.current = 0
+      finalizingRef.current = false
+      setProgress({})
+      patchBoard({
+        dice,
+        positions,
+        phase: 'minigame',
+        tileType: 'minigame',
+        minigame,
+        mgRound: b.mgRound + 1,
+        loserId: null,
+        loserName: null,
+      })
+    } else if (type === 'jail') {
+      patchBoard({
+        dice,
+        positions,
+        phase: 'event',
+        tileType: 'jail',
+        message: `🚔 ${name} landed on Jail — skip your next turn!`,
+        jail: { ...b.jail, [playerId]: 1 },
+      })
+    } else if (type === 'forward') {
+      const np = Math.min(newPos + 2, last - 1)
+      patchBoard({ dice, positions: { ...positions, [playerId]: np }, phase: 'event', tileType: 'forward', message: `⏩ ${name} jumps ahead 2 tiles!` })
+    } else if (type === 'back') {
+      const np = Math.max(newPos - 2, 0)
+      patchBoard({ dice, positions: { ...positions, [playerId]: np }, phase: 'event', tileType: 'back', message: `⏪ ${name} slides back 2 tiles!` })
+    } else if (type === 'swap') {
+      const others = playersRef.current.filter((p) => p.id !== playerId && p.status !== 'break')
+      const swapPos = { ...positions }
+      let msg = `🔀 ${name} found no one to swap with.`
+      if (others.length) {
+        const t = others[Math.floor(Math.random() * others.length)]
+        const mine = swapPos[playerId] ?? 0
+        swapPos[playerId] = swapPos[t.id] ?? 0
+        swapPos[t.id] = mine
+        msg = `🔀 ${name} swapped places with ${t.name}!`
+      }
+      patchBoard({ dice, positions: swapPos, phase: 'event', tileType: 'swap', message: msg })
+    } else if (type === 'picture') {
+      patchBoard({ dice, positions, phase: 'event', tileType: 'picture', message: `📸 Picture time! Everyone post a pic in the chat below.` })
+    } else {
+      patchBoard({ dice, positions, phase: 'event', tileType: 'group', message: `👯 Group dare! Everyone does a dare together.` })
+    }
+  }, [playerId, patchBoard, pickAskerExcl])
+
+  const boardPickChoice = useCallback(
+    (choice: 'truth' | 'dare') => patchBoard({ choice, prompt: null }),
+    [patchBoard]
+  )
+
+  const boardSubmitPrompt = useCallback(
+    (text: string) => {
+      const t = text.trim()
+      if (!t) return
+      patchBoard({ prompt: t.slice(0, 400) })
+    },
+    [patchBoard]
+  )
+
+  const boardAnswerTrivia = useCallback(
+    (idx: number) => {
+      const b = stateRef.current?.board
+      if (!b || !b.questionId || b.answerIndex != null) return
+      const q = getQuestionById(b.questionId)
+      patchBoard({ answerIndex: idx, answerCorrect: !!q && q.correctIndex === idx })
+    },
+    [patchBoard]
+  )
+
+  const setBoardMinigameSession = useCallback(
+    (partial: Partial<Session>) => {
+      const base = stateRef.current
+      if (!base || !base.board || !base.board.minigame) return
+      pushState({ ...base, board: { ...base.board, minigame: { ...base.board.minigame, ...partial } } })
+    },
+    [pushState]
+  )
+
+  const boardReport = useCallback(
+    (partial: Partial<Omit<Progress, 'playerId' | 'at'>>) => {
+      const rid = roomIdRef.current
+      const b = stateRef.current?.board
+      if (!rid || !b) return
+      const prev = ownProgressRef.current
+      const next: Progress = {
+        playerId,
+        score: partial.score ?? prev?.score ?? 0,
+        alive: partial.alive ?? prev?.alive ?? true,
+        finished: partial.finished ?? prev?.finished ?? false,
+        finishAt: partial.finishAt ?? prev?.finishAt ?? null,
+        at: Date.now(),
+      }
+      ownProgressRef.current = next
+      setProgress((p) => ({ ...p, [playerId]: next }))
+      const changed = !prev || prev.alive !== next.alive || prev.finished !== next.finished
+      if (!changed && Date.now() - lastReportRef.current < REPORT_THROTTLE_MS) return
+      lastReportRef.current = Date.now()
+      reportTodProgress(rid, b.mgRound, next).catch(() => {})
+    },
+    [playerId]
+  )
+
+  const boardContinue = useCallback(() => {
+    const base = stateRef.current
+    const b = base?.board
+    if (!base || !b) return
+    let positions = b.positions
+    // Trivia bonus: a correct answer nudges you one tile forward.
+    if (b.phase === 'trivia' && b.answerCorrect && b.answeredBy) {
+      const last = b.tiles.length - 1
+      const cur = positions[b.answeredBy] ?? 0
+      positions = { ...positions, [b.answeredBy]: Math.min(cur + 1, last - 1) }
+    }
+    advanceRoll(b, positions)
+  }, [advanceRoll])
+
+  const restartBoard = useCallback(() => {
+    const base = stateRef.current
+    if (!base) return
+    pushState({ ...initialTodState(), mode: base.mode, round: base.round })
+  }, [pushState])
+
+  // Host finalizes the board minigame and sends the loser into a dare forfeit.
+  useEffect(() => {
+    if (!isHost) return
+    const base = stateRef.current
+    const b = base?.board
+    if (!base || !b || b.phase !== 'minigame' || !b.minigame || b.minigame.status !== 'live') return
+    if (finalizingRef.current) return
+    const gid = b.minigame.gameId
+    if (!gid) return
+    const config = getGameConfig(gid)
+    const list = Object.values(progressRef.current)
+    if (!isRoundComplete(config, playersRef.current, list, now, b.minigame.endAt)) return
+    finalizingRef.current = true
+    const loser = computeRaceLoser(config, playersRef.current, list)
+    pushState({
+      ...base,
+      board: {
+        ...b,
+        minigame: { ...b.minigame, status: 'over' },
+        phase: 'forfeit',
+        loserId: loser?.id ?? null,
+        loserName: loser?.name ?? null,
+        onSpotId: loser?.id ?? null,
+        askerId: loser ? pickAskerExcl(loser.id) : null,
+        choice: 'dare',
+        prompt: null,
+      },
+    }).finally(() => {
+      finalizingRef.current = false
+    })
+  }, [now, isHost, pushState, pickAskerExcl])
 
   // Toggle your own break status (stepped away but still in the room).
   const toggleBreak = useCallback(async () => {
@@ -403,6 +730,8 @@ export function useTodRoom() {
     players,
     state,
     typing,
+    progress,
+    now,
     error,
     isAvailable,
     signalTyping,
@@ -418,5 +747,15 @@ export function useTodRoom() {
     toggleBreak,
     kickPlayer,
     leaveRoom,
+    // Board game
+    startBoardGame,
+    rollDice,
+    boardPickChoice,
+    boardSubmitPrompt,
+    boardAnswerTrivia,
+    boardContinue,
+    boardReport,
+    setBoardMinigameSession,
+    restartBoard,
   }
 }
