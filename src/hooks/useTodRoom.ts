@@ -69,7 +69,7 @@ export function useTodRoom() {
   const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR)
   const [gameCodeInput, setGameCodeInput] = useState('')
   const [createPassword, setCreatePassword] = useState('')
-  const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | null>(null)
+  const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | 'classic' | null>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [hostId, setHostId] = useState<string | null>(null)
@@ -681,7 +681,10 @@ export function useTodRoom() {
       setHostId(data.hostId)
       setPlayers(data.players)
       setState(initialTodState())
-      localStorage.setItem(TOD_KEY, JSON.stringify({ roomId: data.roomId, gameCode: data.gameCode }))
+      localStorage.setItem(
+        TOD_KEY,
+        JSON.stringify({ roomId: data.roomId, gameCode: data.gameCode, entryMode })
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create room')
     }
@@ -702,7 +705,10 @@ export function useTodRoom() {
       setHostId(data.hostId)
       setPlayers(data.players)
       setState(data.state ?? null)
-      localStorage.setItem(TOD_KEY, JSON.stringify({ roomId: data.roomId, gameCode: c }))
+      localStorage.setItem(
+        TOD_KEY,
+        JSON.stringify({ roomId: data.roomId, gameCode: c, entryMode })
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not join')
     }
@@ -713,7 +719,7 @@ export function useTodRoom() {
   useEffect(() => {
     let cancelled = false
     async function rejoin() {
-      let saved: { roomId?: string; gameCode?: string } | null = null
+      let saved: { roomId?: string; gameCode?: string; entryMode?: typeof entryMode } | null = null
       try {
         const raw = localStorage.getItem(TOD_KEY)
         saved = raw ? JSON.parse(raw) : null
@@ -722,6 +728,7 @@ export function useTodRoom() {
       }
       if (!saved?.gameCode) return
       setGameCodeInput((prev) => prev || saved!.gameCode!)
+      if (saved.entryMode) setEntryMode(saved.entryMode)
       if (!saved.roomId) return
       try {
         const data = await getTodRoomClient(saved.roomId)
@@ -745,10 +752,14 @@ export function useTodRoom() {
     }
   }, [playerId])
 
-  // Prefill join/create mode from home-screen links (?local=1, ?code=, ?create=).
+  // Prefill join/create/classic mode from home-screen links.
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search)
+      if (params.get('classic') === '1') {
+        setEntryMode('classic')
+        return
+      }
       if (params.get('local') === '1') {
         setEntryMode('local')
         return

@@ -543,13 +543,28 @@ export default function GameApp() {
 
   if (screen === 'home') {
     return (
-      <div className="app-shell">
-        <header className="app-header tod-home-header">
-          <h1 className="tod-logo">
-            Truth <span className="tod-logo-or">or</span> Dare
-          </h1>
-          <p className="tagline">Spin the board, spill the truth, take the dare. 🔥 18+</p>
-        </header>
+      <div className="app-shell tod-home">
+        <div className="tod-home-bg" aria-hidden="true">
+          <span className="tod-orb tod-orb-1" />
+          <span className="tod-orb tod-orb-2" />
+          <span className="tod-orb tod-orb-3" />
+          <span className="tod-float tod-float-1">💋</span>
+          <span className="tod-float tod-float-2">🔥</span>
+          <span className="tod-float tod-float-3">😈</span>
+          <span className="tod-float tod-float-4">💕</span>
+          <span className="tod-float tod-float-5">🌶️</span>
+        </div>
+
+        <div className="tod-home-content">
+          <header className="app-header tod-home-header">
+            <span className="tod-badge">Spicy · 18+ only</span>
+            <h1 className="tod-logo">
+              Truth <span className="tod-logo-or">or</span> Dare
+            </h1>
+            <p className="tod-tagline">
+              Truths get personal. Dares get wild. Nobody leaves innocent. 🔥
+            </p>
+          </header>
 
         {(pendingRejoin || onBreak) && (
           <section className="card rejoin-card">
@@ -584,15 +599,15 @@ export default function GameApp() {
           </section>
         )}
 
-        <section className="card tod-home-actions">
+        <section className="card tod-home-actions tod-glass">
           {!onlineOpen ? (
             <div className="home-play-pick">
-              <Link href="/truth-or-dare?local=1" className="btn btn-primary full home-cta">
-                📱 Play locally
+              <Link href="/truth-or-dare?local=1" className="btn full home-cta home-cta-local">
+                🎲 Board game locally
               </Link>
               <button
                 type="button"
-                className="btn full home-cta"
+                className="btn full home-cta home-cta-online"
                 onClick={() => setOnlineOpen(true)}
               >
                 🌐 Play online
@@ -603,14 +618,14 @@ export default function GameApp() {
               <p className="home-online-label">Play online</p>
               <button
                 type="button"
-                className="btn btn-primary full home-cta"
+                className="btn full home-cta home-cta-join"
                 onClick={() => setOnlineAction('join')}
               >
                 🔑 Join a game
               </button>
               <button
                 type="button"
-                className="btn full home-cta"
+                className="btn full home-cta home-cta-create"
                 onClick={() => setOnlineAction('create')}
               >
                 ✨ Create a game
@@ -645,10 +660,14 @@ export default function GameApp() {
                 onChange={(e) => setRoomPassword(e.target.value.toUpperCase())}
                 placeholder={onlineAction === 'join' ? 'GAME PASSWORD' : 'CHOOSE PASSWORD'}
                 maxLength={6}
-                className="code-input"
+                className="code-input home-pwd-input"
                 autoFocus
               />
-              <button type="submit" className="btn btn-primary full home-cta" disabled={!roomPassword.trim()}>
+              <button
+                type="submit"
+                className={`btn full home-cta ${onlineAction === 'join' ? 'home-cta-join' : 'home-cta-create'}`}
+                disabled={!roomPassword.trim()}
+              >
                 {onlineAction === 'join' ? 'Join game' : 'Create game'}
               </button>
               <button
@@ -667,11 +686,11 @@ export default function GameApp() {
 
         <p className="home-divider">or jump straight into one</p>
 
-        <section className="card hero-card">
+        <section className="card hero-card tod-glass home-quick-card">
           <div className="mode-grid three">
             <button
               type="button"
-              className="mode-card"
+              className="mode-card mode-card-hot mode-trivia"
               onClick={() => {
                 setMode('local')
                 setScreen('setup')
@@ -681,18 +700,19 @@ export default function GameApp() {
               <strong>Trivia</strong>
               <span>Science & 90s pop</span>
             </button>
-            <Link href="/minigames" className="mode-card mode-card-link">
+            <Link href="/minigames" className="mode-card mode-card-link mode-card-hot mode-minigames">
               <span className="mode-icon">🎮</span>
               <strong>Mini games</strong>
               <span>Frogger, Snake &amp; more</span>
             </Link>
-            <Link href="/truth-or-dare" className="mode-card mode-card-link">
+            <Link href="/truth-or-dare?classic=1" className="mode-card mode-card-link mode-card-hot mode-tod">
               <span className="mode-icon">💋</span>
-              <strong>Truth or Dare</strong>
-              <span>Classic turns · 18+</span>
+              <strong>Classic ToD</strong>
+              <span>Turns &amp; picture time · 18+</span>
             </Link>
           </div>
         </section>
+        </div>
       </div>
     )
   }

@@ -78,8 +78,10 @@ function TodJoin({ room }: { room: Room }) {
       <section className="card setup-card">
         <p className="intro">
           {mode === 'local'
-            ? 'Pass the phone around the room. Everyone plays on this device.'
-            : mode === 'join'
+            ? 'Pass the phone around the room. Everyone plays the board game on this device.'
+            : mode === 'classic'
+              ? 'Classic Truth or Dare — take turns, spill secrets, take dares. 18+.'
+              : mode === 'join'
               ? 'Enter your name, then join the game with the password from your host.'
               : mode === 'create'
                 ? 'Pick your name and avatar, then create the room with your password.'
@@ -99,7 +101,13 @@ function TodJoin({ room }: { room: Room }) {
 
         {mode === 'local' && (
           <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
-            Start local game
+            Start board game
+          </button>
+        )}
+
+        {mode === 'classic' && (
+          <button type="button" className="btn btn-primary full" onClick={() => room.hostRoom()}>
+            Start game
           </button>
         )}
 
@@ -166,6 +174,8 @@ function TodJoin({ room }: { room: Room }) {
 }
 
 function Lobby({ room }: { room: Room }) {
+  const isClassic = room.entryMode === 'classic'
+
   return (
     <>
       <section className="card party-roster">
@@ -199,18 +209,23 @@ function Lobby({ room }: { room: Room }) {
       </section>
       <section className="card tod-stage">
         {room.isHost ? (
-          <div className="tod-mode-pick">
+          isClassic ? (
+            <button type="button" className="btn btn-primary full" onClick={room.startGame}>
+              💬 Start Truth or Dare
+            </button>
+          ) : (
             <button type="button" className="btn btn-primary full" onClick={room.startBoardGame}>
-              🎲 Play the Board game
+              🎲 Start board game
             </button>
-            <button type="button" className="btn full" onClick={room.startGame}>
-              💬 Classic Truth or Dare
-            </button>
-          </div>
+          )
         ) : (
-          <p className="lobby-sub">Waiting for the host to start…</p>
+          <p className="lobby-sub">
+            Waiting for the host to start{isClassic ? '' : ' the board game'}…
+          </p>
         )}
-        <p className="party-hint">Share the code so everyone can join before you start.</p>
+        {!isClassic && (
+          <p className="party-hint">Share the code so everyone can join before you start.</p>
+        )}
       </section>
     </>
   )
