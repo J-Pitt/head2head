@@ -1,6 +1,6 @@
-import { TRUTHS as SEXY_TRUTHS, DARES as SEXY_DARES } from '@/lib/tod/prompts'
+import { TRUTHS as NSFW_TRUTHS, DARES as NSFW_DARES } from '@/lib/tod/prompts'
 
-export const FRIENDLY_TRUTHS = [
+export const PG_TRUTHS = [
   "What's the most embarrassing thing you've ever done in front of a crush?",
   "What's a guilty pleasure you're willing to admit?",
   "Who was your first celebrity crush?",
@@ -28,7 +28,7 @@ export const FRIENDLY_TRUTHS = [
   "If your search history was read aloud right now, what would surprise people most?",
 ]
 
-export const FRIENDLY_DARES = [
+export const PG_DARES = [
   "Do your best impression of someone in the game — everyone guesses who.",
   "Sing the chorus of a song of the group's choice.",
   "Do 10 jumping jacks while saying the alphabet backwards.",
@@ -56,14 +56,14 @@ export const FRIENDLY_DARES = [
   "Tell a 1-minute story using only hand gestures (on camera if remote).",
 ]
 
-export type ClassicListMode = 'friendly' | 'sexy'
+export type ClassicListMode = 'pg' | 'nsfw'
 
 export function getTruthsForMode(mode: ClassicListMode): string[] {
-  return mode === 'sexy' ? SEXY_TRUTHS : FRIENDLY_TRUTHS
+  return mode === 'nsfw' ? NSFW_TRUTHS : PG_TRUTHS
 }
 
 export function getDaresForMode(mode: ClassicListMode): string[] {
-  return mode === 'sexy' ? SEXY_DARES : FRIENDLY_DARES
+  return mode === 'nsfw' ? NSFW_DARES : PG_DARES
 }
 
 export function pickRandomPrompt(

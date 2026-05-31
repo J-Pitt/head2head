@@ -1934,3 +1934,178 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Classic mode — lobby, answers, layout */
+.qtd-game .classic-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.qtd-game .classic-header-title {
+  flex: 1;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.qtd-game .classic-header-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  letter-spacing: 0.04em;
+}
+
+.qtd-game .classic-header-meta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.qtd-game .setup-rating-hint {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0.5rem 0 0;
+  line-height: 1.4;
+}
+
+.qtd-game .classic-layout.game-with-chat {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  align-self: stretch;
+}
+
+.qtd-game .classic-player-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  width: 100%;
+  max-width: 320px;
+  text-align: left;
+}
+
+.qtd-game .classic-player-list li {
+  padding: 0.45rem 0.65rem;
+  margin-bottom: 0.35rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.qtd-game .classic-answer {
+  width: 100%;
+  max-width: 480px;
+  text-align: left;
+  animation: fadeIn 0.25s ease;
+}
+
+.qtd-game .classic-prompt-card {
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.qtd-game .classic-prompt-truth {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(139, 92, 246, 0.12));
+  border-color: rgba(168, 85, 247, 0.35);
+}
+
+.qtd-game .classic-prompt-dare {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.12));
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.qtd-game .classic-prompt-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+  opacity: 0.85;
+}
+
+.qtd-game .classic-prompt-text {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.qtd-game .classic-answer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qtd-game .classic-answer-text {
+  min-height: 100px;
+  resize: vertical;
+  width: 100%;
+}
+
+.qtd-game .classic-dare-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.qtd-game .classic-upload-btn {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.qtd-game .classic-image-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.qtd-game .classic-image-preview img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.qtd-game .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.qtd-game .btn-play-secondary {
+  margin: 0.5rem 0 1rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+}
+
+.qtd-game .hint {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.95rem;
+  margin-top: 1rem;
+}
+

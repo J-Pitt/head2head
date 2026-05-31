@@ -2,11 +2,13 @@
 
 import Link from 'next/link'
 import { useClassicTod } from '@/hooks/useClassicTod'
-import ClassicResultModal from '@/components/tod/classic/ClassicResultModal'
+import { useRoomChat } from '@/hooks/useRoomChat'
+import ChatPanel from '@/components/ChatPanel'
+import ClassicAnswerForm from '@/components/tod/classic/ClassicAnswerForm'
 import type { ClassicListMode } from '@/lib/tod/classic/lists'
 import '@/app/classic-tod.css'
 
-function ModePicker({
+function RatingPicker({
   value,
   onChange,
 }: {
@@ -15,39 +17,50 @@ function ModePicker({
 }) {
   return (
     <fieldset className="setup-fieldset">
-      <legend className="setup-legend">Game style</legend>
+      <legend className="setup-legend">Content rating</legend>
       <div className="setup-mode-buttons">
         <button
           type="button"
-          className={`setup-mode-btn setup-mode-btn-friendly ${value === 'friendly' ? 'selected' : ''}`}
-          onClick={() => onChange('friendly')}
+          className={`setup-mode-btn setup-mode-btn-friendly ${value === 'pg' ? 'selected' : ''}`}
+          onClick={() => onChange('pg')}
         >
-          Friendly
+          PG
         </button>
         <button
           type="button"
-          className={`setup-mode-btn setup-mode-btn-sexy ${value === 'sexy' ? 'selected' : ''}`}
-          onClick={() => onChange('sexy')}
+          className={`setup-mode-btn setup-mode-btn-sexy ${value === 'nsfw' ? 'selected' : ''}`}
+          onClick={() => onChange('nsfw')}
         >
-          Sexy
+          NSFW
         </button>
       </div>
+      <p className="setup-rating-hint">
+        {value === 'pg' ? 'Playful truths and dares for any group.' : '18+ — spicy truths and dares from Truth or Dare Now.'}
+      </p>
     </fieldset>
   )
 }
 
 export default function ClassicTruthOrDare() {
   const g = useClassicTod()
+  const me = g.players.find((p) => p.id === g.playerId)
+  const chat = useRoomChat(g.roomId, {
+    playerId: g.playerId,
+    playerName: me?.name ?? g.playerName ?? 'Player',
+    avatar: me?.avatar ?? g.avatar,
+  })
 
-  const onSpotId = g.currentSpotId
-  const onSpotName = g.spotName(onSpotId)
-  const s = g.activeState
-  const showModal =
-    !!s?.prompt &&
-    !!s.chosenCategory &&
-    (g.modalOpen || !!s.prompt)
+  const onSpotName = g.spotName(g.onSpotId)
+  const s = g.state
 
-  if (!s) {
+  async function submitAnswer(text: string, image?: string) {
+    const label = s?.chosenCategory === 'truth' ? 'Truth answer' : 'Dare complete'
+    const body = text ? `${label}: ${text}` : label
+    await chat.send(body, image)
+    g.completeAnswer()
+  }
+
+  if (!g.inRoom || !s) {
     return (
       <div className="qtd-game qtd-game-fullscreen">
         <header className="qtd-game-header">
@@ -57,13 +70,15 @@ export default function ClassicTruthOrDare() {
         </header>
         <div className="qtd-game-body">
           <div className="game">
-            <h1>Truth · Dare</h1>
-            <p className="subtitle">Enter your name, pick a style, and start</p>
+            <h1 className="dare-title" data-text="Truth · Dare">
+              Truth · Dare
+            </h1>
+            <p className="subtitle">Classic mode — turns, prompts, and picture dares</p>
             <form
               className="setup-form"
               onSubmit={(e) => {
                 e.preventDefault()
-                g.startGame()
+                g.enterLobby()
               }}
             >
               <label className="setup-label">
@@ -77,11 +92,11 @@ export default function ClassicTruthOrDare() {
                   maxLength={24}
                 />
               </label>
-              <ModePicker value={g.listMode} onChange={g.setListMode} />
+              <RatingPicker value={g.listMode} onChange={g.setListMode} />
               {g.error && <p className="room-error">{g.error}</p>}
               <div className="setup-actions">
                 <button type="submit" className="btn btn-play">
-                  Start game
+                  Enter lobby
                 </button>
               </div>
             </form>
@@ -91,63 +106,128 @@ export default function ClassicTruthOrDare() {
     )
   }
 
+  const chatPanel = (
+    <ChatPanel
+      messages={chat.messages}
+      meId={g.playerId}
+      onSend={chat.send}
+      title="Group chat 📸"
+    />
+  )
+
   return (
     <div className="qtd-game qtd-game-fullscreen">
-      <header className="qtd-game-header">
+      <header className="qtd-game-header classic-header">
         <Link
           href="/"
           className="btn btn-cancel btn-back"
           onClick={(e) => {
             e.preventDefault()
-            g.leaveGame()
+            g.leaveRoom()
           }}
         >
           ← Home
         </Link>
+        <span className="classic-header-title">
+          Truth · Dare
+          {g.isLocal ? (
+            <span className="classic-header-badge">Pass &amp; play</span>
+          ) : g.gameCode ? (
+            <span className="classic-header-badge">{g.gameCode}</span>
+          ) : null}
+        </span>
+        <span className="classic-header-meta">{s.listMode === 'pg' ? 'PG' : 'NSFW'}</span>
       </header>
+
       <div className="qtd-game-body">
-        <div className="game">
-          <h1>Truth · Dare</h1>
-          <p className="turn">
-            It&apos;s <strong>{onSpotName}</strong>&apos;s turn!
-          </p>
+        <div className="game-with-chat classic-layout">
+          <div className="game-area">
+            <div className="game">
+              {s.subPhase === 'lobby' && (
+                <>
+                  <h2>Lobby</h2>
+                  <p className="subtitle">
+                    {g.isLocal
+                      ? 'Add everyone playing on this device, then start when ready.'
+                      : `Share code ${g.gameCode} so friends can join.`}
+                  </p>
 
-          {!s.waitingForChoice && !s.prompt && (
-            <button type="button" className="btn btn-play" onClick={g.beginTurn}>
-              Ready? Pick Truth or Dare
-            </button>
-          )}
+                  <ul className="classic-player-list">
+                    {g.players.map((p) => (
+                      <li key={p.id}>
+                        {p.name}
+                        {p.id === g.playerId ? ' (you)' : ''}
+                      </li>
+                    ))}
+                  </ul>
 
-          {s.waitingForChoice && (
-            <div className="truth-dare-picker">
-              <p className="truth-dare-picker-label">
-                <strong>{onSpotName}</strong>, choose:
-              </p>
-              <div className="truth-dare-picker-buttons">
-                <button type="button" className="btn btn-truth" onClick={() => g.pickChoice('truth')}>
-                  💜 Truth
-                </button>
-                <button type="button" className="btn btn-dare" onClick={() => g.pickChoice('dare')}>
-                  🔥 Dare
-                </button>
-              </div>
+                  {g.isLocal && (
+                    <button type="button" className="btn btn-play-secondary" onClick={g.addLocalPlayer}>
+                      + Add player
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="btn btn-play"
+                    disabled={g.players.length < 1}
+                    onClick={g.startPlaying}
+                  >
+                    Start game
+                  </button>
+                </>
+              )}
+
+              {s.subPhase === 'playing' && (
+                <>
+                  <p className="turn">
+                    It&apos;s <strong>{onSpotName}</strong>&apos;s turn
+                  </p>
+
+                  {s.turnPhase === 'choose' && g.myTurn && (
+                    <div className="truth-dare-picker">
+                      <p className="truth-dare-picker-label">Pick one:</p>
+                      <div className="truth-dare-picker-buttons">
+                        <button type="button" className="btn btn-truth" onClick={() => g.pickChoice('truth')}>
+                          💜 Truth
+                        </button>
+                        <button type="button" className="btn btn-dare" onClick={() => g.pickChoice('dare')}>
+                          🔥 Dare
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {s.turnPhase === 'choose' && !g.myTurn && (
+                    <p className="hint">Waiting for {onSpotName} to pick Truth or Dare…</p>
+                  )}
+
+                  {s.turnPhase === 'answer' && s.prompt && s.chosenCategory && g.myTurn && (
+                    <ClassicAnswerForm
+                      key={`${s.prompt}-${s.chosenCategory}`}
+                      category={s.chosenCategory}
+                      prompt={s.prompt}
+                      onSubmit={submitAnswer}
+                    />
+                  )}
+
+                  {s.turnPhase === 'answer' && s.prompt && s.chosenCategory && !g.myTurn && (
+                    <div className="classic-answer">
+                      <div className={`classic-prompt-card classic-prompt-${s.chosenCategory}`}>
+                        <span className="classic-prompt-badge">
+                          {s.chosenCategory === 'truth' ? 'Truth' : 'Dare'}
+                        </span>
+                        <p className="classic-prompt-text">{s.prompt}</p>
+                      </div>
+                      <p className="hint">Waiting for {onSpotName} to answer…</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          )}
-
-          <ClassicResultModal
-            isOpen={showModal}
-            onClose={g.closeModal}
-            category={s.chosenCategory}
-            forPlayer={onSpotName}
-            text={s.prompt}
-            canDismiss
-          />
-
-          <div className="setup-actions setup-actions-center">
-            <button type="button" className="btn btn-new-game" onClick={g.resetGame}>
-              New game
-            </button>
           </div>
+
+          <aside className="chat-sidebar">{chatPanel}</aside>
         </div>
       </div>
     </div>

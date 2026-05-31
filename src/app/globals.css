@@ -473,6 +473,45 @@ body {
   color: rgba(19, 26, 46, 0.62);
 }
 
+.tod-home .mode-trivia.expanded {
+  align-items: stretch;
+  text-align: left;
+}
+
+.mode-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3rem;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.trivia-pick {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.trivia-pick .home-online-label {
+  margin: 0 0 0.25rem;
+  text-align: center;
+}
+
+.setup-code-hint {
+  text-align: center;
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .tod-home .mode-minigames {
   background: var(--pastel-mint);
   border-color: #a8e8b8;

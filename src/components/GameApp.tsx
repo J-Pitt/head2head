@@ -104,6 +104,10 @@ export default function GameApp() {
   const [gameCodeInput, setGameCodeInput] = useState('')
   const [onlineOpen, setOnlineOpen] = useState(false)
   const [onlineAction, setOnlineAction] = useState<'join' | 'create' | null>(null)
+  const [triviaOpen, setTriviaOpen] = useState(false)
+  const [triviaOnlineAction, setTriviaOnlineAction] = useState<'join' | 'create' | null>(null)
+  const [triviaPassword, setTriviaPassword] = useState('')
+  const [onlineIntent, setOnlineIntent] = useState<'join' | 'create' | null>(null)
   const [roomPassword, setRoomPassword] = useState('')
   const router = useRouter()
   const [roomId, setRoomId] = useState<string | null>(null)
@@ -176,6 +180,25 @@ export default function GameApp() {
       setBooting(false)
     }
     init()
+
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const trivia = params.get('trivia')
+      const code = params.get('code')?.trim().toUpperCase()
+      if (trivia === 'join' && code) {
+        setMode('online')
+        setOnlineIntent('join')
+        setGameCodeInput(code)
+        setScreen('setup')
+      } else if (trivia === 'create' && code) {
+        setMode('online')
+        setOnlineIntent('create')
+        setGameCodeInput(code)
+        setScreen('setup')
+      }
+    } catch {
+      /* ignore */
+    }
   }, [playerId])
 
   const me = players.find((p) => p.id === playerId)
@@ -308,7 +331,7 @@ export default function GameApp() {
     setPlayers((prev) => [...prev, p])
   }
 
-  async function hostOnline() {
+  async function hostOnline(code?: string) {
     if (!playerName.trim()) {
       setError('Enter your name')
       return
@@ -320,7 +343,8 @@ export default function GameApp() {
     setError('')
     await persistName(playerName)
     try {
-      const data = await createRoom(playerName.trim(), avatar, playerId)
+      const pwd = (code ?? gameCodeInput).trim().toUpperCase() || undefined
+      const data = await createRoom(playerName.trim(), avatar, playerId, pwd)
       setGameMode('buzzer')
       await enterRoom(data.roomId, data.gameCode, data.players, true, true)
     } catch (e) {
@@ -705,18 +729,107 @@ export default function GameApp() {
 
         <section className="card hero-card tod-glass home-quick-card">
           <div className="mode-grid three">
-            <button
-              type="button"
-              className="mode-card mode-card-hot mode-trivia"
-              onClick={() => {
-                setMode('local')
-                setScreen('setup')
-              }}
-            >
-              <span className="mode-icon">🧠</span>
-              <strong>Trivia</strong>
-              <span>Jeopardy-style · 6 categories</span>
-            </button>
+            <div className={`mode-card mode-card-hot mode-trivia ${triviaOpen ? 'expanded' : ''}`}>
+              {!triviaOpen ? (
+                <button
+                  type="button"
+                  className="mode-card-inner"
+                  onClick={() => {
+                    setTriviaOpen(true)
+                    setTriviaOnlineAction(null)
+                    setTriviaPassword('')
+                  }}
+                >
+                  <span className="mode-icon">🧠</span>
+                  <strong>Trivia</strong>
+                  <span>Jeopardy-style · 6 categories</span>
+                </button>
+              ) : !triviaOnlineAction ? (
+                <div className="trivia-pick">
+                  <p className="home-online-label">Trivia</p>
+                  <button
+                    type="button"
+                    className="btn full home-cta home-cta-local"
+                    onClick={() => {
+                      setMode('local')
+                      setOnlineIntent(null)
+                      setScreen('setup')
+                      setTriviaOpen(false)
+                    }}
+                  >
+                    Play locally
+                  </button>
+                  <button
+                    type="button"
+                    className="btn full home-cta home-cta-join"
+                    onClick={() => setTriviaOnlineAction('join')}
+                  >
+                    Join game
+                  </button>
+                  <button
+                    type="button"
+                    className="btn full home-cta home-cta-create"
+                    onClick={() => setTriviaOnlineAction('create')}
+                  >
+                    Start game
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost home-back"
+                    onClick={() => setTriviaOpen(false)}
+                  >
+                    ← Back
+                  </button>
+                </div>
+              ) : (
+                <form
+                  className="trivia-pick home-online-form"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const pwd = triviaPassword.trim().toUpperCase()
+                    if (!pwd) return
+                    setMode('online')
+                    setGameCodeInput(pwd)
+                    setOnlineIntent(triviaOnlineAction)
+                    setScreen('setup')
+                    setTriviaOpen(false)
+                    setTriviaOnlineAction(null)
+                    setTriviaPassword('')
+                  }}
+                >
+                  <p className="home-online-label">
+                    {triviaOnlineAction === 'join'
+                      ? 'Enter the game password to join trivia'
+                      : 'Choose a password for your trivia room'}
+                  </p>
+                  <input
+                    value={triviaPassword}
+                    onChange={(e) => setTriviaPassword(e.target.value.toUpperCase())}
+                    placeholder={triviaOnlineAction === 'join' ? 'GAME PASSWORD' : 'CHOOSE PASSWORD'}
+                    maxLength={6}
+                    className="code-input home-pwd-input"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    className={`btn full home-cta ${triviaOnlineAction === 'join' ? 'home-cta-join' : 'home-cta-create'}`}
+                    disabled={!triviaPassword.trim()}
+                  >
+                    {triviaOnlineAction === 'join' ? 'Continue to join' : 'Continue to host'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost home-back"
+                    onClick={() => {
+                      setTriviaOnlineAction(null)
+                      setTriviaPassword('')
+                    }}
+                  >
+                    ← Back
+                  </button>
+                </form>
+              )}
+            </div>
             <Link href="/minigames" className="mode-card mode-card-link mode-card-hot mode-minigames">
               <span className="mode-icon">🎮</span>
               <strong>Mini games</strong>
@@ -725,7 +838,7 @@ export default function GameApp() {
             <Link href="/truth-or-dare?classic=1" className="mode-card mode-card-link mode-card-hot mode-tod">
               <span className="mode-icon">💋</span>
               <strong>Classic ToD</strong>
-              <span>Turns &amp; picture time · 18+</span>
+              <span>Turns · PG or NSFW · picture dares</span>
             </Link>
           </div>
         </section>
@@ -735,16 +848,38 @@ export default function GameApp() {
   }
 
   if (screen === 'setup') {
+    const setupTitle =
+      mode === 'local'
+        ? 'Trivia — local'
+        : onlineIntent === 'join'
+          ? 'Trivia — join room'
+          : onlineIntent === 'create'
+            ? 'Trivia — host room'
+            : 'Trivia — online'
+
     return (
       <div className="app-shell">
         <header className="app-header compact">
-          <button type="button" className="btn-ghost" onClick={() => setScreen('home')}>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => {
+              setScreen('home')
+              setOnlineIntent(null)
+            }}
+          >
             ← Back
           </button>
-          <h1>{mode === 'local' ? 'Local game' : 'Join or host'}</h1>
+          <h1>{setupTitle}</h1>
         </header>
 
         <section className="card setup-card">
+          {mode === 'online' && gameCodeInput && (
+            <p className="setup-code-hint">
+              Game password: <strong className="room-code-display">{gameCodeInput}</strong>
+            </p>
+          )}
+
           <label className="field">
             <span>Your name</span>
             <input
@@ -779,23 +914,42 @@ export default function GameApp() {
                   </button>
                 </div>
               </div>
-              <div className="online-actions">
-                <button type="button" className="btn btn-primary" onClick={hostOnline}>
-                  Host new room
+
+              {onlineIntent === 'create' && gameCodeInput ? (
+                <button
+                  type="button"
+                  className="btn btn-primary full"
+                  onClick={() => hostOnline(gameCodeInput)}
+                >
+                  Create room &amp; enter lobby
                 </button>
-                <div className="join-row">
-                  <input
-                    value={gameCodeInput}
-                    onChange={(e) => setGameCodeInput(e.target.value.toUpperCase())}
-                    placeholder="GAME CODE"
-                    maxLength={6}
-                    className="code-input"
-                  />
-                  <button type="button" className="btn" onClick={() => joinOnline()}>
-                    Join
+              ) : onlineIntent === 'join' && gameCodeInput ? (
+                <button type="button" className="btn btn-primary full" onClick={() => joinOnline(gameCodeInput)}>
+                  Join room
+                </button>
+              ) : (
+                <div className="online-actions">
+                  <button type="button" className="btn btn-primary" onClick={() => hostOnline()}>
+                    Host new room
                   </button>
+                  <div className="join-row">
+                    <input
+                      value={gameCodeInput}
+                      onChange={(e) => setGameCodeInput(e.target.value.toUpperCase())}
+                      placeholder="GAME CODE"
+                      maxLength={6}
+                      className="code-input"
+                    />
+                    <button type="button" className="btn" onClick={() => joinOnline()}>
+                      Join
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {!multiplayerAvailable && (
+                <p className="error">Online trivia needs Redis configured on the server.</p>
+              )}
             </>
           )}
 

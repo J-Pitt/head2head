@@ -31,7 +31,8 @@ async function fetchRoom(url: string, options?: RequestInit) {
 export async function createRoom(
   hostName: string,
   avatar: string,
-  playerId: string
+  playerId: string,
+  gameCode?: string
 ): Promise<{ roomId: string; gameCode: string; players: Player[] }> {
   const res = await fetchRoom(ROOM_PATH, {
     method: 'POST',
@@ -40,6 +41,7 @@ export async function createRoom(
       hostName: hostName.trim() || 'Host',
       avatar,
       playerId,
+      gameCode: gameCode?.trim().toUpperCase() || undefined,
     }),
   })
   const data = await parseResponse(res, 'Failed to create room')

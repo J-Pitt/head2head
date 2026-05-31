@@ -7,7 +7,7 @@ export type ClassicTodState = {
   listMode: ClassicListMode
   turnIndex: number
   turnOrder: string[]
-  waitingForChoice: boolean
+  turnPhase: 'choose' | 'answer'
   chosenCategory: 'truth' | 'dare' | null
   prompt: string | null
   onSpotId: string | null
@@ -15,7 +15,7 @@ export type ClassicTodState = {
   usedDares: number[]
 }
 
-export function initialClassicTodState(listMode: ClassicListMode = 'sexy'): ClassicTodState {
+export function initialClassicTodState(listMode: ClassicListMode = 'pg'): ClassicTodState {
   return {
     phase: 'classic',
     mode: 'classic',
@@ -23,7 +23,7 @@ export function initialClassicTodState(listMode: ClassicListMode = 'sexy'): Clas
     listMode,
     turnIndex: 0,
     turnOrder: [],
-    waitingForChoice: false,
+    turnPhase: 'choose',
     chosenCategory: null,
     prompt: null,
     onSpotId: null,
