@@ -759,11 +759,14 @@ export default function GameApp() {
         <div className="tod-home-content">
           <header className="app-header tod-home-header">
             <span className="tod-badge">Party game · 18+</span>
-            <h1 className="tod-logo">
-              Truth <span className="tod-logo-or">or</span> Dare
+            <h1 className="tod-logo tod-logo-stacked">
+              <span className="tod-logo-main">
+                Trivia <span className="tod-logo-or">or</span> Dare
+              </span>
+              <span className="tod-logo-sub">The Board Game</span>
             </h1>
             <p className="tod-tagline">
-              Truths get personal. Dares get bold. Nobody leaves the same.
+              Think quick. Dare harder. Finish first.
             </p>
           </header>
 

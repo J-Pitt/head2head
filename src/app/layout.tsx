@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Head2Head — Group Trivia",
-  description: "Jeopardy-style trivia — science, pop culture, literature, animals, history, and more.",
+  title: "Trivia or Dare — The Board Game",
+  description: "Think quick. Dare harder. Finish first. — a party board game for your crew.",
 };
 
 export default function RootLayout({
