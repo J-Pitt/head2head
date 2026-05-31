@@ -1,7 +1,7 @@
 'use client'
 
 import { CATEGORIES, JEOPARDY_VALUES } from '@/lib/trivia'
-import type { CategoryId, GameState } from '@/lib/types'
+import type { GameState } from '@/lib/types'
 
 type Props = {
   state: GameState

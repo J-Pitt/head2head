@@ -10,6 +10,7 @@ type Props = {
   setAvatar: (a: string) => void
   gameCodeInput: string
   setGameCodeInput: (c: string) => void
+  entryIntent: 'join' | 'create' | 'solo' | null
   error: string
   hostRoom: () => void
   joinRoom: () => void
@@ -22,10 +23,13 @@ export default function PartyJoin({
   setAvatar,
   gameCodeInput,
   setGameCodeInput,
+  entryIntent,
   error,
   hostRoom,
   joinRoom,
 }: Props) {
+  const fromHome = entryIntent === 'join' || entryIntent === 'create'
+
   return (
     <div className="app-shell">
       <header className="app-header compact">
@@ -37,9 +41,17 @@ export default function PartyJoin({
 
       <section className="card setup-card">
         <p className="intro">
-          Start a games room or join one with a code. Everyone stays together and you can keep
-          playing game after game — no rejoining.
+          {entryIntent === 'join'
+            ? 'Enter your name to join the games room.'
+            : entryIntent === 'create'
+              ? 'Enter your name to host this games room.'
+              : 'Start a games room or join one with a code. Everyone stays together and you can keep playing game after game — no rejoining.'}
         </p>
+        {fromHome && gameCodeInput && (
+          <p className="setup-code-hint">
+            Game password: <strong className="room-code-display">{gameCodeInput}</strong>
+          </p>
+        )}
         <label className="field">
           <span>Your name</span>
           <input
@@ -47,26 +59,39 @@ export default function PartyJoin({
             onChange={(e) => setPlayerName(e.target.value)}
             placeholder="Alex"
             maxLength={24}
+            autoFocus
           />
         </label>
         <AvatarPicker selected={avatar} onSelect={setAvatar} />
 
         <div className="online-actions">
-          <button type="button" className="btn btn-primary" onClick={hostRoom}>
-            Create a games room
-          </button>
-          <div className="join-row">
-            <input
-              value={gameCodeInput}
-              onChange={(e) => setGameCodeInput(e.target.value.toUpperCase())}
-              placeholder="CODE"
-              maxLength={6}
-              className="code-input"
-            />
-            <button type="button" className="btn" onClick={joinRoom}>
-              Join
+          {entryIntent === 'create' ? (
+            <button type="button" className="btn btn-primary full" onClick={hostRoom}>
+              {gameCodeInput ? 'Create this room' : 'Create a games room'}
             </button>
-          </div>
+          ) : entryIntent === 'join' ? (
+            <button type="button" className="btn btn-primary full" onClick={() => joinRoom()}>
+              Join room
+            </button>
+          ) : (
+            <>
+              <button type="button" className="btn btn-primary" onClick={hostRoom}>
+                Create a games room
+              </button>
+              <div className="join-row">
+                <input
+                  value={gameCodeInput}
+                  onChange={(e) => setGameCodeInput(e.target.value.toUpperCase())}
+                  placeholder="CODE"
+                  maxLength={6}
+                  className="code-input"
+                />
+                <button type="button" className="btn" onClick={() => joinRoom()}>
+                  Join
+                </button>
+              </div>
+            </>
+          )}
         </div>
         {error && <p className="error">{error}</p>}
       </section>

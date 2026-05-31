@@ -474,39 +474,38 @@
 
 @media (max-width: 768px) {
   .qtd-game-fullscreen .qtd-game-body {
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
   }
   .qtd-game-fullscreen .qtd-game-body > .game-with-chat {
-    flex-direction: column;
-    overflow: visible;
-    min-height: min-content;
+    flex-direction: row;
+    overflow: hidden;
+    min-height: 0;
   }
   .qtd-game-fullscreen .qtd-game-body .chat-sidebar {
-    width: 100%;
-    min-width: 0;
-    min-height: 300px;
-    border-left: none;
-    border-radius: 12px 12px 0 0;
-    margin-left: 0;
-    margin-top: 0.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    width: min(38vw, 240px);
+    min-width: 120px;
+    min-height: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px 0 0 12px;
+    margin-left: 0.35rem;
+    margin-top: 0;
+    border-top: none;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
     flex-shrink: 0;
   }
   .qtd-game-fullscreen .qtd-game-body .chat-sidebar .chat-resize-handle {
     display: none;
   }
   .qtd-game-fullscreen .qtd-game-body .game-area {
-    flex: none;
+    flex: 1;
+    min-width: 0;
     padding: 0.75rem;
     justify-content: flex-start;
     align-items: center;
     display: flex;
     flex-direction: column;
-    min-height: auto;
-    overflow: visible;
+    min-height: 0;
+    overflow-y: auto;
   }
   .qtd-game-fullscreen .qtd-game-body .game-area .game {
     max-width: 100%;

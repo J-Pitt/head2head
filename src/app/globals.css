@@ -478,6 +478,12 @@ body {
   text-align: left;
 }
 
+.tod-home .mode-tod.expanded,
+.tod-home .mode-minigames.expanded {
+  align-items: stretch;
+  text-align: left;
+}
+
 .mode-card-inner {
   display: flex;
   flex-direction: column;
@@ -783,15 +789,10 @@ body {
 
 .room-layout {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 280px);
+  gap: 0.75rem;
   min-height: calc(100dvh - 5rem);
-}
-
-@media (min-width: 900px) {
-  .room-layout {
-    grid-template-columns: 1fr 280px;
-  }
+  align-items: stretch;
 }
 
 .arena {
@@ -1037,7 +1038,29 @@ body {
 }
 
 .room-sidebar {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0.5rem;
+  align-self: start;
+  max-height: calc(100dvh - 5.5rem);
+}
+
+.room-sidebar .chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   min-height: 200px;
+  height: calc(100dvh - 5.5rem);
+  max-height: calc(100dvh - 5.5rem);
+  margin-top: 0;
+}
+
+.room-sidebar .chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .chat-panel {
@@ -1739,7 +1762,25 @@ body {
 }
 
 .minigame-play-shell {
-  max-width: 560px;
+  max-width: 1200px;
+}
+
+.minigame-play-layout {
+  align-items: stretch;
+}
+
+.minigame-play-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.party-hub-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .arcade-view {
@@ -2456,9 +2497,10 @@ body {
 
 .tod-room-layout {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 300px);
+  gap: 0.75rem;
+  align-items: stretch;
+  min-height: calc(100dvh - 5.5rem);
 }
 
 .tod-room-layout-board {
@@ -2472,6 +2514,58 @@ body {
 .tod-setup-title {
   margin: 0.35rem 0 0.5rem;
   font-size: 1.35rem;
+}
+
+.tod-setup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 300px);
+  gap: 0.75rem;
+  align-items: stretch;
+  width: 100%;
+  min-height: calc(100dvh - 5.5rem);
+}
+
+.tod-setup-main {
+  min-width: 0;
+}
+
+.tod-setup-card {
+  max-width: 420px;
+}
+
+.tod-setup-only {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 0.25rem 0 1rem;
+}
+
+.tod-setup-only .tod-setup-main {
+  width: 100%;
+  max-width: 420px;
+}
+
+.tod-setup-layout .tod-room-sidebar {
+  position: sticky;
+  top: 0.5rem;
+  min-width: 0;
+  align-self: start;
+  max-height: calc(100dvh - 5.5rem);
+}
+
+.tod-setup-layout .tod-room-sidebar .chat-embed {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 5.5rem);
+  min-height: 200px;
+  max-height: calc(100dvh - 5.5rem);
+  margin-top: 0;
+}
+
+.tod-setup-layout .tod-room-sidebar .chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .lobby-stage .room-code-display {
@@ -2509,72 +2603,85 @@ body {
 
 .tod-room-sidebar {
   min-width: 0;
+  position: sticky;
+  top: 0.5rem;
+  align-self: start;
+  max-height: calc(100dvh - 5.5rem);
 }
 
 .tod-room-sidebar .chat-embed {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 5.5rem);
+  min-height: 200px;
+  max-height: calc(100dvh - 5.5rem);
   margin-top: 0;
-  max-height: none;
-  height: auto;
 }
 
-@media (min-width: 768px) {
-  .tod-room-layout:not(.tod-room-layout-board) {
-    grid-template-columns: 1fr min(300px, 32vw);
-  }
-
-  .tod-room-sidebar {
-    position: sticky;
-    top: 0.5rem;
-  }
-
-  .tod-room-sidebar .chat-embed {
-    display: flex;
-    flex-direction: column;
-    height: calc(100dvh - 5.5rem);
-    min-height: 280px;
-    max-height: calc(100dvh - 5.5rem);
-  }
-
-  .tod-room-sidebar .chat-messages {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
+.tod-room-sidebar .chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-/* Board play: questions | board | chat */
+/* Board play: questions | board | chat — chat always on the right */
 .board-play-layout {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.85rem;
-  align-items: start;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 2fr) minmax(140px, 260px);
+  gap: 0.65rem;
+  align-items: stretch;
   width: 100%;
+  min-height: calc(100dvh - 5.5rem);
 }
 
 .board-stage-col {
   min-width: 0;
-  order: 1;
-}
-
-.board-center-col {
-  min-width: 0;
-  order: 2;
-  display: flex;
-  justify-content: center;
-}
-
-.board-chat-col {
-  min-width: 0;
-  order: 3;
-}
-
-.board-chat-col .chat-embed {
-  margin-top: 0;
-  max-height: none;
+  position: sticky;
+  top: 0.5rem;
+  align-self: start;
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
 }
 
 .board-stage-col .card {
   height: 100%;
+  animation: board-stage-pop 0.35s ease-out;
+}
+
+@keyframes board-stage-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.board-center-col {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-self: center;
+}
+
+.board-chat-col {
+  min-width: 0;
+  position: sticky;
+  top: 0.5rem;
+  align-self: start;
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
+}
+
+.board-chat-col .chat-embed {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 5.5rem);
+  min-height: 200px;
+  max-height: calc(100dvh - 5.5rem);
+  margin-top: 0;
 }
 
 .board-stage-col .minigame-play-shell {
@@ -2582,39 +2689,10 @@ body {
   overflow-y: auto;
 }
 
-@media (min-width: 900px) {
-  .board-play-layout {
-    grid-template-columns: minmax(240px, 1fr) minmax(300px, 400px) minmax(260px, 300px);
-    gap: 1rem;
-    align-items: stretch;
-    min-height: calc(100dvh - 5.5rem);
-  }
-
-  .board-stage-col,
-  .board-chat-col {
-    position: sticky;
-    top: 0.5rem;
-    max-height: calc(100dvh - 5.5rem);
-    overflow-y: auto;
-  }
-
-  .board-center-col {
-    align-self: center;
-  }
-
-  .board-chat-col .chat-embed {
-    display: flex;
-    flex-direction: column;
-    height: calc(100dvh - 5.5rem);
-    min-height: 280px;
-    max-height: calc(100dvh - 5.5rem);
-  }
-
-  .board-chat-col .chat-messages {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
+.board-chat-col .chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .board-card {

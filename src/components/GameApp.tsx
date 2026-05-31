@@ -26,6 +26,7 @@ import {
   updateRoomState,
 } from '@/lib/roomApi'
 import type { CategoryId, ChatMessage, GameMode, GameState, Player, RejoinSession } from '@/lib/types'
+import { readTriviaUrlBootstrap } from '@/lib/triviaUrl'
 
 const POLL_MS = 2000
 const SESSION_PLAYER_KEY = 'head2head_player_id'
@@ -33,6 +34,117 @@ const SESSION_REJOIN_KEY = 'head2head_rejoin'
 const SESSION_NAME_KEY = 'head2head_player_name'
 
 type Screen = 'home' | 'setup' | 'room'
+
+type HomeQuickModeCardProps = {
+  expanded: boolean
+  onlineAction: 'join' | 'create' | null
+  password: string
+  className: string
+  icon: string
+  title: string
+  subtitle: string
+  joinPasswordTitle: string
+  createPasswordTitle: string
+  onExpand: () => void
+  onCollapse: () => void
+  showPlayLocal?: boolean
+  onPlayLocal?: () => void
+  onPickJoin: () => void
+  onPickCreate: () => void
+  onPasswordChange: (value: string) => void
+  onPasswordBack: () => void
+  onPasswordSubmit: (action: 'join' | 'create', password: string) => void
+}
+
+function HomeQuickModeCard({
+  expanded,
+  onlineAction,
+  password,
+  className,
+  icon,
+  title,
+  subtitle,
+  joinPasswordTitle,
+  createPasswordTitle,
+  onExpand,
+  onCollapse,
+  showPlayLocal = false,
+  onPlayLocal,
+  onPickJoin,
+  onPickCreate,
+  onPasswordChange,
+  onPasswordBack,
+  onPasswordSubmit,
+}: HomeQuickModeCardProps) {
+  return (
+    <div className={`mode-card mode-card-hot ${className} ${expanded ? 'expanded' : ''}`}>
+      {!expanded ? (
+        <button type="button" className="mode-card-inner" onClick={onExpand}>
+          <span className="mode-icon">{icon}</span>
+          <strong>{title}</strong>
+          <span>{subtitle}</span>
+        </button>
+      ) : !onlineAction ? (
+        <div className="trivia-pick">
+          <p className="home-online-label">{title}</p>
+          {showPlayLocal && onPlayLocal && (
+            <button type="button" className="btn full home-cta home-cta-local" onClick={onPlayLocal}>
+              Play locally
+            </button>
+          )}
+          <button type="button" className="btn full home-cta home-cta-join" onClick={onPickJoin}>
+            Join game
+          </button>
+          <button type="button" className="btn full home-cta home-cta-create" onClick={onPickCreate}>
+            Start game
+          </button>
+          <button type="button" className="btn-ghost home-back" onClick={onCollapse}>
+            ← Back
+          </button>
+        </div>
+      ) : (
+        <form
+          className="trivia-pick home-online-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const pwd = password.trim().toUpperCase()
+            if (!pwd) return
+            onPasswordSubmit(onlineAction, pwd)
+          }}
+        >
+          <p className="home-online-label">
+            {onlineAction === 'join' ? joinPasswordTitle : createPasswordTitle}
+          </p>
+          <input
+            value={password}
+            onChange={(e) => onPasswordChange(e.target.value.toUpperCase())}
+            placeholder={onlineAction === 'join' ? 'GAME PASSWORD' : 'CHOOSE PASSWORD'}
+            maxLength={6}
+            className="code-input home-pwd-input"
+            autoFocus
+          />
+          <button
+            type="submit"
+            className={`btn full home-cta ${onlineAction === 'join' ? 'home-cta-join' : 'home-cta-create'}`}
+            disabled={!password.trim()}
+          >
+            {onlineAction === 'join' ? 'Continue to join' : 'Continue to host'}
+          </button>
+          <button
+            type="button"
+            className="btn-ghost home-back"
+            onClick={() => {
+              onPasswordBack()
+              onPasswordChange('')
+            }}
+          >
+            ← Back
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
 
 function newPlayerId() {
   return crypto.randomUUID()
@@ -83,8 +195,10 @@ function clearRejoinSession() {
 }
 
 export default function GameApp() {
-  const [screen, setScreen] = useState<Screen>('home')
-  const [mode, setMode] = useState<'local' | 'online' | null>(null)
+  const [screen, setScreen] = useState<Screen>(() => readTriviaUrlBootstrap()?.screen ?? 'home')
+  const [mode, setMode] = useState<'local' | 'online' | null>(
+    () => readTriviaUrlBootstrap()?.mode ?? null
+  )
   const [multiplayerAvailable, setMultiplayerAvailable] = useState(false)
   const [pendingRejoin, setPendingRejoin] = useState<RejoinSession | null>(null)
   const [onBreak, setOnBreak] = useState(false)
@@ -101,15 +215,45 @@ export default function GameApp() {
   ])
   const [gameMode, setGameMode] = useState<GameMode>('buzzer')
 
-  const [gameCodeInput, setGameCodeInput] = useState('')
+  const [gameCodeInput, setGameCodeInput] = useState(
+    () => readTriviaUrlBootstrap()?.gameCodeInput ?? ''
+  )
   const [onlineOpen, setOnlineOpen] = useState(false)
   const [onlineAction, setOnlineAction] = useState<'join' | 'create' | null>(null)
   const [triviaOpen, setTriviaOpen] = useState(false)
   const [triviaOnlineAction, setTriviaOnlineAction] = useState<'join' | 'create' | null>(null)
   const [triviaPassword, setTriviaPassword] = useState('')
-  const [onlineIntent, setOnlineIntent] = useState<'join' | 'create' | null>(null)
+  const [classicOpen, setClassicOpen] = useState(false)
+  const [classicOnlineAction, setClassicOnlineAction] = useState<'join' | 'create' | null>(null)
+  const [classicPassword, setClassicPassword] = useState('')
+  const [minigamesOpen, setMinigamesOpen] = useState(false)
+  const [minigamesOnlineAction, setMinigamesOnlineAction] = useState<'join' | 'create' | null>(null)
+  const [minigamesPassword, setMinigamesPassword] = useState('')
+  const [onlineIntent, setOnlineIntent] = useState<'join' | 'create' | null>(
+    () => readTriviaUrlBootstrap()?.onlineIntent ?? null
+  )
   const [roomPassword, setRoomPassword] = useState('')
   const router = useRouter()
+
+  function closeQuickModes() {
+    setTriviaOpen(false)
+    setTriviaOnlineAction(null)
+    setTriviaPassword('')
+    setClassicOpen(false)
+    setClassicOnlineAction(null)
+    setClassicPassword('')
+    setMinigamesOpen(false)
+    setMinigamesOnlineAction(null)
+    setMinigamesPassword('')
+  }
+
+  function openQuickMode(mode: 'trivia' | 'classic' | 'minigames') {
+    closeQuickModes()
+    if (mode === 'trivia') setTriviaOpen(true)
+    if (mode === 'classic') setClassicOpen(true)
+    if (mode === 'minigames') setMinigamesOpen(true)
+  }
+
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
@@ -123,17 +267,17 @@ export default function GameApp() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const syncingRef = useRef(false)
 
-  const enterRoomRef = useRef<
-    (
-      rid: string,
-      code: string | null,
-      plist: Player[],
-      host: boolean,
-      online: boolean,
-      initialState?: GameState | null,
-      initialMessages?: ChatMessage[]
-    ) => void
-  >(() => {})
+  type EnterRoomFn = (
+    rid: string,
+    code: string | null,
+    plist: Player[],
+    host: boolean,
+    online: boolean,
+    initialState?: GameState | null,
+    initialMessages?: ChatMessage[]
+  ) => void | Promise<void>
+
+  const enterRoomRef = useRef<EnterRoomFn>(() => {})
 
   useEffect(() => {
     async function init() {
@@ -180,25 +324,6 @@ export default function GameApp() {
       setBooting(false)
     }
     init()
-
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const trivia = params.get('trivia')
-      const code = params.get('code')?.trim().toUpperCase()
-      if (trivia === 'join' && code) {
-        setMode('online')
-        setOnlineIntent('join')
-        setGameCodeInput(code)
-        setScreen('setup')
-      } else if (trivia === 'create' && code) {
-        setMode('online')
-        setOnlineIntent('create')
-        setGameCodeInput(code)
-        setScreen('setup')
-      }
-    } catch {
-      /* ignore */
-    }
   }, [playerId])
 
   const me = players.find((p) => p.id === playerId)
@@ -310,7 +435,9 @@ export default function GameApp() {
     })
   }
 
-  enterRoomRef.current = enterRoom
+  useEffect(() => {
+    enterRoomRef.current = enterRoom
+  })
 
   async function startLocalGame() {
     if (!playerName.trim()) {
@@ -729,117 +856,87 @@ export default function GameApp() {
 
         <section className="card hero-card tod-glass home-quick-card">
           <div className="mode-grid three">
-            <div className={`mode-card mode-card-hot mode-trivia ${triviaOpen ? 'expanded' : ''}`}>
-              {!triviaOpen ? (
-                <button
-                  type="button"
-                  className="mode-card-inner"
-                  onClick={() => {
-                    setTriviaOpen(true)
-                    setTriviaOnlineAction(null)
-                    setTriviaPassword('')
-                  }}
-                >
-                  <span className="mode-icon">🧠</span>
-                  <strong>Trivia</strong>
-                  <span>Jeopardy-style · 6 categories</span>
-                </button>
-              ) : !triviaOnlineAction ? (
-                <div className="trivia-pick">
-                  <p className="home-online-label">Trivia</p>
-                  <button
-                    type="button"
-                    className="btn full home-cta home-cta-local"
-                    onClick={() => {
-                      setMode('local')
-                      setOnlineIntent(null)
-                      setScreen('setup')
-                      setTriviaOpen(false)
-                    }}
-                  >
-                    Play locally
-                  </button>
-                  <button
-                    type="button"
-                    className="btn full home-cta home-cta-join"
-                    onClick={() => setTriviaOnlineAction('join')}
-                  >
-                    Join game
-                  </button>
-                  <button
-                    type="button"
-                    className="btn full home-cta home-cta-create"
-                    onClick={() => setTriviaOnlineAction('create')}
-                  >
-                    Start game
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost home-back"
-                    onClick={() => setTriviaOpen(false)}
-                  >
-                    ← Back
-                  </button>
-                </div>
-              ) : (
-                <form
-                  className="trivia-pick home-online-form"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    const pwd = triviaPassword.trim().toUpperCase()
-                    if (!pwd) return
-                    setMode('online')
-                    setGameCodeInput(pwd)
-                    setOnlineIntent(triviaOnlineAction)
-                    setScreen('setup')
-                    setTriviaOpen(false)
-                    setTriviaOnlineAction(null)
-                    setTriviaPassword('')
-                  }}
-                >
-                  <p className="home-online-label">
-                    {triviaOnlineAction === 'join'
-                      ? 'Enter the game password to join trivia'
-                      : 'Choose a password for your trivia room'}
-                  </p>
-                  <input
-                    value={triviaPassword}
-                    onChange={(e) => setTriviaPassword(e.target.value.toUpperCase())}
-                    placeholder={triviaOnlineAction === 'join' ? 'GAME PASSWORD' : 'CHOOSE PASSWORD'}
-                    maxLength={6}
-                    className="code-input home-pwd-input"
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    className={`btn full home-cta ${triviaOnlineAction === 'join' ? 'home-cta-join' : 'home-cta-create'}`}
-                    disabled={!triviaPassword.trim()}
-                  >
-                    {triviaOnlineAction === 'join' ? 'Continue to join' : 'Continue to host'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost home-back"
-                    onClick={() => {
-                      setTriviaOnlineAction(null)
-                      setTriviaPassword('')
-                    }}
-                  >
-                    ← Back
-                  </button>
-                </form>
-              )}
-            </div>
-            <Link href="/minigames" className="mode-card mode-card-link mode-card-hot mode-minigames">
-              <span className="mode-icon">🎮</span>
-              <strong>Mini games</strong>
-              <span>Frogger, Snake &amp; more</span>
-            </Link>
-            <Link href="/truth-or-dare?classic=1" className="mode-card mode-card-link mode-card-hot mode-tod">
-              <span className="mode-icon">💋</span>
-              <strong>Classic ToD</strong>
-              <span>Turns · PG or NSFW · picture dares</span>
-            </Link>
+            <HomeQuickModeCard
+              expanded={triviaOpen}
+              onlineAction={triviaOnlineAction}
+              password={triviaPassword}
+              className="mode-trivia"
+              icon="🧠"
+              title="Trivia"
+              subtitle="Jeopardy-style · 6 categories"
+              joinPasswordTitle="Enter the game password to join trivia"
+              createPasswordTitle="Choose a password for your trivia room"
+              onExpand={() => openQuickMode('trivia')}
+              onCollapse={closeQuickModes}
+              showPlayLocal
+              onPlayLocal={() => {
+                setMode('local')
+                setOnlineIntent(null)
+                setScreen('setup')
+                closeQuickModes()
+              }}
+              onPickJoin={() => setTriviaOnlineAction('join')}
+              onPickCreate={() => setTriviaOnlineAction('create')}
+              onPasswordChange={setTriviaPassword}
+              onPasswordBack={() => setTriviaOnlineAction(null)}
+              onPasswordSubmit={(action, pwd) => {
+                setMode('online')
+                setGameCodeInput(pwd)
+                setOnlineIntent(action)
+                setScreen('setup')
+                closeQuickModes()
+              }}
+            />
+            <HomeQuickModeCard
+              expanded={classicOpen}
+              onlineAction={classicOnlineAction}
+              password={classicPassword}
+              className="mode-tod"
+              icon="💋"
+              title="Classic ToD"
+              subtitle="Turns · PG or NSFW · picture dares"
+              joinPasswordTitle="Enter the game password to join classic ToD"
+              createPasswordTitle="Choose a password for your classic ToD room"
+              onExpand={() => openQuickMode('classic')}
+              onCollapse={closeQuickModes}
+              onPickJoin={() => setClassicOnlineAction('join')}
+              onPickCreate={() => setClassicOnlineAction('create')}
+              onPasswordChange={setClassicPassword}
+              onPasswordBack={() => setClassicOnlineAction(null)}
+              onPasswordSubmit={(action, pwd) => {
+                closeQuickModes()
+                if (action === 'join') {
+                  router.push(`/truth-or-dare?classic=1&code=${encodeURIComponent(pwd)}`)
+                } else {
+                  router.push(`/truth-or-dare?classic=1&create=${encodeURIComponent(pwd)}`)
+                }
+              }}
+            />
+            <HomeQuickModeCard
+              expanded={minigamesOpen}
+              onlineAction={minigamesOnlineAction}
+              password={minigamesPassword}
+              className="mode-minigames"
+              icon="🎮"
+              title="Mini games"
+              subtitle="Frogger, Snake & more"
+              joinPasswordTitle="Enter the game password to join mini games"
+              createPasswordTitle="Choose a password for your games room"
+              onExpand={() => openQuickMode('minigames')}
+              onCollapse={closeQuickModes}
+              onPickJoin={() => setMinigamesOnlineAction('join')}
+              onPickCreate={() => setMinigamesOnlineAction('create')}
+              onPasswordChange={setMinigamesPassword}
+              onPasswordBack={() => setMinigamesOnlineAction(null)}
+              onPasswordSubmit={(action, pwd) => {
+                closeQuickModes()
+                if (action === 'join') {
+                  router.push(`/minigames?code=${encodeURIComponent(pwd)}`)
+                } else {
+                  router.push(`/minigames?create=${encodeURIComponent(pwd)}`)
+                }
+              }}
+            />
           </div>
         </section>
         </div>

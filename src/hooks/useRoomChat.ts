@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { fetchMessages, sendMessage, type ChatMsg } from '@/lib/chat'
+import { useLatest } from '@/lib/useLatest'
 
 const CHAT_POLL_MS = 2000
 
@@ -11,8 +12,7 @@ export function useRoomChat(
 ) {
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [localMessages, setLocalMessages] = useState<ChatMsg[]>([])
-  const meRef = useRef(me)
-  meRef.current = me
+  const meRef = useLatest(me)
 
   useEffect(() => {
     if (!roomId || roomId === 'local') return

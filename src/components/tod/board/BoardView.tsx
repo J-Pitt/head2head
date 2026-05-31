@@ -28,9 +28,11 @@ export default function BoardView({
   const b = room.state?.board
   if (!b) return null
 
+  const panelKey = `${b.phase}-${b.rollerId ?? ''}-${b.onSpotId ?? ''}-${b.questionId ?? ''}-${b.dice ?? ''}-${b.prompt ?? ''}`
+
   return (
     <TodGameLayout
-      stage={<Resolution room={room} />}
+      stage={<Resolution key={panelKey} room={room} />}
       board={<BoardTrack room={room} />}
       chat={chatSidebar}
     />
@@ -311,7 +313,7 @@ function Resolution({ room }: { room: Room }) {
   }
 
   if (b.phase === 'prompt' || b.phase === 'forfeit') {
-    return <BoardPrompt room={room} />
+    return <BoardPrompt key={`${b.onSpotId}-${b.choice}`} room={room} />
   }
 
   if (b.phase === 'trivia') {
@@ -376,10 +378,6 @@ function BoardPrompt({ room }: { room: Room }) {
   const onSpot = room.players.find((p) => p.id === b.onSpotId)
   const asker = room.players.find((p) => p.id === b.askerId)
   const [draft, setDraft] = useState('')
-
-  useEffect(() => {
-    setDraft('')
-  }, [b.onSpotId, b.choice])
 
   const isMine = b.onSpotId === room.playerId
   const askerAway = !room.isAvailable(b.askerId)

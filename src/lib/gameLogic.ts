@@ -80,7 +80,7 @@ export function applyTimeout(state: GameState, players: Player[]): GameState {
   }
 
   if (state.phase === 'question') {
-    let idx = normalizeToActiveIndex(players, state.currentPlayerIndex ?? 0)
+    const idx = normalizeToActiveIndex(players, state.currentPlayerIndex ?? 0)
     const current = players[idx]
     if (!current || !isActivePlayer(current)) {
       return { ...state, phase: 'reveal', phaseStartedAt: now }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { GameViewProps } from '@/lib/minigames/types'
 import { RaceLeaderboard, RoundStatusBar } from './shared'
 
@@ -10,12 +10,7 @@ export function ReactionView(props: GameViewProps) {
   const goAt = session.goAt ?? startAt + 2500
 
   const [result, setResult] = useState<number | 'early' | null>(null)
-  const reported = useRef(false)
-
-  useEffect(() => {
-    setResult(null)
-    reported.current = false
-  }, [session.round])
+  const [reported, setReported] = useState(false)
 
   const started = now >= startAt
   const green = started && now >= goAt
@@ -29,17 +24,16 @@ export function ReactionView(props: GameViewProps) {
   else phase = 'wait'
 
   function tap() {
-    if (!live || reported.current || !started) return
-    // Use the precise wall clock for the measurement, not the 100ms React tick.
+    if (!live || reported || !started) return
     const t = Date.now()
     if (t < goAt) {
-      reported.current = true
+      setReported(true)
       setResult('early')
       props.report({ score: 99999, alive: false, finished: true, finishAt: 99999 })
       return
     }
     const ms = Math.round(t - goAt)
-    reported.current = true
+    setReported(true)
     setResult(ms)
     props.report({ score: ms, alive: true, finished: true, finishAt: ms })
   }
@@ -60,10 +54,11 @@ export function ReactionView(props: GameViewProps) {
       <div className="race-main">
         <RoundStatusBar session={session} now={now} />
         <button
+          key={session.round}
           type="button"
           className={`reaction-pad big ${phase === 'go' ? 'go' : phase === 'wait' ? 'ready' : phase === 'early' ? 'early' : 'done'}`}
           onClick={tap}
-          disabled={!live || reported.current}
+          disabled={!live || reported}
         >
           {label}
         </button>

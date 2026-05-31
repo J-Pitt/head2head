@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLatest } from '@/lib/useLatest'
+import { readMinigamesUrlBootstrap } from '@/lib/minigamesUrl'
 import type { Player } from '@/lib/types'
 import type { MinigameId } from '@/lib/minigames/catalog'
 import type { Progress, ProgressMap, Session } from '@/lib/minigames/types'
@@ -20,6 +22,17 @@ const REPORT_THROTTLE_MS = 220
 const PLAYER_KEY = 'head2head_player_id'
 const NAME_KEY = 'head2head_player_name'
 const PARTY_KEY = 'head2head_minigame_party'
+
+function loadSavedPartyCode() {
+  try {
+    const raw = localStorage.getItem(PARTY_KEY)
+    if (!raw) return ''
+    const saved = JSON.parse(raw) as { gameCode?: string }
+    return saved.gameCode ?? ''
+  } catch {
+    return ''
+  }
+}
 
 export function loadPlayerId() {
   try {
@@ -61,7 +74,10 @@ export function useMinigameParty() {
     }
   })
   const [avatar, setAvatar] = useState<string>(DEFAULT_AVATAR)
-  const [gameCodeInput, setGameCodeInput] = useState('')
+  const [gameCodeInput, setGameCodeInput] = useState(
+    () => readMinigamesUrlBootstrap()?.joinCode || loadSavedPartyCode()
+  )
+  const [entryIntent] = useState(() => readMinigamesUrlBootstrap()?.intent ?? null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
@@ -71,16 +87,11 @@ export function useMinigameParty() {
   const [error, setError] = useState('')
   const [now, setNow] = useState(() => Date.now())
 
-  const sessionRef = useRef<Session | null>(null)
-  sessionRef.current = session
-  const progressRef = useRef<Record<string, Progress>>({})
-  progressRef.current = progress
-  const playersRef = useRef<Player[]>([])
-  playersRef.current = players
-  const isHostRef = useRef(false)
-  isHostRef.current = isHost
-  const roomIdRef = useRef<string | null>(null)
-  roomIdRef.current = roomId
+  const sessionRef = useLatest(session)
+  const progressRef = useLatest(progress)
+  const playersRef = useLatest(players)
+  const isHostRef = useLatest(isHost)
+  const roomIdRef = useLatest(roomId)
 
   const lastReportRef = useRef(0)
   const ownProgressRef = useRef<Progress | null>(null)
@@ -198,15 +209,16 @@ export function useMinigameParty() {
     })
   }, [now, pushSession])
 
-  async function hostRoom() {
+  async function hostRoom(customCode?: string) {
     if (!playerName.trim()) {
       setError('Enter your name')
       return
     }
+    const code = (customCode ?? (entryIntent === 'create' ? gameCodeInput : '')).trim().toUpperCase()
     setError('')
     try {
       localStorage.setItem(NAME_KEY, playerName.trim())
-      const data = await createMinigameRoom('party', playerName.trim(), avatar, playerId)
+      const data = await createMinigameRoom('party', playerName.trim(), avatar, playerId, code || undefined)
       setRoomId(data.roomId)
       setGameCode(data.gameCode)
       setPlayers(data.players)
@@ -284,18 +296,6 @@ export function useMinigameParty() {
     pushSession(hubSession(round))
   }, [pushSession])
 
-  // Restore the saved party code so a refreshed player can rejoin quickly.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PARTY_KEY)
-      if (!raw || roomId) return
-      const saved = JSON.parse(raw) as { gameCode?: string }
-      if (saved.gameCode) setGameCodeInput(saved.gameCode)
-    } catch {
-      /* ignore */
-    }
-  }, [roomId])
-
   return {
     screen,
     activeGameId,
@@ -306,6 +306,7 @@ export function useMinigameParty() {
     setAvatar,
     gameCodeInput,
     setGameCodeInput,
+    entryIntent,
     roomId,
     gameCode,
     isHost,

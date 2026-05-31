@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { readClassicUrlBootstrap } from '@/lib/classicUrl'
+import { useLatest } from '@/lib/useLatest'
 import { DEFAULT_BOARD_PIECE } from '@/lib/tod/boardPieces'
 import {
   createTodRoom,
@@ -52,8 +54,10 @@ export function useClassicTod() {
   const [avatar] = useState(DEFAULT_BOARD_PIECE)
   const [listMode, setListMode] = useState<ClassicListMode>('pg')
   const [error, setError] = useState('')
-  const [joinCode, setJoinCode] = useState('')
-  const [intent, setIntent] = useState<'create' | 'join' | 'solo' | null>(null)
+  const [joinCode, setJoinCode] = useState(() => readClassicUrlBootstrap()?.joinCode ?? '')
+  const [intent, setIntent] = useState<'create' | 'join' | 'solo' | null>(
+    () => readClassicUrlBootstrap()?.intent ?? null
+  )
 
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
@@ -61,12 +65,9 @@ export function useClassicTod() {
   const [players, setPlayers] = useState<Player[]>([])
   const [state, setState] = useState<ClassicTodState | null>(null)
 
-  const stateRef = useRef<ClassicTodState | null>(null)
-  stateRef.current = state
-  const playersRef = useRef<Player[]>([])
-  playersRef.current = players
-  const roomIdRef = useRef<string | null>(null)
-  roomIdRef.current = roomId
+  const stateRef = useLatest(state)
+  const playersRef = useLatest(players)
+  const roomIdRef = useLatest(roomId)
 
   const isLocal = roomId === 'classic-local'
   const inRoom = !!roomId && !!state
@@ -104,26 +105,6 @@ export function useClassicTod() {
       clearInterval(iv)
     }
   }, [roomId])
-
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      if (params.get('classic') !== '1') return
-      const code = params.get('code')?.trim().toUpperCase()
-      const create = params.get('create')?.trim().toUpperCase()
-      if (code) {
-        setIntent('join')
-        setJoinCode(code)
-      } else if (create) {
-        setIntent('create')
-        setJoinCode(create)
-      } else {
-        setIntent('solo')
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [])
 
   function spotName(id: string | null): string {
     if (!id) return 'Someone'

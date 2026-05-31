@@ -36,53 +36,59 @@ export default function PartyHub({
         <h1>Games room</h1>
       </header>
 
-      <section className="card party-roster">
-        <div className="party-roster-head">
-          <span>
-            Room code: <strong className="room-code-display">{gameCode}</strong>
-          </span>
-          <span className="party-count">
-            {players.length} {players.length === 1 ? 'player' : 'players'}
-          </span>
-        </div>
-        <ul className="party-players">
-          {players.map((p) => (
-            <li key={p.id}>
-              <Avatar seed={p.avatar} size={34} />
+      <div className="room-layout">
+        <main className="party-hub-main">
+          <section className="card party-roster">
+            <div className="party-roster-head">
               <span>
-                {p.name}
-                {p.id === playerId ? ' (you)' : ''}
+                Room code: <strong className="room-code-display">{gameCode}</strong>
               </span>
-            </li>
-          ))}
-        </ul>
-        <p className="party-hint">Anyone can pick the next game — everyone plays together.</p>
-      </section>
+              <span className="party-count">
+                {players.length} {players.length === 1 ? 'player' : 'players'}
+              </span>
+            </div>
+            <ul className="party-players">
+              {players.map((p) => (
+                <li key={p.id}>
+                  <Avatar seed={p.avatar} size={34} />
+                  <span>
+                    {p.name}
+                    {p.id === playerId ? ' (you)' : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="party-hint">Anyone can pick the next game — everyone plays together.</p>
+          </section>
 
-      <section className="card wheel-card">
-        <p className="intro">Spin to pick a game at random, or choose one below.</p>
-        <SpinWheel onPlay={play} />
-      </section>
+          <section className="card wheel-card">
+            <p className="intro">Spin to pick a game at random, or choose one below.</p>
+            <SpinWheel onPlay={play} />
+          </section>
 
-      <section className="card">
-        <h2 className="section-title">Choose a game</h2>
-        <ul className="minigame-list">
-          {WHEEL_GAMES.map((g) => (
-            <li key={g.id}>
-              <button type="button" className="minigame-row playable" onClick={() => play(g)}>
-                <span className="minigame-emoji">{g.emoji}</span>
-                <div>
-                  <strong>{g.label}</strong>
-                  <span>{g.blurb}</span>
-                </div>
-                <span className="minigame-go">Play →</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+          <section className="card">
+            <h2 className="section-title">Choose a game</h2>
+            <ul className="minigame-list">
+              {WHEEL_GAMES.map((g) => (
+                <li key={g.id}>
+                  <button type="button" className="minigame-row playable" onClick={() => play(g)}>
+                    <span className="minigame-emoji">{g.emoji}</span>
+                    <div>
+                      <strong>{g.label}</strong>
+                      <span>{g.blurb}</span>
+                    </div>
+                    <span className="minigame-go">Play →</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </main>
 
-      <ChatPanel messages={chatMessages} meId={playerId} onSend={onSendChat} title="Room chat 📸" />
+        <aside className="room-sidebar">
+          <ChatPanel messages={chatMessages} meId={playerId} onSend={onSendChat} title="Room chat 📸" />
+        </aside>
+      </div>
     </div>
   )
 }

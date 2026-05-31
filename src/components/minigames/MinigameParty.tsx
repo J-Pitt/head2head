@@ -6,6 +6,7 @@ import { getMinigame } from '@/lib/minigames/catalog'
 import type { GameViewProps } from '@/lib/minigames/types'
 import PartyJoin from './PartyJoin'
 import PartyHub from './PartyHub'
+import ChatPanel from '@/components/ChatPanel'
 import { GameViewRouter } from './views/GameViewRouter'
 
 export default function MinigameParty() {
@@ -79,7 +80,19 @@ export default function MinigameParty() {
         </div>
       )}
 
-      <GameViewRouter gameId={gameId} {...viewProps} />
+      <div className="room-layout minigame-play-layout">
+        <main className="minigame-play-main">
+          <GameViewRouter gameId={gameId} {...viewProps} />
+        </main>
+        <aside className="room-sidebar">
+          <ChatPanel
+            messages={chat.messages}
+            meId={party.playerId}
+            onSend={chat.send}
+            title="Room chat 📸"
+          />
+        </aside>
+      </div>
     </div>
   )
 }

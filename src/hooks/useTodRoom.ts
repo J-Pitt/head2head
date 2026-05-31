@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLatest } from '@/lib/useLatest'
 import type { Player } from '@/lib/types'
 import type { BoardTodState } from '@/lib/tod/types'
 import { initialTodState, isBoardTodState, isClassicTodState, PICTURE_EVERY } from '@/lib/tod/types'
@@ -80,14 +81,10 @@ export function useTodRoom() {
   const [now, setNow] = useState(() => Date.now())
   const [error, setError] = useState('')
 
-  const stateRef = useRef<BoardTodState | null>(null)
-  stateRef.current = state
-  const playersRef = useRef<Player[]>([])
-  playersRef.current = players
-  const roomIdRef = useRef<string | null>(null)
-  roomIdRef.current = roomId
-  const progressRef = useRef<Record<string, Progress>>({})
-  progressRef.current = progress
+  const stateRef = useLatest(state)
+  const playersRef = useLatest(players)
+  const roomIdRef = useLatest(roomId)
+  const progressRef = useLatest(progress)
   const ownProgressRef = useRef<Progress | null>(null)
   const lastReportRef = useRef(0)
   const finalizingRef = useRef(false)
@@ -465,6 +462,14 @@ export function useTodRoom() {
       } else {
         patchBoard({ dice, positions, phase: 'event', tileType: 'special', message: `${ch.icon} ${ch.label}` })
       }
+    } else if (type === 'start') {
+      patchBoard({
+        dice,
+        positions,
+        phase: 'event',
+        tileType: 'start',
+        message: `🚦 ${name} is back at Start — keep rolling!`,
+      })
     } else {
       patchBoard({ dice, positions, phase: 'event', tileType: 'group', message: `👯 Group dare! Everyone does a dare together.` })
     }

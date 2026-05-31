@@ -19,12 +19,13 @@ export async function createMinigameRoom(
   gameId: string,
   hostName: string,
   avatar: string,
-  playerId: string
+  playerId: string,
+  gameCode?: string
 ) {
   const res = await fetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ gameId, hostName, avatar, playerId }),
+    body: JSON.stringify({ gameId, hostName, avatar, playerId, gameCode: gameCode?.trim().toUpperCase() || undefined }),
   })
   const data = await parseResponse(res, 'Failed to create room')
   return data as { roomId: string; gameCode: string; gameId: string; players: Player[] }
