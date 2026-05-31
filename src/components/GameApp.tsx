@@ -77,16 +77,20 @@ function HomeQuickModeCard({
   onPasswordSubmit,
 }: HomeQuickModeCardProps) {
   return (
-    <div className={`mode-card mode-card-hot ${className} ${expanded ? 'expanded' : ''}`}>
+    <div className={`also-try-card ${className} ${expanded ? 'expanded' : ''}`}>
       {!expanded ? (
-        <button type="button" className="mode-card-inner" onClick={onExpand}>
-          <span className="mode-icon">{icon}</span>
-          <strong>{title}</strong>
-          <span>{subtitle}</span>
+        <button type="button" className="also-try-inner" onClick={onExpand}>
+          <span className="also-try-icon">{icon}</span>
+          <span className="also-try-name">{title}</span>
+          <span className="also-try-sub">{subtitle}</span>
         </button>
       ) : !onlineAction ? (
-        <div className="trivia-pick">
-          <p className="home-online-label">{title}</p>
+        <div className="also-try-pick">
+          <div className="also-try-pick-head">
+            <span className="also-try-icon">{icon}</span>
+            <span className="also-try-name">{title}</span>
+            <button type="button" className="btn-ghost btn-sm also-try-back" onClick={onCollapse}>✕</button>
+          </div>
           {showPlayLocal && onPlayLocal && (
             <button type="button" className="btn full home-cta home-cta-local" onClick={onPlayLocal}>
               Play locally
@@ -98,13 +102,10 @@ function HomeQuickModeCard({
           <button type="button" className="btn full home-cta home-cta-create" onClick={onPickCreate}>
             Start game
           </button>
-          <button type="button" className="btn-ghost home-back" onClick={onCollapse}>
-            ← Back
-          </button>
         </div>
       ) : (
         <form
-          className="trivia-pick home-online-form"
+          className="also-try-pick"
           onSubmit={(e) => {
             e.preventDefault()
             const pwd = password.trim().toUpperCase()
@@ -112,6 +113,11 @@ function HomeQuickModeCard({
             onPasswordSubmit(onlineAction, pwd)
           }}
         >
+          <div className="also-try-pick-head">
+            <span className="also-try-icon">{icon}</span>
+            <span className="also-try-name">{title}</span>
+            <button type="button" className="btn-ghost btn-sm also-try-back" onClick={() => { onPasswordBack(); onPasswordChange('') }}>✕</button>
+          </div>
           <p className="home-online-label">
             {onlineAction === 'join' ? joinPasswordTitle : createPasswordTitle}
           </p>
@@ -133,10 +139,7 @@ function HomeQuickModeCard({
           <button
             type="button"
             className="btn-ghost home-back"
-            onClick={() => {
-              onPasswordBack()
-              onPasswordChange('')
-            }}
+            onClick={() => { onPasswordBack(); onPasswordChange('') }}
           >
             ← Back
           </button>
@@ -852,11 +855,10 @@ export default function GameApp() {
           )}
         </section>
 
-        <p className="home-divider">Also try</p>
+        <p className="home-divider">Also play</p>
 
-        <section className="card hero-card tod-glass home-quick-card">
-          <div className="mode-grid three">
-            <HomeQuickModeCard
+        <div className="also-try-row">
+          <HomeQuickModeCard
               expanded={triviaOpen}
               onlineAction={triviaOnlineAction}
               password={triviaPassword}
@@ -868,13 +870,6 @@ export default function GameApp() {
               createPasswordTitle="Choose a password for your trivia room"
               onExpand={() => openQuickMode('trivia')}
               onCollapse={closeQuickModes}
-              showPlayLocal
-              onPlayLocal={() => {
-                setMode('local')
-                setOnlineIntent(null)
-                setScreen('setup')
-                closeQuickModes()
-              }}
               onPickJoin={() => setTriviaOnlineAction('join')}
               onPickCreate={() => setTriviaOnlineAction('create')}
               onPasswordChange={setTriviaPassword}
@@ -937,8 +932,7 @@ export default function GameApp() {
                 }
               }}
             />
-          </div>
-        </section>
+        </div>
         </div>
       </div>
     )

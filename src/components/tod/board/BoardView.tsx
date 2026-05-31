@@ -28,12 +28,15 @@ export default function BoardView({
   const b = room.state?.board
   if (!b) return null
 
-  const panelKey = `${b.phase}-${b.rollerId ?? ''}-${b.onSpotId ?? ''}-${b.questionId ?? ''}-${b.dice ?? ''}-${b.prompt ?? ''}`
+  const overlayKey = `${b.phase}-${b.rollerId ?? ''}-${b.onSpotId ?? ''}-${b.questionId ?? ''}-${b.dice ?? ''}-${b.prompt ?? ''}`
+
+  // Rolling phase stays inline on the board; everything else pops up as an overlay
+  const overlay = b.phase !== 'rolling' ? <Resolution key={overlayKey} room={room} /> : null
 
   return (
     <TodGameLayout
-      stage={<Resolution key={panelKey} room={room} />}
       board={<BoardTrack room={room} />}
+      overlay={overlay}
       chat={chatSidebar}
     />
   )
@@ -102,10 +105,35 @@ function BoardTrack({ room }: { room: Room }) {
   const b = room.state!.board!
   const cols = b.cols ?? b.size ?? 4
   const rows = b.rows ?? b.size ?? 9
+  const roller = room.players.find((p) => p.id === b.rollerId)
+  const myTurn = b.rollerId === room.playerId
 
   return (
     <section className="card board-card">
       <p className="board-legend">🚦 Start → follow the path → 🏁 Finish</p>
+
+      {b.phase === 'rolling' && (
+        <div className="board-roll-banner">
+          {myTurn ? (
+            <>
+              <span className="board-roll-label">Your turn, {roller?.name ?? 'you'}!</span>
+              <button type="button" className="btn btn-primary board-roll-btn" onClick={room.rollDice}>
+                🎲 Roll the dice
+              </button>
+            </>
+          ) : (
+            <span className="board-roll-label">
+              Waiting for {roller?.name ?? 'someone'} to roll…
+            </span>
+          )}
+          {room.isHost && (
+            <button type="button" className="btn-ghost btn-sm tod-end" onClick={room.restartBoard}>
+              End game
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="board-track">
         <div
           className="board-grid"
@@ -287,30 +315,8 @@ function Resolution({ room }: { room: Room }) {
     )
   }
 
-  if (b.phase === 'rolling') {
-    const myTurn = b.rollerId === room.playerId
-    return (
-      <section className="card tod-stage">
-        <p className="tod-kicker">Roll the dice 🎲</p>
-        <div className="tod-onspot">
-          {roller && <BoardPiece pieceId={roller.avatar} size={64} />}
-          <h2>{myTurn ? "Your roll!" : `${roller?.name ?? 'Someone'}'s turn`}</h2>
-        </div>
-        {myTurn ? (
-          <button type="button" className="btn btn-primary full dice-roll" onClick={room.rollDice}>
-            🎲 Roll
-          </button>
-        ) : (
-          <p className="lobby-sub">Waiting for {roller?.name ?? 'them'} to roll…</p>
-        )}
-        {room.isHost && (
-          <button type="button" className="btn-ghost btn-sm tod-end" onClick={room.restartBoard}>
-            End game to lobby
-          </button>
-        )}
-      </section>
-    )
-  }
+  // rolling phase is handled inline on the board — no overlay returned
+  if (b.phase === 'rolling') return null
 
   if (b.phase === 'prompt' || b.phase === 'forfeit') {
     return <BoardPrompt key={`${b.onSpotId}-${b.choice}`} room={room} />

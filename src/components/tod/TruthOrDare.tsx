@@ -159,7 +159,17 @@ function TodJoin({ room }: { room: Room }) {
 
       <TodSetupLayout>
         <section className="card tod-stage tod-setup-card">
-          <p className="tod-kicker">{online ? 'Join the board game' : 'Pass & play'}</p>
+          <p className="tod-kicker">
+            {mode === 'local' ? 'Pass & play' : mode === 'join' ? 'Join the board game' : 'Start a board game'}
+          </p>
+          <h2 className="tod-setup-title">Set up your game</h2>
+          <p className="lobby-sub">
+            {mode === 'local'
+              ? 'Enter your name and pick a game piece. Everyone plays on this device.'
+              : mode === 'join'
+                ? 'Enter your name and pick a game piece to join the room.'
+                : 'Enter your name and pick a game piece. Share the password once you\'re in the lobby.'}
+          </p>
           <label className="field">
             <span>Your name</span>
             <input

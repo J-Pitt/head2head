@@ -431,84 +431,107 @@ body {
   background: linear-gradient(90deg, transparent, rgba(240, 180, 202, 0.4), transparent);
 }
 
-.home-quick-card {
-  padding: 1.15rem;
-  background: rgba(19, 26, 46, 0.55);
-  border-color: rgba(240, 180, 202, 0.15);
+/* — "Also play" compact chip row — */
+.also-try-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
 }
 
-.mode-grid.three {
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.7rem;
+.also-try-card {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(19, 26, 46, 0.6);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  overflow: hidden;
 }
 
-.mode-grid.three .mode-card {
-  align-items: center;
-  text-align: center;
-  padding: 1.1rem 0.6rem;
-  gap: 0.3rem;
+.also-try-card:not(.expanded) {
+  flex: 1 1 auto;
+  min-width: 100px;
 }
 
-.tod-home .mode-card-hot {
-  border-radius: 0.75rem;
-  transition: transform 0.15s, box-shadow 0.15s;
+.also-try-card.expanded {
+  flex: 1 1 100%;
 }
 
-.tod-home .mode-card-hot:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-}
-
-.tod-home .mode-trivia {
-  background: var(--pastel-blue);
-  border-color: #a8dce4;
-  color: var(--navy-deep);
-}
-
-.tod-home .mode-trivia strong {
-  color: var(--navy-deep);
-}
-
-.tod-home .mode-trivia span:last-child {
-  color: rgba(19, 26, 46, 0.62);
-}
-
-.tod-home .mode-trivia.expanded {
-  align-items: stretch;
-  text-align: left;
-}
-
-.tod-home .mode-tod.expanded,
-.tod-home .mode-minigames.expanded {
-  align-items: stretch;
-  text-align: left;
-}
-
-.mode-card-inner {
+.also-try-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
-  gap: 0.3rem;
+  gap: 0.2rem;
+  padding: 0.65rem 0.85rem 0.6rem;
   width: 100%;
   background: none;
   border: none;
   color: inherit;
   cursor: pointer;
-  padding: 0;
   font: inherit;
+  text-align: center;
 }
 
-.trivia-pick {
-  width: 100%;
+.also-try-inner:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.also-try-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.also-try-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.also-try-sub {
+  font-size: 0.67rem;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.3;
+}
+
+.also-try-pick {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.4rem;
+  padding: 0.75rem;
 }
 
-.trivia-pick .home-online-label {
-  margin: 0 0 0.25rem;
-  text-align: center;
+.also-try-pick-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.25rem;
+}
+
+.also-try-back {
+  margin-left: auto;
+  opacity: 0.6;
+  font-size: 0.8rem;
+}
+
+/* Colour tints for each game chip */
+.tod-home .also-try-card.mode-trivia {
+  border-color: rgba(168, 220, 228, 0.35);
+  background: rgba(168, 220, 228, 0.08);
+  color: #d4f1f7;
+}
+.tod-home .also-try-card.mode-tod {
+  border-color: rgba(232, 160, 196, 0.35);
+  background: rgba(232, 160, 196, 0.08);
+  color: #f7d4e9;
+}
+.tod-home .also-try-card.mode-minigames {
+  border-color: rgba(168, 232, 184, 0.35);
+  background: rgba(168, 232, 184, 0.08);
+  color: #d4f7df;
+}
+
+.tod-home .also-try-card:hover:not(.expanded) {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.22);
 }
 
 .setup-code-hint {
@@ -516,44 +539,6 @@ body {
   margin: 0 0 1rem;
   color: var(--muted);
   font-size: 0.9rem;
-}
-
-.tod-home .mode-minigames {
-  background: var(--pastel-mint);
-  border-color: #a8e8b8;
-  color: var(--navy-deep);
-}
-
-.tod-home .mode-minigames strong {
-  color: var(--navy-deep);
-}
-
-.tod-home .mode-minigames span:last-child {
-  color: rgba(19, 26, 46, 0.62);
-}
-
-.tod-home .mode-tod {
-  background: var(--pastel-pink);
-  border-color: #e8a0c4;
-  color: var(--navy-deep);
-}
-
-.tod-home .mode-tod strong {
-  color: var(--navy-deep);
-}
-
-.tod-home .mode-tod span:last-child {
-  color: rgba(19, 26, 46, 0.62);
-}
-
-.tod-home .mode-card-hot .mode-icon {
-  font-size: 1.65rem;
-  margin-bottom: 0.1rem;
-}
-
-.tod-home .mode-grid.three .mode-card span:last-child {
-  font-size: 0.72rem;
-  line-height: 1.35;
 }
 
 .tod-home .rejoin-card {
@@ -2512,8 +2497,9 @@ body {
 }
 
 .tod-setup-title {
-  margin: 0.35rem 0 0.5rem;
-  font-size: 1.35rem;
+  margin: 0.25rem 0 0.4rem;
+  font-size: 1.75rem;
+  font-weight: 700;
 }
 
 .tod-setup-layout {
@@ -2530,7 +2516,7 @@ body {
 }
 
 .tod-setup-card {
-  max-width: 420px;
+  max-width: 500px;
 }
 
 .tod-setup-only {
@@ -2542,7 +2528,7 @@ body {
 
 .tod-setup-only .tod-setup-main {
   width: 100%;
-  max-width: 420px;
+  max-width: 520px;
 }
 
 .tod-setup-layout .tod-room-sidebar {
@@ -2624,46 +2610,85 @@ body {
   overflow-y: auto;
 }
 
-/* Board play: questions | board | chat — chat always on the right */
+/* Board play: board (with overlay) | chat — 2-column */
 .board-play-layout {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(160px, 2fr) minmax(140px, 260px);
-  gap: 0.65rem;
-  align-items: stretch;
+  grid-template-columns: 1fr minmax(220px, 300px);
+  gap: 0.75rem;
+  align-items: start;
   width: 100%;
   min-height: calc(100dvh - 5.5rem);
 }
 
-.board-stage-col {
+.board-main-col {
   min-width: 0;
-  position: sticky;
-  top: 0.5rem;
-  align-self: start;
-  max-height: calc(100dvh - 5.5rem);
-  overflow-y: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.board-stage-col .card {
-  height: 100%;
-  animation: board-stage-pop 0.35s ease-out;
+/* Overlay — dims the board and centers the question/event card */
+.board-stage-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 1.5rem;
+  background: rgba(5, 8, 18, 0.72);
+  backdrop-filter: blur(3px);
+  border-radius: 0.75rem;
+  animation: board-overlay-in 0.22s ease-out;
+}
+
+@keyframes board-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.board-stage-overlay-inner {
+  width: 100%;
+  max-width: 420px;
+  padding: 0 0.75rem;
+  animation: board-stage-pop 0.28s ease-out;
 }
 
 @keyframes board-stage-pop {
   from {
     opacity: 0;
-    transform: translateX(-12px) scale(0.98);
+    transform: translateY(-10px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
-.board-center-col {
-  min-width: 0;
+.board-stage-overlay-inner .card {
+  width: 100%;
+}
+
+/* Rolling banner sits above the board grid */
+.board-roll-banner {
   display: flex;
-  justify-content: center;
-  align-self: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem 0.5rem;
+  text-align: center;
+  width: 100%;
+}
+
+.board-roll-label {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.board-roll-btn {
+  min-width: 160px;
 }
 
 .board-chat-col {
@@ -2682,11 +2707,6 @@ body {
   min-height: 200px;
   max-height: calc(100dvh - 5.5rem);
   margin-top: 0;
-}
-
-.board-stage-col .minigame-play-shell {
-  max-height: calc(100dvh - 6rem);
-  overflow-y: auto;
 }
 
 .board-chat-col .chat-messages {

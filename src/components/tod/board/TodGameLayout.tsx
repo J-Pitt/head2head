@@ -3,16 +3,22 @@
 import type { ReactNode } from 'react'
 
 type Props = {
-  stage: ReactNode
   board: ReactNode
+  overlay: ReactNode | null
   chat: ReactNode
 }
 
-export default function TodGameLayout({ stage, board, chat }: Props) {
+export default function TodGameLayout({ board, overlay, chat }: Props) {
   return (
     <div className="board-play-layout">
-      <aside className="board-stage-col">{stage}</aside>
-      <div className="board-center-col">{board}</div>
+      <div className="board-main-col">
+        {board}
+        {overlay && (
+          <div className="board-stage-overlay">
+            <div className="board-stage-overlay-inner">{overlay}</div>
+          </div>
+        )}
+      </div>
       <aside className="board-chat-col">{chat}</aside>
     </div>
   )
