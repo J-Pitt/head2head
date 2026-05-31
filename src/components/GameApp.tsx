@@ -541,7 +541,7 @@ export default function GameApp() {
       <div className="app-shell">
         <header className="app-header">
           <h1 className="logo">Head2Head</h1>
-          <p className="tagline">Group trivia — phones, laptops, couch or across the room</p>
+          <p className="tagline">Truth or Dare — phones, couch, or across the room</p>
         </header>
 
         {(pendingRejoin || onBreak) && (
@@ -579,51 +579,10 @@ export default function GameApp() {
 
         <section className="card hero-card">
           <p className="intro">
-            Buzz in fast or take turns. Science and 90&apos;s pop culture — pick categories, choose an
-            avatar, play in the circle.
+            Gather the group, pass the phone, and let the wheel decide. Spicy truths, bold dares,
+            and mini-game forfeits for whoever loses the round.
           </p>
-          {multiplayerAvailable && (
-            <p className="online-ready">Online rooms ready (Redis connected)</p>
-          )}
-          {!multiplayerAvailable && (
-            <p className="hint-banner">
-              Local play works now. For online rooms, add your Upstash Redis keys to{' '}
-              <code>.env.local</code> (see <code>env.example</code>).
-            </p>
-          )}
           <div className="mode-grid">
-            <button
-              type="button"
-              className="mode-card"
-              onClick={() => {
-                setMode('local')
-                setScreen('setup')
-                setError('')
-              }}
-            >
-              <span className="mode-icon">🛋️</span>
-              <strong>Play locally</strong>
-              <span>One device — pass it around</span>
-            </button>
-            <button
-              type="button"
-              className="mode-card"
-              onClick={() => {
-                setMode('online')
-                setScreen('setup')
-                setError('')
-              }}
-              disabled={!multiplayerAvailable}
-            >
-              <span className="mode-icon">🌐</span>
-              <strong>Play with others</strong>
-              <span>Buzz in on your own phone</span>
-            </button>
-            <Link href="/minigames" className="mode-card mode-card-link">
-              <span className="mode-icon">🎮</span>
-              <strong>Play mini games</strong>
-              <span>Spin the wheel — Frogger & more</span>
-            </Link>
             <Link href="/truth-or-dare" className="mode-card mode-card-link">
               <span className="mode-icon">💋</span>
               <strong>Truth or Dare</strong>
