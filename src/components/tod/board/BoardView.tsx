@@ -11,6 +11,7 @@ import { getDaresForMode, getTruthsForMode, pickRandomPrompt } from '@/lib/tod/c
 import { getMinigame } from '@/lib/minigames/catalog'
 import type { GameViewProps } from '@/lib/minigames/types'
 import { GameViewRouter } from '@/components/minigames/views/GameViewRouter'
+import BoardAnswerForm from '@/components/tod/board/BoardAnswerForm'
 import TodGameLayout from '@/components/tod/board/TodGameLayout'
 import { RaceLeaderboard } from '@/components/minigames/views/shared'
 
@@ -48,31 +49,55 @@ export default function BoardView({
   )
 }
 
+function BoardMaze({
+  tiles,
+  cols,
+  rows,
+  children,
+}: {
+  tiles: BoardTile[]
+  cols: number
+  rows: number
+  children?: ReactNode
+}) {
+  return (
+    <div className="board-track board-track-whimsy">
+      <div className="board-deco-layer" aria-hidden="true">
+        <span className="board-float board-float-a">✨</span>
+        <span className="board-float board-float-b">🌈</span>
+        <span className="board-float board-float-c">⭐</span>
+        <span className="board-float board-float-d">💫</span>
+        <span className="board-float board-float-e">🎀</span>
+      </div>
+      <div
+        className="board-grid board-grid-maze"
+        style={{
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gridTemplateRows: `repeat(${rows}, 1fr)`,
+        }}
+      >
+        {tiles.map((tile, idx) => (
+          <Tile
+            key={tile.i}
+            tile={tile}
+            prev={tiles[idx - 1]}
+            next={tiles[idx + 1]}
+            arrow={arrowFor(tile, tiles[idx + 1])}
+          />
+        ))}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 export function BoardPreview() {
   const tiles = buildTiles(BOARD_COLS, BOARD_ROWS, { randomize: false })
   return (
-    <section className="card board-card board-card-preview">
-      <p className="board-legend">🚦 Start → follow the path → 🏁 Finish</p>
-      <div className="board-track">
-        <div
-          className="board-grid"
-          style={{
-            gridTemplateColumns: `repeat(${BOARD_COLS}, 1fr)`,
-            gridTemplateRows: `repeat(${BOARD_ROWS}, 1fr)`,
-          }}
-        >
-          {tiles.map((tile, idx) => (
-            <Tile
-              key={tile.i}
-              tile={tile}
-              prev={tiles[idx - 1]}
-              next={tiles[idx + 1]}
-              arrow={arrowFor(tile, tiles[idx + 1])}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
+    <div className="board-play-panel board-play-panel-preview">
+      <p className="board-legend">🚦 START → follow the path → 🏁 FINISH</p>
+      <BoardMaze tiles={tiles} cols={BOARD_COLS} rows={BOARD_ROWS} />
+    </div>
   )
 }
 
@@ -115,56 +140,41 @@ function BoardTrack({ room }: { room: Room }) {
   const canRoll = b.rollerId === room.playerId || (room.isLocal && !!b.rollerId)
 
   return (
-    <section className="card board-card">
-      <p className="board-legend">🚦 Start → follow the path → 🏁 Finish</p>
+    <div className="board-play-panel">
+      <header className="board-play-head">
+        <p className="board-legend">🚦 START → follow the path → 🏁 FINISH</p>
 
-      {b.phase === 'rolling' && (
-        <div className="board-roll-banner">
-          {canRoll ? (
-            <>
-              <span className="board-roll-label">
-                {room.isLocal
-                  ? `${roller?.name ?? 'Someone'}'s turn — roll the dice!`
-                  : `Your turn, ${roller?.name ?? 'you'}!`}
-              </span>
-              <button type="button" className="btn btn-primary board-roll-btn" onClick={room.rollDice}>
-                🎲 Roll the dice
+        {b.phase === 'rolling' && (
+          <div className="board-turn-bar">
+            {canRoll ? (
+              <>
+                <p className="board-turn-label">
+                  {room.isLocal
+                    ? `${roller?.name ?? 'Someone'}'s turn — roll the dice!`
+                    : `Your turn, ${roller?.name ?? 'you'}!`}
+                </p>
+                <button type="button" className="btn btn-primary board-roll-btn" onClick={room.rollDice}>
+                  🎲 Roll the dice
+                </button>
+              </>
+            ) : (
+              <p className="board-turn-label">
+                Waiting for {roller?.name ?? 'someone'} to roll…
+              </p>
+            )}
+            {room.isHost && (
+              <button type="button" className="btn-ghost btn-sm tod-end" onClick={room.restartBoard}>
+                End game
               </button>
-            </>
-          ) : (
-            <span className="board-roll-label">
-              Waiting for {roller?.name ?? 'someone'} to roll…
-            </span>
-          )}
-          {room.isHost && (
-            <button type="button" className="btn-ghost btn-sm tod-end" onClick={room.restartBoard}>
-              End game
-            </button>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </header>
 
-      <div className="board-track">
-        <div
-          className="board-grid"
-          style={{
-            gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            gridTemplateRows: `repeat(${rows}, 1fr)`,
-          }}
-        >
-          {b.tiles.map((tile, idx) => (
-            <Tile
-              key={tile.i}
-              tile={tile}
-              prev={b.tiles[idx - 1]}
-              next={b.tiles[idx + 1]}
-              arrow={arrowFor(tile, b.tiles[idx + 1])}
-            />
-          ))}
-        </div>
+      <BoardMaze tiles={b.tiles} cols={cols} rows={rows}>
         <AnimatedPieces room={room} />
-      </div>
-    </section>
+      </BoardMaze>
+    </div>
   )
 }
 
@@ -260,7 +270,7 @@ function AnimatedPieces({ room }: { room: Room }) {
             }}
             title={p.name}
           >
-            <BoardPiece pieceId={p.avatar} size={32} className="tile-token board-piece-moving" />
+            <BoardPiece pieceId={p.avatar} size={22} className="tile-token board-piece-moving" />
           </div>
         ))
       })}
@@ -284,12 +294,20 @@ function Tile({
   const endpoint = tile.type === 'start' || tile.type === 'finish'
   const pathCls = tilePathClasses(tile, prev, next)
   const label = special ? 'Special' : meta.label
+  const hasTunnel = pathCls.includes('path-')
   return (
     <div
-      className={`board-tile tile-${tile.type} ${pathCls}`}
-      style={{ gridColumn: tile.col + 1, gridRow: tile.row + 1, ['--tile' as string]: meta.color }}
+      className={`board-tile tile-${tile.type} ${pathCls}${hasTunnel ? ' has-tunnel' : ''}`}
+      style={{
+        gridColumn: tile.col + 1,
+        gridRow: tile.row + 1,
+        ['--tile' as string]: meta.color,
+        ['--tile-i' as string]: tile.i,
+        ['--tile-tilt' as string]: `${((tile.i % 3) - 1) * 1.4}deg`,
+      }}
       title={special ? special.label : meta.label}
     >
+      <span className="board-tile-shine" aria-hidden />
       <div className="board-tile-inner">
         <span className="tile-emoji" aria-hidden>
           {special ? special.icon : meta.emoji}
@@ -366,8 +384,6 @@ function Resolution({ room }: { room: Room }) {
           players={room.players}
           progress={room.progress}
           playerId={room.playerId}
-          lowerIsBetter={b.minigame.mode === 'reaction'}
-          unit={b.minigame.mode === 'reaction' ? 'ms' : ''}
         />
       </section>
     )
@@ -405,6 +421,7 @@ function BoardPrompt({ room }: { room: Room }) {
   const [suggestion, setSuggestion] = useState<{ text: string; idx: number } | null>(null)
 
   const isMine = b.onSpotId === room.playerId
+  const canAnswer = isMine || (room.isLocal && !!b.onSpotId)
   const askerAway = !room.isAvailable(b.askerId)
   const canWrite = b.askerId
     ? b.askerId === room.playerId ||
@@ -580,24 +597,47 @@ function BoardPrompt({ room }: { room: Room }) {
             )}
           </p>
         )
+      ) : !b.answerSubmitted ? (
+        <>
+          <div className="tod-prompt-wrap">
+            <span className={`tod-badge ${b.choice}`}>{b.choice.toUpperCase()}</span>
+            <p className="tod-prompt">{b.prompt}</p>
+            {asker && <p className="tod-asker">— from {asker.name}</p>}
+          </div>
+          {canAnswer ? (
+            <BoardAnswerForm
+              category={b.choice!}
+              onSubmit={(text, image) => room.boardSubmitAnswer(text, image)}
+            />
+          ) : (
+            <p className="lobby-sub">Waiting for {onSpot?.name ?? 'them'} to answer…</p>
+          )}
+        </>
       ) : (
         <div className="tod-prompt-wrap">
           <span className={`tod-badge ${b.choice}`}>{b.choice.toUpperCase()}</span>
           <p className="tod-prompt">{b.prompt}</p>
           {asker && <p className="tod-asker">— from {asker.name}</p>}
+          <div className="board-answer-reveal">
+            <p className="board-answer-reveal-label">{onSpot?.name ?? 'Player'}&apos;s answer</p>
+            {b.answerText && <p className="board-answer-reveal-text">{b.answerText}</p>}
+            {b.answerImage && (
+              <div className="board-answer-reveal-photo">
+                <img src={b.answerImage} alt={`${onSpot?.name ?? 'Player'}'s answer`} />
+              </div>
+            )}
+            {!b.answerText && !b.answerImage && (
+              <p className="lobby-sub">No answer posted.</p>
+            )}
+          </div>
           {canAdvance ? (
-            <>
-              <p className="tod-write-label">
-                {room.isLocal
-                  ? `Do your ${b.choice}, then tap Done when you're finished →`
-                  : `Do your ${b.choice}, then post your answer in the chat →`}
-              </p>
-              <button type="button" className="btn btn-primary full" onClick={room.boardContinue}>
-                Done — next player →
-              </button>
-            </>
+            <button type="button" className="btn btn-primary full" onClick={room.boardContinue}>
+              Next player rolls →
+            </button>
           ) : (
-            <p className="lobby-sub">Waiting for {onSpot?.name ?? 'them'} to finish…</p>
+            <p className="lobby-sub">
+              {onSpot?.name ?? 'Player'}&apos;s answer is in — waiting for them to continue…
+            </p>
           )}
         </div>
       )}

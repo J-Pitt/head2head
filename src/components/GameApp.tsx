@@ -233,12 +233,14 @@ export default function GameApp() {
   const [classicJoinAction, setClassicJoinAction] = useState(false)
   const [classicJoinCode, setClassicJoinCode] = useState('')
   const [minigamesOpen, setMinigamesOpen] = useState(false)
+  const [minigamesOnlineOpen, setMinigamesOnlineOpen] = useState(false)
   const [minigamesJoinAction, setMinigamesJoinAction] = useState(false)
   const [minigamesJoinCode, setMinigamesJoinCode] = useState('')
   const [onlineIntent, setOnlineIntent] = useState<'join' | 'create' | null>(
     () => triviaBoot?.onlineIntent ?? null
   )
   const [joinGameCode, setJoinGameCode] = useState('')
+  const [joinRouteError, setJoinRouteError] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -258,6 +260,7 @@ export default function GameApp() {
     setClassicJoinAction(false)
     setClassicJoinCode('')
     setMinigamesOpen(false)
+    setMinigamesOnlineOpen(false)
     setMinigamesJoinAction(false)
     setMinigamesJoinCode('')
   }
@@ -849,8 +852,13 @@ export default function GameApp() {
                 e.preventDefault()
                 const code = joinGameCode.trim().toUpperCase()
                 if (!code) return
+                setJoinRouteError('')
                 const resolved = await resolveGameCode(code)
-                router.push(resolved?.joinPath ?? `/truth-or-dare?code=${encodeURIComponent(code)}`)
+                if (!resolved) {
+                  setJoinRouteError('Game code not found. Double-check the code or ask the host which game they started.')
+                  return
+                }
+                router.push(resolved.joinPath)
               }}
             >
               <p className="home-online-label">Enter the game code</p>
@@ -869,12 +877,14 @@ export default function GameApp() {
               >
                 Continue to join
               </button>
+              {joinRouteError && <p className="error">{joinRouteError}</p>}
               <button
                 type="button"
                 className="btn-ghost home-back"
                 onClick={() => {
                   setOnlineAction(null)
                   setJoinGameCode('')
+                  setJoinRouteError('')
                 }}
               >
                 ← Back
@@ -962,24 +972,101 @@ export default function GameApp() {
               onSelect={() => openQuickMode('minigames')}
               pickPanel={
                 minigamesOpen ? (
-                  <HomeQuickPickPanel
-                    overlay
-                    title="Mini games"
-                    onlineAction={minigamesJoinAction ? 'join' : null}
-                    joinCode={minigamesJoinCode}
-                    onPickJoin={() => setMinigamesJoinAction(true)}
-                    onPickCreate={() => {
-                      closeQuickModes()
-                      router.push('/minigames?host=1')
-                    }}
-                    onJoinCodeChange={setMinigamesJoinCode}
-                    onJoinCodeBack={() => setMinigamesJoinAction(false)}
-                    onCollapse={closeQuickModes}
-                    onJoinSubmit={(code) => {
-                      closeQuickModes()
-                      router.push(`/minigames?code=${encodeURIComponent(code)}`)
-                    }}
-                  />
+                  minigamesJoinAction ? (
+                    <div className="mode-card-overlay-inner">
+                      <div className="home-quick-panel-head">
+                        <p className="home-online-label">Mini games — join</p>
+                        <button
+                          type="button"
+                          className="btn-ghost home-back home-back-inline"
+                          onClick={() => {
+                            setMinigamesJoinAction(false)
+                            setMinigamesJoinCode('')
+                          }}
+                        >
+                          ← Back
+                        </button>
+                      </div>
+                      <form
+                        className="home-online-form home-online-form-compact"
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          const code = minigamesJoinCode.trim().toUpperCase()
+                          if (!code) return
+                          closeQuickModes()
+                          router.push(`/minigames?code=${encodeURIComponent(code)}`)
+                        }}
+                      >
+                        <input
+                          value={minigamesJoinCode}
+                          onChange={(e) => setMinigamesJoinCode(e.target.value.toUpperCase())}
+                          placeholder="GAME CODE"
+                          maxLength={6}
+                          className="code-input home-pwd-input"
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          className="btn full home-cta home-cta-join"
+                          disabled={!minigamesJoinCode.trim()}
+                        >
+                          Continue to join
+                        </button>
+                      </form>
+                    </div>
+                  ) : minigamesOnlineOpen ? (
+                    <HomeQuickPickPanel
+                      overlay
+                      title="Mini games"
+                      onlineAction={null}
+                      joinCode={minigamesJoinCode}
+                      onPickJoin={() => setMinigamesJoinAction(true)}
+                      onPickCreate={() => {
+                        closeQuickModes()
+                        router.push('/minigames?host=1')
+                      }}
+                      onJoinCodeChange={setMinigamesJoinCode}
+                      onJoinCodeBack={() => setMinigamesJoinAction(false)}
+                      onCollapse={() => setMinigamesOnlineOpen(false)}
+                      onJoinSubmit={(code) => {
+                        closeQuickModes()
+                        router.push(`/minigames?code=${encodeURIComponent(code)}`)
+                      }}
+                    />
+                  ) : (
+                    <div className="mode-card-overlay-inner">
+                      <button
+                        type="button"
+                        className="btn full home-cta home-cta-solo"
+                        onClick={() => {
+                          closeQuickModes()
+                          router.push('/minigames?solo=1')
+                        }}
+                      >
+                        Play solo
+                      </button>
+                      <button
+                        type="button"
+                        className="btn full home-cta home-cta-local"
+                        onClick={() => {
+                          closeQuickModes()
+                          router.push('/minigames?local=1')
+                        }}
+                      >
+                        Play locally
+                      </button>
+                      <button
+                        type="button"
+                        className="btn full home-cta home-cta-online"
+                        onClick={() => setMinigamesOnlineOpen(true)}
+                      >
+                        Play online
+                      </button>
+                      <button type="button" className="btn-ghost home-back" onClick={closeQuickModes}>
+                        ← Back
+                      </button>
+                    </div>
+                  )
                 ) : undefined
               }
             />
@@ -1036,7 +1123,7 @@ export default function GameApp() {
 
           <AvatarPicker selected={avatar} onSelect={setAvatar} />
 
-          {mode === 'online' && (
+          {mode === 'online' && onlineIntent !== 'join' && (
             <>
               <div className="mode-toggle">
                 <p className="label">Online style</p>
@@ -1062,10 +1149,6 @@ export default function GameApp() {
                 <button type="button" className="btn btn-primary full" onClick={() => hostOnline()}>
                   Create room &amp; enter lobby
                 </button>
-              ) : onlineIntent === 'join' && gameCodeInput ? (
-                <button type="button" className="btn btn-primary full" onClick={() => joinOnline(gameCodeInput)}>
-                  Join room
-                </button>
               ) : (
                 <div className="online-actions">
                   <button type="button" className="btn btn-primary" onClick={() => hostOnline()}>
@@ -1086,6 +1169,18 @@ export default function GameApp() {
                 </div>
               )}
 
+              {!multiplayerAvailable && (
+                <p className="error">Online trivia needs Redis configured on the server.</p>
+              )}
+            </>
+          )}
+
+          {mode === 'online' && onlineIntent === 'join' && (
+            <>
+              <p className="hint">The host picks buzzer or turns style in the lobby.</p>
+              <button type="button" className="btn btn-primary full" onClick={() => joinOnline(gameCodeInput)}>
+                Join room
+              </button>
               {!multiplayerAvailable && (
                 <p className="error">Online trivia needs Redis configured on the server.</p>
               )}

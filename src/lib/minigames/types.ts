@@ -43,9 +43,47 @@ export type Session = {
   connect4?: Connect4Session | null
   winnerId?: string | null
   winnerName?: string | null
+  /** Whose turn it is to spin or pick the next game (hub only). */
+  pickerPlayerId?: string | null
+  /** Cumulative mini-game wins per player (multiplayer party tally). */
+  partyWins?: Record<string, number>
 }
 
-export function hubSession(round = 0): Session {
+export function awardPartyWin(
+  partyWins: Record<string, number> | undefined,
+  winnerId: string | null | undefined
+): Record<string, number> {
+  if (!winnerId) return { ...(partyWins ?? {}) }
+  return { ...(partyWins ?? {}), [winnerId]: (partyWins?.[winnerId] ?? 0) + 1 }
+}
+
+export function partyWinBoard(players: Player[], partyWins: Record<string, number> | undefined) {
+  return players
+    .map((player) => ({ player, wins: partyWins?.[player.id] ?? 0 }))
+    .sort((a, b) => b.wins - a.wins || a.player.name.localeCompare(b.player.name))
+}
+
+export function nextPickerId(players: Player[], currentId?: string | null): string | null {
+  if (!players.length) return null
+  if (players.length === 1) return players[0].id
+  const idx = currentId ? players.findIndex((p) => p.id === currentId) : -1
+  const nextIdx = idx >= 0 ? (idx + 1) % players.length : 0
+  return players[nextIdx]?.id ?? players[0].id
+}
+
+export function hubPickerId(session: Session | null, players: Player[]): string | null {
+  if (!players.length) return null
+  if (players.length === 1) return players[0].id
+  const id = session?.pickerPlayerId
+  if (id && players.some((p) => p.id === id)) return id
+  return players[0].id
+}
+
+export function hubSession(
+  round = 0,
+  pickerPlayerId: string | null = null,
+  partyWins: Record<string, number> = {}
+): Session {
   return {
     gameId: null,
     status: 'lobby',
@@ -56,6 +94,8 @@ export function hubSession(round = 0): Session {
     seed: 0,
     winnerId: null,
     winnerName: null,
+    pickerPlayerId,
+    partyWins,
   }
 }
 

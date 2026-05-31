@@ -53,9 +53,8 @@ function TodHeader({
     <header className="room-bar">
       <div>
         <Link href="/" className="btn-ghost btn-sm">
-          ←
+          ← Home
         </Link>
-        <span className="logo-sm">💋 Truth or Dare</span>
         {isLocal ? (
           <span className="room-code">Pass &amp; play</span>
         ) : gameCode ? (
@@ -123,7 +122,8 @@ export default function TruthOrDare() {
 type Room = ReturnType<typeof useTodRoom>
 
 function TodJoin({ room }: { room: Room }) {
-  const mode = room.entryMode
+  const mode = room.resolvedEntryMode ?? room.entryMode
+  const joinCode = room.resolvedJoinCode
 
   if (!mode) {
     return (
@@ -139,7 +139,7 @@ function TodJoin({ room }: { room: Room }) {
         <section className="card tod-stage">
           <p className="lobby-sub">Choose Play locally or Play online from the home screen.</p>
           <Link href="/" className="btn btn-primary full">
-            Back to home
+            ← Home
           </Link>
         </section>
       </div>
@@ -149,16 +149,16 @@ function TodJoin({ room }: { room: Room }) {
   const online = mode !== 'local'
 
   function enterLobby() {
-    const joinCode = room.gameCodeInput.trim()
+    const code = joinCode.trim()
     if (mode === 'local') room.enterLocalLobby()
-    else if (mode === 'join' || joinCode) void room.joinRoom(joinCode || undefined)
+    else if (mode === 'join' || code) void room.joinRoom(code || undefined)
     else if (mode === 'create') void room.hostRoom()
   }
 
   return (
     <div className="app-shell tod-room-shell">
       <TodHeader
-        gameCode={online ? room.gameCodeInput || null : null}
+        gameCode={online ? joinCode || null : null}
         isLocal={mode === 'local'}
         playerCount={0}
         isOnBreak={false}
@@ -176,11 +176,24 @@ function TodJoin({ room }: { room: Room }) {
             {mode === 'local'
               ? 'Enter your name and pick a game piece. Everyone plays on this device.'
               : mode === 'join'
-                ? room.gameCodeInput
-                  ? `Room code ${room.gameCodeInput} — enter your name and pick a game piece.`
-                  : 'Enter your name and pick a game piece to join the room.'
+                ? joinCode
+                  ? `Room code ${joinCode} — enter your name and pick a game piece.`
+                  : 'Enter the game code, your name, and pick a game piece.'
                 : 'Enter your name and pick a game piece. You\'ll get a room code in the lobby to share.'}
           </p>
+          {mode === 'join' && (
+            <label className="field">
+              <span>Game code</span>
+              <input
+                value={room.gameCodeInput}
+                onChange={(e) => room.setGameCodeInput(e.target.value.toUpperCase())}
+                placeholder="GAME CODE"
+                maxLength={6}
+                className="code-input"
+                autoFocus={!room.playerName.trim()}
+              />
+            </label>
+          )}
           <label className="field">
             <span>Your name</span>
             <input

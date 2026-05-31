@@ -74,6 +74,20 @@ describe('gameLogic', () => {
     expect(next.activeClueId).toBeNull()
   })
 
+  it('advanceRound rotates player every clue in turns mode', () => {
+    let state = baseGameState(players, ['science'], 'turns', {
+      phase: 'board',
+      currentPlayerIndex: 0,
+    })
+    const clueId = state.clues[0]!.id
+    state = selectClue(state, clueId, players)
+    const q = getQuestionById(state.clues[0]!.questionId)!
+    state = applyAnswer(state, 'a', q.correctIndex, q.correctIndex)
+    const next = advanceRound(state, players)
+    expect(next.currentPlayerIndex).toBe(1)
+    expect(next.phase).toBe('board')
+  })
+
   it('advanceRound transitions to double jeopardy when single round ends', () => {
     let state = baseGameState(players, ['science'], 'buzzer', { phase: 'board' })
     const lastClueId = state.clues[state.clues.length - 1]!.id

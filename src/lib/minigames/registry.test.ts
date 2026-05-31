@@ -46,13 +46,9 @@ describe('minigame registry', () => {
     expect(isRoundComplete(cfg, players, progress, Date.now(), null)).toBe(true)
   })
 
-  it('reaction winner is fastest (lowest score)', () => {
-    const cfg = getGameConfig('reaction')
-    const progress: Progress[] = [
-      { playerId: 'a', score: 200, finished: true, finishAt: 200, alive: true },
-      { playerId: 'b', score: 150, finished: true, finishAt: 150, alive: true },
-    ]
-    const w = computeRaceWinner(cfg, players, progress)
-    expect(w?.id).toBe('b')
+  it('dino uses race mode like flappy', () => {
+    const cfg = getGameConfig('dino')
+    expect(cfg.mode).toBe('race')
+    expect(cfg.durationMs).toBe(90000)
   })
 })

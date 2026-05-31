@@ -11,8 +11,9 @@ import { GameViewRouter } from './views/GameViewRouter'
 
 export default function MinigameParty() {
   const party = useMinigameParty()
+  const showChat = party.isOnline
   const me = party.players.find((p) => p.id === party.playerId)
-  const chat = useRoomChat(party.roomId, {
+  const chat = useRoomChat(showChat ? party.roomId : null, {
     playerId: party.playerId,
     playerName: me?.name ?? party.playerName ?? 'Player',
     avatar: me?.avatar ?? party.avatar,
@@ -28,7 +29,15 @@ export default function MinigameParty() {
         players={party.players}
         playerId={party.playerId}
         gameCode={party.gameCode}
+        isSolo={party.isSolo}
+        isLocal={party.isLocal}
+        multiplayerPick={party.multiplayerPick}
+        pickerPlayerId={party.pickerPlayerId}
+        canPickGame={party.canPickGame}
         beginGame={party.beginGame}
+        addLocalPlayer={party.isLocal ? party.addLocalPlayer : undefined}
+        renameLocalPlayer={party.isLocal ? party.renameLocalPlayer : undefined}
+        partyWins={party.partyWins}
         chatMessages={chat.messages}
         onSendChat={chat.send}
       />
@@ -63,6 +72,8 @@ export default function MinigameParty() {
             {meta.emoji} {meta.label}
           </span>
           {party.gameCode && <span className="room-code">{party.gameCode}</span>}
+          {party.isSolo && <span className="room-code">Solo</span>}
+          {party.isLocal && <span className="room-code">Local</span>}
         </div>
       </header>
 
@@ -80,18 +91,20 @@ export default function MinigameParty() {
         </div>
       )}
 
-      <div className="room-layout minigame-play-layout">
+      <div className={`room-layout minigame-play-layout${showChat ? '' : ' room-layout-solo'}`}>
         <main className="minigame-play-main">
           <GameViewRouter gameId={gameId} {...viewProps} />
         </main>
-        <aside className="room-sidebar">
-          <ChatPanel
-            messages={chat.messages}
-            meId={party.playerId}
-            onSend={chat.send}
-            title="Room chat 📸"
-          />
-        </aside>
+        {showChat && (
+          <aside className="room-sidebar">
+            <ChatPanel
+              messages={chat.messages}
+              meId={party.playerId}
+              onSend={chat.send}
+              title="Room chat 📸"
+            />
+          </aside>
+        )}
       </div>
     </div>
   )

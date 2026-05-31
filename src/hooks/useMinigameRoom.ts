@@ -7,7 +7,7 @@ import { parseMinigamesUrlSearch } from '@/lib/minigamesUrl'
 import type { Player } from '@/lib/types'
 import type { MinigameId } from '@/lib/minigames/catalog'
 import type { Progress, ProgressMap, Session } from '@/lib/minigames/types'
-import { hubSession } from '@/lib/minigames/types'
+import { hubSession, hubPickerId, nextPickerId, awardPartyWin } from '@/lib/minigames/types'
 import { getGameConfig, computeRaceWinner, isRoundComplete } from '@/lib/minigames/registry'
 import { DEFAULT_AVATAR } from '@/lib/avatars'
 import {
@@ -48,6 +48,17 @@ export function loadPlayerId() {
   }
 }
 
+function saveLocalParty(players: Player[], partyWins?: Record<string, number>) {
+  try {
+    localStorage.setItem(
+      PARTY_KEY,
+      JSON.stringify({ roomId: 'local', entryMode: 'local', players, partyWins: partyWins ?? {} })
+    )
+  } catch {
+    /* ignore */
+  }
+}
+
 function normalizeProgress(raw: ProgressMap, round: number): Record<string, Progress> {
   const out: Record<string, Progress> = {}
   for (const [key, value] of Object.entries(raw)) {
@@ -80,7 +91,7 @@ export function useMinigameParty() {
   const [gameCodeInput, setGameCodeInput] = useState(
     urlBoot?.joinCode || loadSavedPartyCode()
   )
-  const [entryIntent, setEntryIntent] = useState<'join' | 'create' | 'solo' | null>(
+  const [entryIntent, setEntryIntent] = useState<'join' | 'create' | 'solo' | 'local' | null>(
     urlBoot?.intent ?? null
   )
   const [roomId, setRoomId] = useState<string | null>(null)
@@ -106,6 +117,15 @@ export function useMinigameParty() {
   const inGame = !!(session && session.gameId && session.status !== 'lobby')
   const screen: PartyScreen = !roomId ? 'join' : inGame ? 'game' : 'hub'
 
+  const resolvedEntryIntent = urlBoot?.intent ?? entryIntent
+  const resolvedJoinCode = urlBoot?.joinCode || gameCodeInput
+  const isSolo = roomId === 'solo'
+  const isLocal = roomId === 'local'
+  const isOnline = !!roomId && !isSolo && !isLocal
+  const multiplayerPick = !isSolo && players.length >= 2
+  const pickerPlayerId = hubPickerId(session, players)
+  const canPickGame = !multiplayerPick || isLocal || playerId === pickerPlayerId
+
   useEffect(() => {
     const boot = parseMinigamesUrlSearch(`?${searchParams.toString()}`)
     if (boot?.intent === 'join' && boot.joinCode) {
@@ -116,8 +136,123 @@ export function useMinigameParty() {
     if (boot?.intent === 'create') {
       setEntryIntent('create')
       setGameCodeInput('')
+      return
+    }
+    if (boot?.intent === 'solo') {
+      setEntryIntent('solo')
+      setGameCodeInput('')
+      return
+    }
+    if (boot?.intent === 'local') {
+      setEntryIntent('local')
+      setGameCodeInput('')
     }
   }, [searchParams])
+
+  const searchKey = searchParams.toString()
+
+  // Restore party session on load / when URL carries a join code.
+  useEffect(() => {
+    let cancelled = false
+
+    async function init() {
+      const boot = parseMinigamesUrlSearch(`?${searchKey}`)
+
+      if (boot?.intent === 'solo' || boot?.intent === 'local') {
+        let saved: {
+          roomId?: string
+          entryMode?: string
+          players?: Player[]
+          partyWins?: Record<string, number>
+        } | null = null
+        try {
+          const raw = localStorage.getItem(PARTY_KEY)
+          saved = raw ? JSON.parse(raw) : null
+        } catch {
+          saved = null
+        }
+        if (boot.intent === 'local' && saved?.roomId === 'local' && saved.entryMode === 'local') {
+          setEntryIntent('local')
+          setRoomId('local')
+          setGameCode(null)
+          setIsHost(true)
+          if (saved.players?.length) {
+            setPlayers(saved.players)
+            const wins = saved.partyWins ?? {}
+            setSession(
+              hubSession(0, saved.players[0]?.id ?? null, wins)
+            )
+          }
+        }
+        return
+      }
+
+      if (boot?.intent === 'join' && boot.joinCode) {
+        let saved: { roomId?: string; gameCode?: string } | null = null
+        try {
+          const raw = localStorage.getItem(PARTY_KEY)
+          saved = raw ? JSON.parse(raw) : null
+        } catch {
+          saved = null
+        }
+        if (saved?.gameCode === boot.joinCode && saved.roomId) {
+          try {
+            const data = await getMinigameRoomClient(saved.roomId)
+            if (cancelled) return
+            const stillIn = (data.players || []).some((p) => p.id === playerId)
+            if (stillIn) {
+              setRoomId(data.roomId)
+              setGameCode(data.gameCode)
+              setPlayers(data.players || [])
+              setIsHost(data.players[0]?.id === playerId)
+              setSession(data.session ?? null)
+            } else {
+              localStorage.removeItem(PARTY_KEY)
+            }
+          } catch {
+            localStorage.removeItem(PARTY_KEY)
+          }
+        } else if (saved?.gameCode !== boot.joinCode) {
+          try {
+            localStorage.removeItem(PARTY_KEY)
+          } catch {
+            /* ignore */
+          }
+        }
+        return
+      }
+
+      let saved: { roomId?: string; gameCode?: string } | null = null
+      try {
+        const raw = localStorage.getItem(PARTY_KEY)
+        saved = raw ? JSON.parse(raw) : null
+      } catch {
+        saved = null
+      }
+      if (!saved?.roomId || saved.roomId === 'local' || saved.roomId === 'solo') return
+      try {
+        const data = await getMinigameRoomClient(saved.roomId)
+        if (cancelled) return
+        const stillIn = (data.players || []).some((p) => p.id === playerId)
+        if (!stillIn) {
+          localStorage.removeItem(PARTY_KEY)
+          return
+        }
+        setRoomId(data.roomId)
+        setGameCode(data.gameCode)
+        setPlayers(data.players || [])
+        setIsHost(data.players[0]?.id === playerId)
+        setSession(data.session ?? null)
+      } catch {
+        localStorage.removeItem(PARTY_KEY)
+      }
+    }
+
+    init()
+    return () => {
+      cancelled = true
+    }
+  }, [playerId, searchKey])
 
   useEffect(() => {
     if (!roomId) return
@@ -126,7 +261,7 @@ export function useMinigameParty() {
   }, [roomId])
 
   useEffect(() => {
-    if (!roomId) return
+    if (!roomId || isSolo || isLocal) return
     const rid = roomId
     let cancelled = false
     async function poll() {
@@ -156,18 +291,55 @@ export function useMinigameParty() {
       cancelled = true
       clearInterval(iv)
     }
-  }, [roomId])
+  }, [roomId, isSolo, isLocal])
 
   const pushSession = useCallback(async (next: Session) => {
     const rid = roomIdRef.current
     if (!rid) return
-    setSession(next)
+    const prev = sessionRef.current
+    let final = next
+    if (
+      next.status === 'over' &&
+      prev?.status !== 'over' &&
+      next.winnerId &&
+      playersRef.current.length >= 2
+    ) {
+      final = {
+        ...next,
+        partyWins: awardPartyWin(prev?.partyWins ?? next.partyWins, next.winnerId),
+      }
+    } else if (final.partyWins == null && prev?.partyWins) {
+      final = { ...final, partyWins: prev.partyWins }
+    }
+    setSession(final)
+    if (rid === 'local') {
+      saveLocalParty(playersRef.current, final.partyWins ?? {})
+    }
+    if (rid === 'solo' || rid === 'local') return
     try {
-      await updateSession(rid, next)
+      await updateSession(rid, final)
     } catch (e) {
       console.warn('session sync failed', e)
     }
   }, [])
+
+  // Sync hub picker state for online rooms (host publishes initial lobby session).
+  useEffect(() => {
+    if (!isOnline || !isHostRef.current || players.length < 2) return
+    const sess = sessionRef.current
+    if (sess?.gameId) return
+    if (sess?.status === 'lobby' && sess.pickerPlayerId) return
+    pushSession(hubSession(sess?.round ?? 0, players[0]?.id ?? null, sess?.partyWins ?? {}))
+  }, [isOnline, players.length, pushSession])
+
+  // Local pass-and-play: keep picker in session when 2+ players.
+  useEffect(() => {
+    if (!isLocal || players.length < 2) return
+    const sess = sessionRef.current
+    if (sess?.gameId) return
+    if (sess?.status === 'lobby' && sess.pickerPlayerId) return
+    pushSession(hubSession(sess?.round ?? 0, players[0]?.id ?? null, sess?.partyWins ?? {}))
+  }, [isLocal, players.length, pushSession])
 
   // Partial update for views (Connect 4 moves, declaring a winner, etc.).
   const writeSession = useCallback(
@@ -200,6 +372,7 @@ export function useMinigameParty() {
       const elapsed = Date.now() - lastReportRef.current
       if (!stateChanged && elapsed < REPORT_THROTTLE_MS) return
       lastReportRef.current = Date.now()
+      if (rid === 'solo' || rid === 'local') return
       reportProgress(rid, sess.round, next).catch(() => {})
     },
     [playerId]
@@ -227,15 +400,86 @@ export function useMinigameParty() {
     })
   }, [now, pushSession])
 
+  function enterSoloLobby() {
+    if (!playerName.trim()) {
+      setError('Enter your name')
+      return
+    }
+    setError('')
+    try {
+      localStorage.setItem(NAME_KEY, playerName.trim())
+      localStorage.removeItem(PARTY_KEY)
+    } catch {
+      /* ignore */
+    }
+    const host: Player = { id: playerId, name: playerName.trim(), avatar }
+    setRoomId('solo')
+    setGameCode(null)
+    setIsHost(true)
+    setPlayers([host])
+    setSession(null)
+    setProgress({})
+  }
+
+  function enterLocalLobby() {
+    if (!playerName.trim()) {
+      setError('Enter your name')
+      return
+    }
+    setError('')
+    const host: Player = { id: playerId, name: playerName.trim(), avatar }
+    try {
+      localStorage.setItem(NAME_KEY, playerName.trim())
+      localStorage.setItem(
+        PARTY_KEY,
+        JSON.stringify({ roomId: 'local', entryMode: 'local', players: [host], partyWins: {} })
+      )
+    } catch {
+      /* ignore */
+    }
+    setRoomId('local')
+    setGameCode(null)
+    setIsHost(true)
+    setPlayers([host])
+    setSession(null)
+    setProgress({})
+  }
+
+  function addLocalPlayer() {
+    if (roomIdRef.current !== 'local') return
+    const n = playersRef.current.length + 1
+    setPlayers((prev) => {
+      const next = [
+        ...prev,
+        { id: crypto.randomUUID(), name: `Player ${n}`, avatar: DEFAULT_AVATAR },
+      ]
+      saveLocalParty(next, sessionRef.current?.partyWins ?? {})
+      return next
+    })
+  }
+
+  function renameLocalPlayer(targetId: string, name: string) {
+    if (roomIdRef.current !== 'local') return
+    const trimmed = name.trim().slice(0, 24)
+    if (!trimmed) return
+    setPlayers((prev) => {
+      const next = prev.map((p) => (p.id === targetId ? { ...p, name: trimmed } : p))
+      saveLocalParty(next, sessionRef.current?.partyWins ?? {})
+      return next
+    })
+  }
+
   async function hostRoom() {
     if (!playerName.trim()) {
       setError('Enter your name')
       return
     }
-    const urlJoinCode = parseMinigamesUrlSearch(searchParams.toString())?.joinCode ?? ''
-    const joinCode = gameCodeInput.trim().toUpperCase() || urlJoinCode
-    if (joinCode && (entryIntent === 'join' || urlJoinCode)) {
-      return joinRoom(joinCode)
+    const mode = resolvedEntryIntent
+    const code = resolvedJoinCode.trim().toUpperCase()
+    if (mode === 'solo') return enterSoloLobby()
+    if (mode === 'local') return enterLocalLobby()
+    if (mode === 'join' && code) {
+      return joinRoom(code)
     }
     setError('')
     try {
@@ -253,9 +497,9 @@ export function useMinigameParty() {
   }
 
   async function joinRoom(code?: string) {
-    const c = (code ?? gameCodeInput).trim().toUpperCase()
+    const c = (code ?? resolvedJoinCode).trim().toUpperCase()
     if (!playerName.trim() || !c) {
-      setError('Name and game code required')
+      setError('Enter your name and game code')
       return
     }
     setError('')
@@ -277,11 +521,15 @@ export function useMinigameParty() {
   const beginGame = useCallback(
     (gameId: MinigameId) => {
       if (!roomIdRef.current) return
+      const list = playersRef.current
+      const picker = hubPickerId(sessionRef.current, list)
+      const multi = roomIdRef.current !== 'solo' && list.length >= 2
+      if (multi && roomIdRef.current !== 'local' && playerId !== picker) return
       const config = getGameConfig(gameId)
       const prevRound = sessionRef.current?.round ?? 0
       const startAt = Date.now() + config.countdownMs
       const seed = Math.floor(Math.random() * 1_000_000)
-      const extras = config.buildSession?.(playersRef.current, seed) ?? {}
+      const extras = config.buildSession?.(list, seed) ?? {}
       const next: Session = {
         gameId,
         status: 'live',
@@ -294,6 +542,8 @@ export function useMinigameParty() {
         connect4: null,
         winnerId: null,
         winnerName: null,
+        pickerPlayerId: picker,
+        partyWins: sessionRef.current?.partyWins ?? {},
         ...extras,
       }
       ownProgressRef.current = null
@@ -302,7 +552,7 @@ export function useMinigameParty() {
       setProgress({})
       pushSession(next)
     },
-    [pushSession]
+    [pushSession, playerId]
   )
 
   const startRound = useCallback(() => {
@@ -312,11 +562,15 @@ export function useMinigameParty() {
 
   // Send everyone back to the hub to pick another game.
   const backToHub = useCallback(() => {
-    const round = sessionRef.current?.round ?? 0
+    const prev = sessionRef.current
+    const round = prev?.round ?? 0
+    const nextPicker = nextPickerId(playersRef.current, prev?.pickerPlayerId)
     ownProgressRef.current = null
     setProgress({})
-    pushSession(hubSession(round))
+    pushSession(hubSession(round, nextPicker, prev?.partyWins ?? {}))
   }, [pushSession])
+
+  const partyWins = session?.partyWins ?? {}
 
   return {
     screen,
@@ -328,12 +582,21 @@ export function useMinigameParty() {
     setAvatar,
     gameCodeInput,
     setGameCodeInput,
-    entryIntent,
+    entryIntent: resolvedEntryIntent,
+    resolvedEntryIntent,
+    resolvedJoinCode,
     roomId,
     gameCode,
     isHost,
+    isSolo,
+    isLocal,
+    isOnline,
+    multiplayerPick,
+    pickerPlayerId,
+    canPickGame,
     players,
     session,
+    partyWins,
     progress,
     error,
     now,
@@ -341,6 +604,10 @@ export function useMinigameParty() {
     setSession: writeSession,
     hostRoom,
     joinRoom,
+    enterSoloLobby,
+    enterLocalLobby,
+    addLocalPlayer,
+    renameLocalPlayer,
     beginGame,
     startRound,
     backToHub,

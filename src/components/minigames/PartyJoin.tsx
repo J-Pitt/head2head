@@ -10,7 +10,7 @@ type Props = {
   setAvatar: (a: string) => void
   gameCodeInput: string
   setGameCodeInput: (c: string) => void
-  entryIntent: 'join' | 'create' | 'solo' | null
+  entryIntent: 'join' | 'create' | 'solo' | 'local' | null
   error: string
   hostRoom: () => void
   joinRoom: () => void
@@ -28,7 +28,36 @@ export default function PartyJoin({
   hostRoom,
   joinRoom,
 }: Props) {
-  const fromHome = entryIntent === 'join' || entryIntent === 'create'
+  const intro =
+    entryIntent === 'solo'
+      ? 'Enter your name and pick an avatar. Play on your own and try every mini game.'
+      : entryIntent === 'local'
+        ? 'Enter your name and pick an avatar. Everyone plays on this device — pass it around between games.'
+        : entryIntent === 'join'
+          ? 'Enter your name to join the games room.'
+          : entryIntent === 'create'
+            ? 'Enter your name to start a games room.'
+            : 'Play solo, pass-and-play locally, or start/join an online room. Everyone stays together and you can keep playing game after game.'
+
+  const kicker =
+    entryIntent === 'solo'
+      ? 'Solo'
+      : entryIntent === 'local'
+        ? 'Pass & play'
+        : entryIntent === 'join'
+          ? 'Join online'
+          : entryIntent === 'create'
+            ? 'Host online'
+            : null
+
+  const cta =
+    entryIntent === 'solo' || entryIntent === 'local'
+      ? 'Enter lobby'
+      : entryIntent === 'join'
+        ? 'Join room'
+        : entryIntent === 'create'
+          ? 'Enter lobby'
+          : 'Start a games room'
 
   return (
     <div className="app-shell">
@@ -40,13 +69,8 @@ export default function PartyJoin({
       </header>
 
       <section className="card setup-card">
-        <p className="intro">
-          {entryIntent === 'join'
-            ? 'Enter your name to join the games room.'
-            : entryIntent === 'create'
-              ? 'Enter your name to start a games room.'
-              : 'Start a games room or join one with a code. Everyone stays together and you can keep playing game after game — no rejoining.'}
-        </p>
+        {kicker && <p className="tod-kicker">{kicker}</p>}
+        <p className="intro">{intro}</p>
         {entryIntent === 'join' && gameCodeInput && (
           <p className="setup-code-hint">
             Room code: <strong className="room-code-display">{gameCodeInput}</strong>
@@ -65,13 +89,13 @@ export default function PartyJoin({
         <AvatarPicker selected={avatar} onSelect={setAvatar} />
 
         <div className="online-actions">
-          {entryIntent === 'create' ? (
+          {entryIntent === 'create' || entryIntent === 'solo' || entryIntent === 'local' ? (
             <button type="button" className="btn btn-primary full" onClick={hostRoom}>
-              Enter lobby
+              {cta}
             </button>
           ) : entryIntent === 'join' ? (
             <button type="button" className="btn btn-primary full" onClick={() => joinRoom()}>
-              Join room
+              {cta}
             </button>
           ) : (
             <>

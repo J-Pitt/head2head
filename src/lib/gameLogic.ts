@@ -123,16 +123,7 @@ export function advanceRound(state: GameState, players: Player[]): GameState {
     }
   }
 
-  const wasCorrect = state.lastAnswer?.correct === true
-  let nextPlayer = state.currentPlayerIndex
-
-  if (state.gameMode === 'turns') {
-    if (!wasCorrect) {
-      nextPlayer = nextActivePlayerIndex(players, state.currentPlayerIndex ?? 0)
-    }
-  } else {
-    nextPlayer = nextActivePlayerIndex(players, state.currentPlayerIndex ?? 0)
-  }
+  const nextPlayer = nextActivePlayerIndex(players, state.currentPlayerIndex ?? 0)
 
   return {
     ...state,

@@ -146,14 +146,22 @@ export default function ClassicTruthOrDare() {
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    className="btn btn-play"
-                    disabled={g.players.length < 1}
-                    onClick={g.startPlaying}
-                  >
-                    Start game
-                  </button>
+                  {!g.isLocal && g.isHost && (
+                    <RatingPicker value={g.listMode} onChange={g.setListMode} />
+                  )}
+
+                  {g.isHost || g.isLocal ? (
+                    <button
+                      type="button"
+                      className="btn btn-play"
+                      disabled={!g.isLocal && g.players.length < 2}
+                      onClick={g.startPlaying}
+                    >
+                      Start game
+                    </button>
+                  ) : (
+                    <p className="hint">Waiting for the host to start…</p>
+                  )}
                 </>
               )}
 

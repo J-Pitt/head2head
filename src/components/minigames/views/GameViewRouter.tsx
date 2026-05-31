@@ -7,7 +7,7 @@ import { SnakeView } from './SnakeView'
 import { FlappyView } from './FlappyView'
 import { MemoryView } from './MemoryView'
 import { Connect4View } from './Connect4View'
-import { ReactionView } from './ReactionView'
+import { DinoView } from './DinoView'
 
 export function GameViewRouter({ gameId, ...props }: GameViewProps & { gameId: MinigameId }) {
   switch (gameId) {
@@ -21,8 +21,8 @@ export function GameViewRouter({ gameId, ...props }: GameViewProps & { gameId: M
       return <MemoryView {...props} />
     case 'connect4':
       return <Connect4View {...props} />
-    case 'reaction':
-      return <ReactionView {...props} />
+    case 'dino':
+      return <DinoView {...props} />
     default:
       return <p>Game not found.</p>
   }

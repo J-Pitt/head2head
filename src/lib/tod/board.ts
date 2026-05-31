@@ -74,6 +74,9 @@ export type BoardState = {
   askerId: string | null
   choice: 'truth' | 'dare' | null
   prompt: string | null
+  answerText: string | null
+  answerImage: string | null
+  answerSubmitted: boolean
   // Trivia.
   questionId: string | null
   answeredBy: string | null
@@ -196,6 +199,9 @@ export function createBoardState(
     askerId: null,
     choice: null,
     prompt: null,
+    answerText: null,
+    answerImage: null,
+    answerSubmitted: false,
     questionId: null,
     answeredBy: null,
     answerIndex: null,

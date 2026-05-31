@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
     const resolved = await resolveGameByCode(code)
     if (!resolved) {
-      return NextResponse.json({ success: false, found: false, error: 'Game code not found' }, { status: 404 })
+      return NextResponse.json({ success: true, found: false, error: 'Game code not found' })
     }
 
     return NextResponse.json({

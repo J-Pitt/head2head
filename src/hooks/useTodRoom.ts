@@ -103,10 +103,15 @@ export function useTodRoom() {
   const lastTypingSentRef = useRef(0)
   const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const hostIdRef = useLatest(hostId)
+
+  const resolvedEntryMode = urlBoot.entryMode ?? entryMode
+  const resolvedJoinCode = urlBoot.joinCode || gameCodeInput
+
   const isHost = !!hostId && hostId === playerId
   const me = players.find((p) => p.id === playerId) ?? null
   const isOnBreak = me?.status === 'break'
-  const isLocal = entryMode === 'local' || roomId === 'local'
+  const isLocal = resolvedEntryMode === 'local' || roomId === 'local'
 
   const clearOnlineRoom = useCallback(() => {
     setRoomId(null)
@@ -258,7 +263,10 @@ export function useTodRoom() {
   )
 
   // Host starts the game from the lobby.
-  const startGame = useCallback(() => beginRound(1), [beginRound])
+  const startGame = useCallback(() => {
+    if (roomIdRef.current !== 'local' && hostIdRef.current !== playerId) return
+    beginRound(1)
+  }, [beginRound, playerId])
 
   // The player on the spot picks truth or dare; the asker then writes the prompt.
   const pickChoice = useCallback(
@@ -343,11 +351,12 @@ export function useTodRoom() {
   const startBoardGame = useCallback(() => {
     const base = stateRef.current
     if (!base) return
+    if (roomIdRef.current !== 'local' && hostIdRef.current !== playerId) return
     ownProgressRef.current = null
     setProgress({})
     const board = createBoardState(playersRef.current, boardListMode)
     pushState({ ...base, phase: 'board', mode: 'board', board })
-  }, [pushState, boardListMode])
+  }, [pushState, boardListMode, playerId])
 
   // Advance the roll to the next present, non-jailed player.
   const advanceRoll = useCallback(
@@ -378,6 +387,9 @@ export function useTodRoom() {
         askerId: null,
         choice: null,
         prompt: null,
+        answerText: null,
+        answerImage: null,
+        answerSubmitted: false,
         questionId: null,
         answeredBy: null,
         answerIndex: null,
@@ -425,6 +437,9 @@ export function useTodRoom() {
         askerId: pickAskerExcl(roller),
         choice: type === 'wild' ? null : type,
         prompt: null,
+        answerText: null,
+        answerImage: null,
+        answerSubmitted: false,
       })
     } else if (type === 'trivia') {
       const usedQ = b.usedQuestionIds ?? []
@@ -553,7 +568,7 @@ export function useTodRoom() {
       if (!b || !b.onSpotId) return
       const local = roomIdRef.current === 'local'
       if (!local && b.onSpotId !== playerId) return
-      patchBoard({ choice, prompt: null })
+      patchBoard({ choice, prompt: null, answerText: null, answerImage: null, answerSubmitted: false })
     },
     [patchBoard, playerId]
   )
@@ -575,7 +590,12 @@ export function useTodRoom() {
       const t = text.trim()
       if (!t) return
       const b = stateRef.current?.board
-      const patch: Partial<BoardState> = { prompt: t.slice(0, 400) }
+      const patch: Partial<BoardState> = {
+        prompt: t.slice(0, 400),
+        answerText: null,
+        answerImage: null,
+        answerSubmitted: false,
+      }
       let source = fromList
       if (!source && b?.choice) {
         const pool =
@@ -593,6 +613,23 @@ export function useTodRoom() {
       patchBoard(patch)
     },
     [patchBoard]
+  )
+
+  const boardSubmitAnswer = useCallback(
+    (text: string, image?: string) => {
+      const b = stateRef.current?.board
+      if (!b || !b.prompt || b.answerSubmitted) return
+      const local = roomIdRef.current === 'local'
+      if (!local && b.onSpotId !== playerId) return
+      const trimmed = text.trim()
+      if (!trimmed && !image) return
+      patchBoard({
+        answerText: trimmed ? trimmed.slice(0, 600) : null,
+        answerImage: image ?? null,
+        answerSubmitted: true,
+      })
+    },
+    [patchBoard, playerId]
   )
 
   const boardAnswerTrivia = useCallback(
@@ -647,7 +684,7 @@ export function useTodRoom() {
     const rid = roomIdRef.current
     const local = rid === 'local'
     if (b.phase === 'prompt' || b.phase === 'forfeit') {
-      if (!b.onSpotId) return
+      if (!b.onSpotId || !b.answerSubmitted) return
       if (!local && b.onSpotId !== playerId) return
     }
     if (b.phase === 'trivia' && b.answerIndex != null) {
@@ -696,6 +733,9 @@ export function useTodRoom() {
         askerId: loser ? pickAskerExcl(loser.id) : null,
         choice: 'dare',
         prompt: null,
+        answerText: null,
+        answerImage: null,
+        answerSubmitted: false,
       },
     }).finally(() => {
       finalizingRef.current = false
@@ -844,9 +884,9 @@ export function useTodRoom() {
       setError('Enter your name')
       return
     }
-    const urlJoinCode = urlBootstrapFromSearch(searchParams.toString()).joinCode
-    const joinCode = gameCodeInput.trim().toUpperCase() || urlJoinCode
-    if (joinCode && (entryMode === 'join' || urlJoinCode)) {
+    const mode = urlBoot.entryMode ?? entryMode
+    const joinCode = resolvedJoinCode.trim().toUpperCase()
+    if (mode === 'join' && joinCode) {
       return joinRoom(joinCode)
     }
     setError('')
@@ -873,9 +913,9 @@ export function useTodRoom() {
   }
 
   async function joinRoom(code?: string) {
-    const c = (code ?? gameCodeInput).trim().toUpperCase()
+    const c = (code ?? resolvedJoinCode).trim().toUpperCase()
     if (!playerName.trim() || !c) {
-      setError('Name and game code required')
+      setError('Enter your name and game code')
       return
     }
     setError('')
@@ -1017,7 +1057,9 @@ export function useTodRoom() {
     setAvatar,
     gameCodeInput,
     setGameCodeInput,
-    entryMode,
+    entryMode: resolvedEntryMode,
+    resolvedEntryMode,
+    resolvedJoinCode,
     isLocal,
     roomId,
     gameCode,
@@ -1057,6 +1099,7 @@ export function useTodRoom() {
     boardPickChoice,
     boardMarkPromptUsed,
     boardSubmitPrompt,
+    boardSubmitAnswer,
     boardAnswerTrivia,
     boardContinue,
     boardReport,

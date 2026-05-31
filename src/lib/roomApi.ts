@@ -135,7 +135,16 @@ export async function resolveGameCode(code: string): Promise<ResolvedCode | null
     const res = await fetchRoom(`${ROOM_PATH}/resolve?code=${encodeURIComponent(c)}`, {
       cache: 'no-store',
     })
-    const data = await parseResponse(res, 'Could not resolve code')
+    const text = await res.text()
+    let data: Record<string, unknown> = {}
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      data = {}
+    }
+    if (!res.ok) {
+      return null
+    }
     if (!data.found) return null
     return data as ResolvedCode
   } catch {

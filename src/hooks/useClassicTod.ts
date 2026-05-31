@@ -70,6 +70,9 @@ export function useClassicTod() {
   const playersRef = useLatest(players)
   const roomIdRef = useLatest(roomId)
 
+  const resolvedIntent = urlBoot?.intent ?? intent
+  const resolvedJoinCode = urlBoot?.joinCode || joinCode
+
   const isLocal = roomId === 'classic-local'
   const inRoom = !!roomId && !!state
   const isHost = hostId === playerId
@@ -114,6 +117,86 @@ export function useClassicTod() {
     }
   }, [roomId])
 
+  const searchKey = searchParams.toString()
+
+  // Restore classic online session on load / when URL carries a join code.
+  useEffect(() => {
+    let cancelled = false
+
+    async function init() {
+      const boot = parseClassicUrlSearch(`?${searchKey}`)
+
+      if (boot?.intent === 'join' && boot.joinCode) {
+        let saved: { roomId?: string; gameCode?: string; entryMode?: string } | null = null
+        try {
+          const raw = localStorage.getItem(TOD_KEY)
+          saved = raw ? JSON.parse(raw) : null
+        } catch {
+          saved = null
+        }
+        if (saved?.entryMode === 'classic' && saved.gameCode === boot.joinCode && saved.roomId) {
+          try {
+            const data = await getTodRoomClient(saved.roomId)
+            if (cancelled) return
+            const stillIn = (data.players || []).some((p) => p.id === playerId)
+            if (stillIn) {
+              setRoomId(data.roomId)
+              setGameCode(data.gameCode)
+              setHostId(data.hostId ?? null)
+              setPlayers(data.players || [])
+              if (isClassicTodState(data.state)) setState(data.state)
+              else setState(initialClassicTodState(listMode))
+              setIntent('join')
+            } else {
+              localStorage.removeItem(TOD_KEY)
+            }
+          } catch {
+            localStorage.removeItem(TOD_KEY)
+          }
+        } else if (saved?.entryMode !== 'classic' || saved?.gameCode !== boot.joinCode) {
+          try {
+            localStorage.removeItem(TOD_KEY)
+          } catch {
+            /* ignore */
+          }
+        }
+        return
+      }
+
+      let saved: { roomId?: string; gameCode?: string; entryMode?: string } | null = null
+      try {
+        const raw = localStorage.getItem(TOD_KEY)
+        saved = raw ? JSON.parse(raw) : null
+      } catch {
+        saved = null
+      }
+      if (saved?.entryMode !== 'classic' || !saved.roomId || saved.roomId === 'classic-local') return
+      try {
+        const data = await getTodRoomClient(saved.roomId)
+        if (cancelled) return
+        const stillIn = (data.players || []).some((p) => p.id === playerId)
+        if (!stillIn) {
+          localStorage.removeItem(TOD_KEY)
+          return
+        }
+        setRoomId(data.roomId)
+        setGameCode(data.gameCode)
+        setHostId(data.hostId ?? null)
+        setPlayers(data.players || [])
+        if (isClassicTodState(data.state)) setState(data.state)
+        else setState(initialClassicTodState(listMode))
+        setIntent(saved.gameCode ? 'join' : 'create')
+      } catch {
+        localStorage.removeItem(TOD_KEY)
+      }
+    }
+
+    init()
+    return () => {
+      cancelled = true
+    }
+  }, [playerId, searchKey, listMode])
+
   function spotName(id: string | null): string {
     if (!id) return 'Someone'
     if (isLocal) return players.find((p) => p.id === id)?.name ?? 'Someone'
@@ -137,11 +220,10 @@ export function useClassicTod() {
     }
 
     const classic = initialClassicTodState(listMode)
-    const boot = parseClassicUrlSearch(`?${searchParams.toString()}`)
-    const code = joinCode.trim().toUpperCase() || boot?.joinCode || ''
-    const mode = intent ?? boot?.intent ?? null
+    const code = resolvedJoinCode.trim().toUpperCase()
+    const mode = resolvedIntent
 
-    if (code && (mode === 'join' || !!searchParams.get('code'))) {
+    if (mode === 'join' && code) {
       try {
         const data = await joinTodRoom(code, name, avatar, playerId)
         const st = isClassicTodState(data.state) ? data.state : classic
@@ -211,6 +293,7 @@ export function useClassicTod() {
   }
 
   function startPlaying() {
+    if (!isLocal && !isHost) return
     const s = stateRef.current
     if (!s || s.subPhase !== 'lobby') return
     const order = shuffle(
@@ -297,7 +380,9 @@ export function useClassicTod() {
     listMode,
     setListMode,
     error,
-    intent,
+    intent: resolvedIntent,
+    resolvedIntent,
+    resolvedJoinCode,
     joinCode,
     roomId,
     gameCode,
