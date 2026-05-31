@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import Avatar from '@/components/Avatar'
 import type { useTodRoom } from '@/hooks/useTodRoom'
-import { TILE_META } from '@/lib/tod/board'
+import { TILE_META, SPECIAL_CHALLENGES } from '@/lib/tod/board'
 import type { BoardTile } from '@/lib/tod/board'
 import { getQuestionById } from '@/lib/trivia'
 import { randomTodPrompt } from '@/lib/tod/prompts'
@@ -50,13 +50,14 @@ function Spiral({ room }: { room: Room }) {
 
 function Tile({ tile, tokens }: { tile: BoardTile; tokens: { id: string; name: string; avatar: string }[] }) {
   const meta = TILE_META[tile.type]
+  const special = tile.type === 'special' && tile.special != null ? SPECIAL_CHALLENGES[tile.special] : null
   return (
     <div
       className={`board-tile tile-${tile.type}`}
       style={{ gridColumn: tile.col + 1, gridRow: tile.row + 1, ['--tile' as string]: meta.color }}
-      title={meta.label}
+      title={special ? special.label : meta.label}
     >
-      <span className="tile-emoji">{meta.emoji}</span>
+      <span className="tile-emoji">{special ? special.icon : meta.emoji}</span>
       {tile.type !== 'start' && tile.type !== 'finish' && <span className="tile-num">{tile.i}</span>}
       {tokens.length > 0 && (
         <span className="tile-tokens">

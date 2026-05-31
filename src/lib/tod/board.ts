@@ -17,12 +17,31 @@ export type TileType =
   | 'swap' // swap places with a random player
   | 'picture' // everyone posts a pic
   | 'group' // group dare
+  | 'special' // a labeled challenge from the Truth or Dare special squares
+
+// Special-square challenges, from the Truth or Dare "sexy" mode board.
+export type SpecialKind = 'do' | 'group' | 'dice'
+export type SpecialChallenge = { icon: string; label: string; kind: SpecialKind }
+
+export const SPECIAL_CHALLENGES: SpecialChallenge[] = [
+  { icon: '🔥', label: 'Take a hot selfie and send it to the chat', kind: 'do' },
+  { icon: '💋', label: "Describe the best kiss you've ever had — in detail", kind: 'do' },
+  { icon: '🎲', label: 'Everyone rolls — highest advances 5 spaces', kind: 'dice' },
+  { icon: '😈', label: "Tell a naughty secret you've never shared", kind: 'do' },
+  { icon: '💜', label: 'Everyone send their sexiest selfie to the chat!', kind: 'group' },
+  { icon: '🌶️', label: 'Send a spicy message to someone and share both your message and their response', kind: 'do' },
+  { icon: '✨', label: 'Put on your most attractive look and show the group', kind: 'do' },
+  { icon: '💫', label: 'Make up a seductive alter ego name for yourself', kind: 'do' },
+  { icon: '🔮', label: 'Predict the romantic future of another player', kind: 'do' },
+]
 
 export type BoardTile = {
   i: number
   type: TileType
   row: number
   col: number
+  // Index into SPECIAL_CHALLENGES for 'special' tiles.
+  special?: number
 }
 
 export type BoardPhase =
@@ -73,12 +92,12 @@ export const BOARD_SIZE = 6
 // Tile types for the inner path (everything between START and FINISH). Tuned to
 // spread the colors like the cardboard template.
 const MIDDLE_PATTERN: TileType[] = [
-  'truth', 'dare', 'trivia', 'minigame', 'dare', 'jail',
-  'truth', 'trivia', 'dare', 'wild', 'truth', 'minigame',
-  'dare', 'trivia', 'forward', 'truth', 'picture', 'dare',
-  'trivia', 'minigame', 'swap', 'truth', 'dare', 'jail',
-  'trivia', 'dare', 'wild', 'truth', 'minigame', 'back',
-  'dare', 'trivia', 'group', 'truth',
+  'truth', 'dare', 'trivia', 'minigame', 'special', 'dare',
+  'truth', 'trivia', 'dare', 'special', 'truth', 'minigame',
+  'dare', 'trivia', 'special', 'truth', 'jail', 'dare',
+  'trivia', 'minigame', 'special', 'truth', 'dare', 'wild',
+  'trivia', 'dare', 'special', 'truth', 'minigame', 'jail',
+  'dare', 'trivia', 'special', 'truth',
 ]
 
 // Ordered coordinates of a square spiral that winds inward to the center.
@@ -104,12 +123,18 @@ function spiralCoords(size: number): { row: number; col: number }[] {
 export function buildTiles(size = BOARD_SIZE): BoardTile[] {
   const coords = spiralCoords(size)
   const total = coords.length
+  let specialCounter = 0
   return coords.map((c, i) => {
     let type: TileType
     if (i === 0) type = 'start'
     else if (i === total - 1) type = 'finish'
     else type = MIDDLE_PATTERN[(i - 1) % MIDDLE_PATTERN.length]
-    return { i, type, row: c.row, col: c.col }
+    const tile: BoardTile = { i, type, row: c.row, col: c.col }
+    if (type === 'special') {
+      tile.special = specialCounter % SPECIAL_CHALLENGES.length
+      specialCounter++
+    }
+    return tile
   })
 }
 
@@ -177,4 +202,5 @@ export const TILE_META: Record<TileType, { label: string; emoji: string; color: 
   swap: { label: 'Swap', emoji: '🔀', color: '#06b6d4' },
   picture: { label: 'Picture time', emoji: '📸', color: '#14b8a6' },
   group: { label: 'Group dare', emoji: '👯', color: '#f59e0b' },
+  special: { label: 'Special', emoji: '⭐', color: '#f0abfc' },
 }

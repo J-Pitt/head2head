@@ -5,7 +5,7 @@ import type { Player } from '@/lib/types'
 import type { TodState } from '@/lib/tod/types'
 import { initialTodState, PICTURE_EVERY } from '@/lib/tod/types'
 import type { BoardState, TileType } from '@/lib/tod/board'
-import { createBoardState, rollDie } from '@/lib/tod/board'
+import { createBoardState, rollDie, SPECIAL_CHALLENGES } from '@/lib/tod/board'
 import type { Progress, Session } from '@/lib/minigames/types'
 import { getGameConfig, computeRaceLoser, isRoundComplete } from '@/lib/minigames/registry'
 import { randomTodMinigame } from '@/lib/minigames/catalog'
@@ -440,6 +440,27 @@ export function useTodRoom() {
       patchBoard({ dice, positions: swapPos, phase: 'event', tileType: 'swap', message: msg })
     } else if (type === 'picture') {
       patchBoard({ dice, positions, phase: 'event', tileType: 'picture', message: `📸 Picture time! Everyone post a pic in the chat below.` })
+    } else if (type === 'special') {
+      const ch = SPECIAL_CHALLENGES[b.tiles[newPos].special ?? 0]
+      if (ch.kind === 'dice') {
+        // Everyone present rolls; the highest roller advances 5 spaces.
+        const present = playersRef.current.filter((p) => p.status !== 'break')
+        let best = { id: playerId, roll: -1, name }
+        for (const p of present) {
+          const r = rollDie()
+          if (r > best.roll) best = { id: p.id, roll: r, name: p.name }
+        }
+        const winnerPos = Math.min((positions[best.id] ?? 0) + 5, last - 1)
+        patchBoard({
+          dice,
+          positions: { ...positions, [best.id]: winnerPos },
+          phase: 'event',
+          tileType: 'special',
+          message: `🎲 Group roll! ${best.name} rolled highest (${best.roll}) and jumps ahead 5 spaces.`,
+        })
+      } else {
+        patchBoard({ dice, positions, phase: 'event', tileType: 'special', message: `${ch.icon} ${ch.label}` })
+      }
     } else {
       patchBoard({ dice, positions, phase: 'event', tileType: 'group', message: `👯 Group dare! Everyone does a dare together.` })
     }
