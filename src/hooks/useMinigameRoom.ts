@@ -209,16 +209,15 @@ export function useMinigameParty() {
     })
   }, [now, pushSession])
 
-  async function hostRoom(customCode?: string) {
+  async function hostRoom() {
     if (!playerName.trim()) {
       setError('Enter your name')
       return
     }
-    const code = (customCode ?? (entryIntent === 'create' ? gameCodeInput : '')).trim().toUpperCase()
     setError('')
     try {
       localStorage.setItem(NAME_KEY, playerName.trim())
-      const data = await createMinigameRoom('party', playerName.trim(), avatar, playerId, code || undefined)
+      const data = await createMinigameRoom('party', playerName.trim(), avatar, playerId)
       setRoomId(data.roomId)
       setGameCode(data.gameCode)
       setPlayers(data.players)

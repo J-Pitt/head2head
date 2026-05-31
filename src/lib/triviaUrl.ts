@@ -9,12 +9,20 @@ export function parseTriviaUrlSearch(search: string): TriviaUrlBootstrap | null 
   const params = new URLSearchParams(search)
   const trivia = params.get('trivia')
   const code = params.get('code')?.trim().toUpperCase()
-  if ((trivia === 'join' || trivia === 'create') && code) {
+  if (trivia === 'join' && code) {
     return {
       screen: 'setup',
       mode: 'online',
-      onlineIntent: trivia,
+      onlineIntent: 'join',
       gameCodeInput: code,
+    }
+  }
+  if (trivia === 'create' || params.get('host') === '1') {
+    return {
+      screen: 'setup',
+      mode: 'online',
+      onlineIntent: 'create',
+      gameCodeInput: '',
     }
   }
   return null

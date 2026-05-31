@@ -5,41 +5,8 @@ import { useClassicTod } from '@/hooks/useClassicTod'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
 import ClassicAnswerForm from '@/components/tod/classic/ClassicAnswerForm'
-import type { ClassicListMode } from '@/lib/tod/classic/lists'
+import RatingPicker from '@/components/tod/RatingPicker'
 import '@/app/classic-tod.css'
-
-function RatingPicker({
-  value,
-  onChange,
-}: {
-  value: ClassicListMode
-  onChange: (m: ClassicListMode) => void
-}) {
-  return (
-    <fieldset className="setup-fieldset">
-      <legend className="setup-legend">Content rating</legend>
-      <div className="setup-mode-buttons">
-        <button
-          type="button"
-          className={`setup-mode-btn setup-mode-btn-friendly ${value === 'pg' ? 'selected' : ''}`}
-          onClick={() => onChange('pg')}
-        >
-          PG
-        </button>
-        <button
-          type="button"
-          className={`setup-mode-btn setup-mode-btn-sexy ${value === 'nsfw' ? 'selected' : ''}`}
-          onClick={() => onChange('nsfw')}
-        >
-          NSFW
-        </button>
-      </div>
-      <p className="setup-rating-hint">
-        {value === 'pg' ? 'Playful truths and dares for any group.' : '18+ — spicy truths and dares from Truth or Dare Now.'}
-      </p>
-    </fieldset>
-  )
-}
 
 export default function ClassicTruthOrDare() {
   const g = useClassicTod()
@@ -74,6 +41,11 @@ export default function ClassicTruthOrDare() {
               Truth · Dare
             </h1>
             <p className="subtitle">Classic mode — turns, prompts, and picture dares</p>
+            {g.intent === 'join' && g.joinCode && (
+              <p className="setup-code-hint">
+                Room code: <strong className="room-code-display">{g.joinCode}</strong>
+              </p>
+            )}
             <form
               className="setup-form"
               onSubmit={(e) => {

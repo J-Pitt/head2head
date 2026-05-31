@@ -149,9 +149,9 @@ export function useClassicTod() {
       return
     }
 
-    if (intent === 'create' && joinCode) {
+    if (intent === 'create') {
       try {
-        const data = await createTodRoom(name, avatar, playerId, joinCode)
+        const data = await createTodRoom(name, avatar, playerId, joinCode || undefined)
         await updateTodState(data.roomId, classic)
         setRoomId(data.roomId)
         setGameCode(data.gameCode)

@@ -44,12 +44,12 @@ export default function PartyJoin({
           {entryIntent === 'join'
             ? 'Enter your name to join the games room.'
             : entryIntent === 'create'
-              ? 'Enter your name to host this games room.'
+              ? 'Enter your name to start a games room.'
               : 'Start a games room or join one with a code. Everyone stays together and you can keep playing game after game — no rejoining.'}
         </p>
-        {fromHome && gameCodeInput && (
+        {entryIntent === 'join' && gameCodeInput && (
           <p className="setup-code-hint">
-            Game password: <strong className="room-code-display">{gameCodeInput}</strong>
+            Room code: <strong className="room-code-display">{gameCodeInput}</strong>
           </p>
         )}
         <label className="field">
@@ -67,7 +67,7 @@ export default function PartyJoin({
         <div className="online-actions">
           {entryIntent === 'create' ? (
             <button type="button" className="btn btn-primary full" onClick={hostRoom}>
-              {gameCodeInput ? 'Create this room' : 'Create a games room'}
+              Enter lobby
             </button>
           ) : entryIntent === 'join' ? (
             <button type="button" className="btn btn-primary full" onClick={() => joinRoom()}>
@@ -76,7 +76,7 @@ export default function PartyJoin({
           ) : (
             <>
               <button type="button" className="btn btn-primary" onClick={hostRoom}>
-                Create a games room
+                Start a games room
               </button>
               <div className="join-row">
                 <input

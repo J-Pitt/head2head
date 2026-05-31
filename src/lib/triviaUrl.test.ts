@@ -12,13 +12,17 @@ describe('triviaUrl', () => {
     })
   })
 
-  it('parses create link', () => {
-    const r = parseTriviaUrlSearch('?trivia=create&code=xyz')
-    expect(r?.onlineIntent).toBe('create')
-    expect(r?.gameCodeInput).toBe('XYZ')
+  it('parses create link without code', () => {
+    const r = parseTriviaUrlSearch('?trivia=create')
+    expect(r).toEqual({
+      screen: 'setup',
+      mode: 'online',
+      onlineIntent: 'create',
+      gameCodeInput: '',
+    })
   })
 
-  it('returns null without code', () => {
+  it('returns null for join without code', () => {
     expect(parseTriviaUrlSearch('?trivia=join')).toBeNull()
   })
 })

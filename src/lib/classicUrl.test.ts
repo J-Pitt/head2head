@@ -9,10 +9,10 @@ describe('classicUrl', () => {
     })
   })
 
-  it('parses create', () => {
-    expect(parseClassicUrlSearch('?classic=1&create=new')).toEqual({
+  it('parses host create without code', () => {
+    expect(parseClassicUrlSearch('?classic=1&host=1')).toEqual({
       intent: 'create',
-      joinCode: 'NEW',
+      joinCode: '',
     })
   })
 

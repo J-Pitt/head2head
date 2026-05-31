@@ -7,7 +7,7 @@ import type { useTodRoom } from '@/hooks/useTodRoom'
 import { TILE_META, SPECIAL_CHALLENGES, buildTiles, BOARD_COLS, BOARD_ROWS } from '@/lib/tod/board'
 import type { BoardTile } from '@/lib/tod/board'
 import { getQuestionById } from '@/lib/trivia'
-import { randomTodPrompt } from '@/lib/tod/prompts'
+import { getDaresForMode, getTruthsForMode, pickRandomPrompt } from '@/lib/tod/classic/lists'
 import { getMinigame } from '@/lib/minigames/catalog'
 import type { GameViewProps } from '@/lib/minigames/types'
 import { GameViewRouter } from '@/components/minigames/views/GameViewRouter'
@@ -43,7 +43,7 @@ export default function BoardView({
 }
 
 export function BoardPreview() {
-  const tiles = buildTiles()
+  const tiles = buildTiles(BOARD_COLS, BOARD_ROWS, { randomize: false })
   return (
     <section className="card board-card board-card-preview">
       <p className="board-legend">🚦 Start → follow the path → 🏁 Finish</p>
@@ -384,6 +384,8 @@ function BoardPrompt({ room }: { room: Room }) {
   const onSpot = room.players.find((p) => p.id === b.onSpotId)
   const asker = room.players.find((p) => p.id === b.askerId)
   const [draft, setDraft] = useState('')
+  const [promptMode, setPromptMode] = useState<'list' | 'custom'>('list')
+  const [suggestion, setSuggestion] = useState<{ text: string; idx: number } | null>(null)
 
   const isMine = b.onSpotId === room.playerId
   const askerAway = !room.isAvailable(b.askerId)
@@ -391,13 +393,41 @@ function BoardPrompt({ room }: { room: Room }) {
   const canAdvance = isMine || room.isHost
   const forfeit = b.phase === 'forfeit'
 
-  function submit(e: FormEvent) {
+  const listMode = b.listMode ?? 'nsfw'
+  const choice = b.choice
+
+  useEffect(() => {
+    if (!choice || b.prompt) return
+    const pool = choice === 'truth' ? getTruthsForMode(listMode) : getDaresForMode(listMode)
+    const used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
+    setSuggestion(pickRandomPrompt(pool, used))
+    setPromptMode('list')
+    setDraft('')
+  }, [choice, b.prompt, listMode, b.usedTruths, b.usedDares])
+
+  function pickAnother() {
+    if (!choice) return
+    const pool = choice === 'truth' ? getTruthsForMode(listMode) : getDaresForMode(listMode)
+    const used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
+    const exclude = suggestion ? [...used, suggestion.idx] : used
+    setSuggestion(pickRandomPrompt(pool, exclude))
+  }
+
+  function useSuggestion() {
+    if (!suggestion || !choice) return
+    room.signalTyping(false)
+    room.boardSubmitPrompt(suggestion.text, { choice, idx: suggestion.idx })
+  }
+
+  function submitCustom(e: FormEvent) {
     e.preventDefault()
     if (draft.trim()) {
       room.signalTyping(false)
       room.boardSubmitPrompt(draft)
     }
   }
+
+  const targetName = isMine ? 'yourself' : onSpot?.name ?? 'them'
 
   return (
     <section className="card tod-stage">
@@ -436,38 +466,58 @@ function BoardPrompt({ room }: { room: Room }) {
         )
       ) : !b.prompt ? (
         canWrite ? (
-          <form className="tod-write" onSubmit={submit}>
-            <span className={`tod-badge ${b.choice}`}>{b.choice.toUpperCase()}</span>
+          <div className="tod-write">
+            <span className={`tod-badge ${b.choice}`}>{b.choice!.toUpperCase()}</span>
             <p className="tod-write-label">
-              Write a {b.choice} for {isMine ? 'yourself' : onSpot?.name ?? 'them'}:
+              Pick a {b.choice} for {targetName}:
             </p>
-            <textarea
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value)
-                room.signalTyping(e.target.value.trim().length > 0)
-              }}
-              onBlur={() => room.signalTyping(false)}
-              placeholder={b.choice === 'truth' ? 'Ask them anything…' : 'Dare them to…'}
-              maxLength={400}
-              rows={3}
-              className="tod-textarea"
-              autoFocus
-            />
-            <button
-              type="button"
-              className="btn-ghost btn-sm tod-generate"
-              onClick={() => {
-                setDraft(randomTodPrompt(b.choice!))
-                room.signalTyping(true)
-              }}
-            >
-              🎲 Can&apos;t think of one? Surprise me
-            </button>
-            <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
-              Submit for everyone →
-            </button>
-          </form>
+            {promptMode === 'list' && suggestion ? (
+              <>
+                <div className="tod-prompt-suggestion">
+                  <p className="tod-prompt">{suggestion.text}</p>
+                </div>
+                <button type="button" className="btn btn-primary full" onClick={useSuggestion}>
+                  Use this prompt →
+                </button>
+                <button type="button" className="btn-ghost btn-sm" onClick={pickAnother}>
+                  🎲 Pick another
+                </button>
+                <button type="button" className="btn-ghost btn-sm" onClick={() => setPromptMode('custom')}>
+                  ✏️ Write your own
+                </button>
+              </>
+            ) : (
+              <form className="tod-write-custom" onSubmit={submitCustom}>
+                <textarea
+                  value={draft}
+                  onChange={(e) => {
+                    setDraft(e.target.value)
+                    room.signalTyping(e.target.value.trim().length > 0)
+                  }}
+                  onBlur={() => room.signalTyping(false)}
+                  placeholder={b.choice === 'truth' ? 'Ask them anything…' : 'Dare them to…'}
+                  maxLength={400}
+                  rows={3}
+                  className="tod-textarea"
+                  autoFocus
+                />
+                <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
+                  Submit for everyone →
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={() => {
+                    setPromptMode('list')
+                    setDraft('')
+                    room.signalTyping(false)
+                  }}
+                >
+                  ← Back to suggestions
+                </button>
+              </form>
+            )}
+          </div>
         ) : (
           <p className="lobby-sub">
             <span className={`tod-badge ${b.choice}`}>{b.choice.toUpperCase()}</span>

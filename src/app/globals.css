@@ -431,107 +431,163 @@ body {
   background: linear-gradient(90deg, transparent, rgba(240, 180, 202, 0.4), transparent);
 }
 
-/* — "Also play" compact chip row — */
-.also-try-row {
+.home-quick-card {
+  padding: 1.15rem;
+  background: rgba(19, 26, 46, 0.55);
+  border-color: rgba(240, 180, 202, 0.15);
+}
+
+.mode-grid.three {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+.mode-grid.three .mode-card {
+  align-items: center;
+  text-align: center;
+  padding: 1rem 0.55rem;
+  gap: 0.28rem;
+}
+
+.tod-home .mode-card-hot.selected {
+  box-shadow: 0 0 0 2px rgba(19, 26, 46, 0.2);
+  transform: none;
+}
+
+.tod-home .mode-trivia.selected {
+  box-shadow: 0 0 0 2px #7ec4d0;
+}
+
+.tod-home .mode-tod.selected {
+  box-shadow: 0 0 0 2px #e8a0c4;
+}
+
+.tod-home .mode-minigames.selected {
+  box-shadow: 0 0 0 2px #8ed4a0;
+}
+
+.home-quick-pick {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(240, 180, 202, 0.15);
 }
 
-.also-try-card {
-  border-radius: 0.65rem;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(19, 26, 46, 0.6);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  overflow: hidden;
+.home-quick-pick .home-online-label {
+  margin: 0 0 0.25rem;
+  text-align: center;
 }
 
-.also-try-card:not(.expanded) {
-  flex: 1 1 auto;
-  min-width: 100px;
+.tod-home .mode-card-hot {
+  border-radius: 0.75rem;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.also-try-card.expanded {
-  flex: 1 1 100%;
+.tod-home .mode-card-hot:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
-.also-try-inner {
+.tod-home .mode-trivia {
+  background: var(--pastel-blue);
+  border-color: #a8dce4;
+  color: var(--navy-deep);
+}
+
+.tod-home .mode-trivia strong {
+  color: var(--navy-deep);
+}
+
+.tod-home .mode-trivia span:last-child {
+  color: rgba(19, 26, 46, 0.62);
+}
+
+.tod-home .mode-trivia:hover:not(:disabled) {
+  background: var(--pastel-blue);
+  border-color: #a8dce4;
+}
+
+.mode-card-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.65rem 0.85rem 0.6rem;
+  text-align: center;
+  gap: 0.28rem;
   width: 100%;
   background: none;
   border: none;
   color: inherit;
   cursor: pointer;
+  padding: 0;
   font: inherit;
+}
+
+.trivia-pick {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.trivia-pick .home-online-label {
+  margin: 0 0 0.25rem;
   text-align: center;
 }
 
-.also-try-inner:hover {
-  background: rgba(255,255,255,0.04);
+.tod-home .mode-minigames {
+  background: var(--pastel-mint);
+  border-color: #a8e8b8;
+  color: var(--navy-deep);
 }
 
-.also-try-icon {
-  font-size: 1.35rem;
+.tod-home .mode-minigames strong {
+  color: var(--navy-deep);
+}
+
+.tod-home .mode-minigames span:last-child {
+  color: rgba(19, 26, 46, 0.62);
+}
+
+.tod-home .mode-minigames:hover:not(:disabled) {
+  background: var(--pastel-mint);
+  border-color: #a8e8b8;
+}
+
+.tod-home .mode-tod {
+  background: var(--pastel-pink);
+  border-color: #e8a0c4;
+  color: var(--navy-deep);
+}
+
+.tod-home .mode-tod strong {
+  color: var(--navy-deep);
+}
+
+.tod-home .mode-tod span:last-child {
+  color: rgba(19, 26, 46, 0.62);
+}
+
+.tod-home .mode-tod:hover:not(:disabled) {
+  background: var(--pastel-pink);
+  border-color: #e8a0c4;
+}
+
+.tod-home .mode-grid.three .mode-card-hot .mode-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.08rem;
   line-height: 1;
 }
 
-.also-try-name {
-  font-size: 0.82rem;
+.tod-home .mode-grid.three .mode-card strong {
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
 }
 
-.also-try-sub {
-  font-size: 0.67rem;
-  color: rgba(255,255,255,0.45);
-  line-height: 1.3;
-}
-
-.also-try-pick {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.75rem;
-}
-
-.also-try-pick-head {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.25rem;
-}
-
-.also-try-back {
-  margin-left: auto;
-  opacity: 0.6;
-  font-size: 0.8rem;
-}
-
-/* Colour tints for each game chip */
-.tod-home .also-try-card.mode-trivia {
-  border-color: rgba(168, 220, 228, 0.35);
-  background: rgba(168, 220, 228, 0.08);
-  color: #d4f1f7;
-}
-.tod-home .also-try-card.mode-tod {
-  border-color: rgba(232, 160, 196, 0.35);
-  background: rgba(232, 160, 196, 0.08);
-  color: #f7d4e9;
-}
-.tod-home .also-try-card.mode-minigames {
-  border-color: rgba(168, 232, 184, 0.35);
-  background: rgba(168, 232, 184, 0.08);
-  color: #d4f7df;
-}
-
-.tod-home .also-try-card:hover:not(.expanded) {
-  box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+.tod-home .mode-grid.three .mode-card span:last-child {
+  font-size: 0.66rem;
+  line-height: 1.35;
 }
 
 .setup-code-hint {
@@ -2567,6 +2623,65 @@ body {
   margin: 0.75rem 0 0.5rem;
 }
 
+.lobby-stage .setup-fieldset {
+  border: none;
+  padding: 0;
+  margin: 1rem 0 0.5rem;
+  width: 100%;
+  text-align: left;
+}
+
+.lobby-stage .setup-legend {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.lobby-stage .setup-mode-buttons {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.lobby-stage .setup-mode-btn {
+  padding: 0.45rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.lobby-stage .setup-mode-btn-friendly {
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.lobby-stage .setup-mode-btn-friendly.selected {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #0f172a;
+  border-color: #34d399;
+}
+
+.lobby-stage .setup-mode-btn-sexy {
+  border-color: rgba(167, 139, 250, 0.35);
+}
+
+.lobby-stage .setup-mode-btn-sexy.selected {
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+  color: #fff;
+  border-color: #a78bfa;
+}
+
+.lobby-stage .setup-rating-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .chat-placeholder {
   opacity: 0.85;
 }
@@ -2738,7 +2853,7 @@ body {
 .board-track {
   position: relative;
   width: 100%;
-  max-width: 400px;
+  max-width: min(480px, 100%);
   margin: 0 auto;
 }
 
@@ -2915,13 +3030,13 @@ body {
 
 @media (min-width: 480px) {
   .board-track {
-    max-width: 380px;
+    max-width: min(460px, 100%);
   }
 }
 
 @media (min-width: 640px) {
   .board-track {
-    max-width: 400px;
+    max-width: min(480px, 100%);
   }
 }
 
@@ -3182,6 +3297,29 @@ body {
 .tod-textarea:focus {
   outline: none;
   border-color: var(--accent-dim);
+}
+
+.tod-prompt-suggestion {
+  width: 100%;
+  padding: 1rem 1.1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  text-align: left;
+}
+
+.tod-prompt-suggestion .tod-prompt {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+
+.tod-write-custom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
 }
 
 .tod-end {

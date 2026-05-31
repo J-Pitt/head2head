@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import RatingPicker from '@/components/tod/RatingPicker'
 import BoardPiecePicker from '@/components/tod/BoardPiecePicker'
 import PlayerMark from '@/components/tod/PlayerMark'
 import { useTodRoom } from '@/hooks/useTodRoom'
@@ -149,7 +150,7 @@ function TodJoin({ room }: { room: Room }) {
   return (
     <div className="app-shell tod-room-shell">
       <TodHeader
-        gameCode={online ? room.gameCodeInput || room.createPassword || null : null}
+        gameCode={online ? room.gameCodeInput || null : null}
         isLocal={mode === 'local'}
         playerCount={0}
         isOnBreak={false}
@@ -167,8 +168,10 @@ function TodJoin({ room }: { room: Room }) {
             {mode === 'local'
               ? 'Enter your name and pick a game piece. Everyone plays on this device.'
               : mode === 'join'
-                ? 'Enter your name and pick a game piece to join the room.'
-                : 'Enter your name and pick a game piece. Share the password once you\'re in the lobby.'}
+                ? room.gameCodeInput
+                  ? `Room code ${room.gameCodeInput} — enter your name and pick a game piece.`
+                  : 'Enter your name and pick a game piece to join the room.'
+                : 'Enter your name and pick a game piece. You\'ll get a room code in the lobby to share.'}
           </p>
           <label className="field">
             <span>Your name</span>
@@ -201,7 +204,7 @@ function Lobby({ room }: { room: Room }) {
       <p className="lobby-sub">
         {online ? (
           <>
-            Share the password <strong>{room.gameCode}</strong> so friends can join on their devices.
+            Share the code <strong>{room.gameCode}</strong> so friends can join on their devices.
           </>
         ) : (
           <>Add everyone playing on this device, then start the board.</>
@@ -236,6 +239,10 @@ function Lobby({ room }: { room: Room }) {
         <button type="button" className="btn btn-sm lobby-add-player" onClick={room.addLocalPlayer}>
           + Add player
         </button>
+      )}
+
+      {room.isHost && (
+        <RatingPicker value={room.boardListMode} onChange={room.setBoardListMode} />
       )}
 
       {room.isHost ? (

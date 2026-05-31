@@ -1,5 +1,6 @@
 import type { Player } from '@/lib/types'
 import type { Session } from '@/lib/minigames/types'
+import type { ClassicListMode } from '@/lib/tod/classic/lists'
 
 // Linear race board: START at one corner, FINISH at the opposite end. Tiles
 // snake row-by-row (left→right, then right→left, …).
@@ -88,13 +89,17 @@ export type BoardState = {
   // Winner.
   winnerId: string | null
   winnerName: string | null
+  // TruthOrDareNow prompt lists (PG or NSFW).
+  listMode: ClassicListMode
+  usedTruths: number[]
+  usedDares: number[]
 }
 
-export const BOARD_COLS = 4
-export const BOARD_ROWS = 9
+export const BOARD_COLS = 6
+export const BOARD_ROWS = 6
 
-// Tile types for the path between START and FINISH.
-const MIDDLE_PATTERN: TileType[] = [
+// Tile mix for middle squares (34 on a 6×6 board). Shuffled each game.
+const MIDDLE_TILE_POOL: TileType[] = [
   'truth', 'dare', 'trivia', 'minigame', 'special', 'dare',
   'truth', 'trivia', 'dare', 'special', 'truth', 'minigame',
   'dare', 'trivia', 'special', 'truth', 'jail', 'dare',
@@ -102,6 +107,20 @@ const MIDDLE_PATTERN: TileType[] = [
   'trivia', 'dare', 'special', 'truth', 'minigame', 'jail',
   'dare', 'trivia', 'special', 'truth',
 ]
+
+export type BuildTilesOptions = {
+  /** Shuffle middle tile types and special assignments. Default true. */
+  randomize?: boolean
+}
+
+function middleTypePool(cols: number, rows: number): TileType[] {
+  const middleCount = cols * rows - 2
+  const pool: TileType[] = []
+  for (let i = 0; i < middleCount; i++) {
+    pool.push(MIDDLE_TILE_POOL[i % MIDDLE_TILE_POOL.length]!)
+  }
+  return pool
+}
 
 // Serpentine path: row 0 left→right, row 1 right→left, etc.
 function serpentineCoords(cols: number, rows: number): { row: number; col: number }[] {
@@ -116,19 +135,27 @@ function serpentineCoords(cols: number, rows: number): { row: number; col: numbe
   return res
 }
 
-export function buildTiles(cols = BOARD_COLS, rows = BOARD_ROWS): BoardTile[] {
+export function buildTiles(
+  cols = BOARD_COLS,
+  rows = BOARD_ROWS,
+  options: BuildTilesOptions = {}
+): BoardTile[] {
+  const { randomize = true } = options
   const coords = serpentineCoords(cols, rows)
   const total = coords.length
+  const shuffledMiddle = randomize ? shuffle(middleTypePool(cols, rows)) : middleTypePool(cols, rows)
+  let middleIdx = 0
   let specialCounter = 0
   return coords.map((c, i) => {
     let type: TileType
     if (i === 0) type = 'start'
     else if (i === total - 1) type = 'finish'
-    else type = MIDDLE_PATTERN[(i - 1) % MIDDLE_PATTERN.length]
+    else type = shuffledMiddle[middleIdx++]!
     const tile: BoardTile = { i, type, row: c.row, col: c.col }
     if (type === 'special') {
-      tile.special = specialCounter % SPECIAL_CHALLENGES.length
-      specialCounter++
+      tile.special = randomize
+        ? Math.floor(Math.random() * SPECIAL_CHALLENGES.length)
+        : specialCounter++ % SPECIAL_CHALLENGES.length
     }
     return tile
   })
@@ -143,8 +170,11 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function createBoardState(players: Player[]): BoardState {
-  const tiles = buildTiles()
+export function createBoardState(
+  players: Player[],
+  listMode: ClassicListMode = 'nsfw'
+): BoardState {
+  const tiles = buildTiles(BOARD_COLS, BOARD_ROWS, { randomize: true })
   const order = shuffle(players.filter((p) => p.status !== 'break').map((p) => p.id))
   const fallback = order.length ? order : players.map((p) => p.id)
   const positions: Record<string, number> = {}
@@ -176,6 +206,9 @@ export function createBoardState(players: Player[]): BoardState {
     message: null,
     winnerId: null,
     winnerName: null,
+    listMode,
+    usedTruths: [],
+    usedDares: [],
   }
 }
 

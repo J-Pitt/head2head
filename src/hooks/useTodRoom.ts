@@ -12,6 +12,7 @@ import { getGameConfig, computeRaceLoser, isRoundComplete } from '@/lib/minigame
 import { randomTodMinigame } from '@/lib/minigames/catalog'
 import { TRIVIA_QUESTIONS, getQuestionById } from '@/lib/trivia'
 import { DEFAULT_BOARD_PIECE, isBoardPiece } from '@/lib/tod/boardPieces'
+import type { ClassicListMode } from '@/lib/tod/classic/lists'
 import {
   createTodRoom,
   getTodRoomClient,
@@ -68,8 +69,8 @@ export function useTodRoom() {
     }
   })
   const [avatar, setAvatar] = useState<string>(DEFAULT_BOARD_PIECE)
+  const [boardListMode, setBoardListMode] = useState<ClassicListMode>('nsfw')
   const [gameCodeInput, setGameCodeInput] = useState('')
-  const [createPassword, setCreatePassword] = useState('')
   const [entryMode, setEntryMode] = useState<'local' | 'join' | 'create' | null>(null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
@@ -289,9 +290,9 @@ export function useTodRoom() {
     if (!base) return
     ownProgressRef.current = null
     setProgress({})
-    const board = createBoardState(playersRef.current)
+    const board = createBoardState(playersRef.current, boardListMode)
     pushState({ ...base, phase: 'board', mode: 'board', board })
-  }, [pushState])
+  }, [pushState, boardListMode])
 
   // Advance the roll to the next present, non-jailed player.
   const advanceRoll = useCallback(
@@ -481,10 +482,19 @@ export function useTodRoom() {
   )
 
   const boardSubmitPrompt = useCallback(
-    (text: string) => {
+    (text: string, fromList?: { choice: 'truth' | 'dare'; idx: number }) => {
       const t = text.trim()
       if (!t) return
-      patchBoard({ prompt: t.slice(0, 400) })
+      const b = stateRef.current?.board
+      const patch: Partial<BoardState> = { prompt: t.slice(0, 400) }
+      if (fromList && b) {
+        if (fromList.choice === 'truth') {
+          patch.usedTruths = [...(b.usedTruths ?? []), fromList.idx]
+        } else {
+          patch.usedDares = [...(b.usedDares ?? []), fromList.idx]
+        }
+      }
+      patchBoard(patch)
     },
     [patchBoard]
   )
@@ -704,18 +714,9 @@ export function useTodRoom() {
     ])
   }
 
-  async function hostRoom(code?: string) {
+  async function hostRoom() {
     if (!playerName.trim()) {
       setError('Enter your name')
-      return
-    }
-    const pwd = (code ?? createPassword).trim().toUpperCase()
-    if (entryMode === 'create' && !pwd) {
-      setError('Set a game password')
-      return
-    }
-    if (pwd && !/^[A-Z0-9]{4,6}$/.test(pwd)) {
-      setError('Password must be 4–6 letters or numbers')
       return
     }
     setError('')
@@ -726,7 +727,7 @@ export function useTodRoom() {
       setHostId(null)
       setPlayers([])
       setState(null)
-      const data = await createTodRoom(playerName.trim(), avatar, playerId, pwd || undefined)
+      const data = await createTodRoom(playerName.trim(), avatar, playerId)
       setRoomId(data.roomId)
       setGameCode(data.gameCode)
       setHostId(data.hostId)
@@ -776,7 +777,7 @@ export function useTodRoom() {
     function readUrlIntent():
       | { mode: 'local' }
       | { mode: 'join'; code: string }
-      | { mode: 'create'; code: string }
+      | { mode: 'create' }
       | null {
       try {
         const params = new URLSearchParams(window.location.search)
@@ -784,8 +785,7 @@ export function useTodRoom() {
         if (params.get('local') === '1') return { mode: 'local' }
         const joinCode = params.get('code')
         if (joinCode) return { mode: 'join', code: joinCode.trim().toUpperCase() }
-        const createCode = params.get('create')
-        if (createCode) return { mode: 'create', code: createCode.trim().toUpperCase() }
+        if (params.get('host') === '1' || params.get('create') === '1') return { mode: 'create' }
       } catch {
         /* ignore */
       }
@@ -798,7 +798,6 @@ export function useTodRoom() {
       if (urlIntent?.mode === 'create') {
         localStorage.removeItem(TOD_KEY)
         setEntryMode('create')
-        setCreatePassword(urlIntent.code)
         setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
         return
       }
@@ -903,8 +902,6 @@ export function useTodRoom() {
     setAvatar,
     gameCodeInput,
     setGameCodeInput,
-    createPassword,
-    setCreatePassword,
     entryMode,
     isLocal,
     roomId,
@@ -937,6 +934,8 @@ export function useTodRoom() {
     leaveRoom,
     // Board game
     startBoardGame,
+    boardListMode,
+    setBoardListMode,
     rollDice,
     boardPickChoice,
     boardSubmitPrompt,
