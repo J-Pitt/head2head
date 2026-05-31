@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import AvatarPicker from './AvatarPicker'
 import { DEFAULT_AVATAR } from '@/lib/avatars'
 import BuzzerPad from './BuzzerPad'
@@ -96,6 +97,9 @@ export default function GameApp() {
   const [gameMode, setGameMode] = useState<GameMode>('buzzer')
 
   const [gameCodeInput, setGameCodeInput] = useState('')
+  const [joinPwd, setJoinPwd] = useState('')
+  const [showJoin, setShowJoin] = useState(false)
+  const router = useRouter()
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
@@ -539,9 +543,11 @@ export default function GameApp() {
   if (screen === 'home') {
     return (
       <div className="app-shell">
-        <header className="app-header">
-          <h1 className="logo">Head2Head</h1>
-          <p className="tagline">Truth or Dare — phones, couch, or across the room</p>
+        <header className="app-header tod-home-header">
+          <h1 className="tod-logo">
+            Truth <span className="tod-logo-or">or</span> Dare
+          </h1>
+          <p className="tagline">Spin the board, spill the truth, take the dare. 🔥 18+</p>
         </header>
 
         {(pendingRejoin || onBreak) && (
@@ -577,16 +583,67 @@ export default function GameApp() {
           </section>
         )}
 
+        <section className="card tod-home-actions">
+          <Link href="/truth-or-dare" className="btn btn-primary full home-cta">
+            🎲 Play locally
+          </Link>
+          {!showJoin ? (
+            <button
+              type="button"
+              className="btn full home-cta"
+              onClick={() => setShowJoin(true)}
+            >
+              🔑 Join a game
+            </button>
+          ) : (
+            <form
+              className="home-join"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const code = joinPwd.trim().toUpperCase()
+                if (code) router.push(`/truth-or-dare?code=${encodeURIComponent(code)}`)
+              }}
+            >
+              <input
+                value={joinPwd}
+                onChange={(e) => setJoinPwd(e.target.value.toUpperCase())}
+                placeholder="Enter game password"
+                maxLength={6}
+                className="code-input"
+                autoFocus
+              />
+              <button type="submit" className="btn btn-primary" disabled={!joinPwd.trim()}>
+                Join
+              </button>
+            </form>
+          )}
+        </section>
+
+        <p className="home-divider">or jump straight into one</p>
+
         <section className="card hero-card">
-          <p className="intro">
-            Gather the group, pass the phone, and let the wheel decide. Spicy truths, bold dares,
-            and mini-game forfeits for whoever loses the round.
-          </p>
-          <div className="mode-grid">
+          <div className="mode-grid three">
+            <button
+              type="button"
+              className="mode-card"
+              onClick={() => {
+                setMode('local')
+                setScreen('setup')
+              }}
+            >
+              <span className="mode-icon">🧠</span>
+              <strong>Trivia</strong>
+              <span>Science & 90s pop</span>
+            </button>
+            <Link href="/minigames" className="mode-card mode-card-link">
+              <span className="mode-icon">🎮</span>
+              <strong>Mini games</strong>
+              <span>Frogger, Snake &amp; more</span>
+            </Link>
             <Link href="/truth-or-dare" className="mode-card mode-card-link">
               <span className="mode-icon">💋</span>
               <strong>Truth or Dare</strong>
-              <span>Mini-game forfeits & spicy turns · 18+</span>
+              <span>Classic turns · 18+</span>
             </Link>
           </div>
         </section>

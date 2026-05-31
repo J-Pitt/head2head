@@ -153,6 +153,108 @@ body {
   color: var(--muted);
 }
 
+/* —— Truth or Dare home —— */
+.tod-home-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.tod-logo {
+  font-size: clamp(2.75rem, 11vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 0 0 0.6rem;
+  background: linear-gradient(110deg, #ff5f9e 0%, #ff8a3d 35%, #ffd23d 60%, #ff5f9e 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: tod-shimmer 6s linear infinite;
+  text-shadow: 0 4px 30px var(--glow);
+}
+
+.tod-logo-or {
+  display: inline-block;
+  font-size: 0.45em;
+  font-weight: 700;
+  vertical-align: middle;
+  -webkit-text-fill-color: var(--muted);
+  margin: 0 0.15em;
+  transform: rotate(-6deg);
+}
+
+@keyframes tod-shimmer {
+  to {
+    background-position: 220% center;
+  }
+}
+
+.tod-home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.home-cta {
+  font-size: 1.15rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+
+.home-join {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.home-join .code-input {
+  text-align: center;
+  letter-spacing: 0.25em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.home-join .btn {
+  flex-shrink: 0;
+}
+
+.home-divider {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.home-divider::before,
+.home-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.mode-grid.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mode-grid.three .mode-card {
+  align-items: center;
+  text-align: center;
+  padding: 1.1rem 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .mode-grid.three {
+    grid-template-columns: 1fr;
+  }
+}
+
 .field {
   display: flex;
   flex-direction: column;

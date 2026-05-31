@@ -734,6 +734,16 @@ export function useTodRoom() {
     }
   }, [playerId])
 
+  // Prefill the join code from a ?code= link (e.g. "Join a game" on the home screen).
+  useEffect(() => {
+    try {
+      const code = new URLSearchParams(window.location.search).get('code')
+      if (code) setGameCodeInput(code.trim().toUpperCase())
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
   return {
     playerId,
     playerName,
