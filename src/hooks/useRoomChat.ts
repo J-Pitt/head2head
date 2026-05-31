@@ -5,18 +5,17 @@ import { fetchMessages, sendMessage, type ChatMsg } from '@/lib/chat'
 
 const CHAT_POLL_MS = 2000
 
-// Networked room chat. Polled separately (and more slowly) than game state so
-// shared images don't bloat the fast game-state polling.
 export function useRoomChat(
   roomId: string | null,
   me: { playerId: string; playerName: string; avatar?: string }
 ) {
   const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [localMessages, setLocalMessages] = useState<ChatMsg[]>([])
   const meRef = useRef(me)
   meRef.current = me
 
   useEffect(() => {
-    if (!roomId) return
+    if (!roomId || roomId === 'local') return
     let cancelled = false
     async function poll() {
       const msgs = await fetchMessages(roomId as string)
@@ -33,12 +32,25 @@ export function useRoomChat(
   const send = useCallback(
     async (text: string, image?: string) => {
       if (!roomId || (!text.trim() && !image)) return
-      const me = meRef.current
+      const m = meRef.current
+      if (roomId === 'local') {
+        const msg: ChatMsg = {
+          id: crypto.randomUUID(),
+          playerId: m.playerId,
+          playerName: m.playerName,
+          avatar: m.avatar,
+          text: text.trim() || undefined,
+          image,
+          ts: Date.now(),
+        }
+        setLocalMessages((prev) => [...prev, msg].slice(-40))
+        return
+      }
       try {
         const msg = await sendMessage(roomId, {
-          playerId: me.playerId,
-          playerName: me.playerName,
-          avatar: me.avatar,
+          playerId: m.playerId,
+          playerName: m.playerName,
+          avatar: m.avatar,
           text: text.trim() || undefined,
           image,
         })
@@ -51,5 +63,8 @@ export function useRoomChat(
     [roomId]
   )
 
-  return { messages, send }
+  return {
+    messages: roomId === 'local' ? localMessages : messages,
+    send,
+  }
 }

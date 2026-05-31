@@ -8,7 +8,60 @@ import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
 import { randomTodPrompt } from '@/lib/tod/prompts'
-import BoardView from '@/components/tod/board/BoardView'
+import BoardView, { BoardPreview } from '@/components/tod/board/BoardView'
+import TodGameLayout from '@/components/tod/board/TodGameLayout'
+
+function ChatPlaceholder() {
+  return (
+    <div className="chat-panel chat-embed chat-placeholder">
+      <div className="chat-header">Group chat 📸</div>
+      <p className="chat-empty">Chat opens once you enter the lobby.</p>
+    </div>
+  )
+}
+
+function TodHeader({
+  gameCode,
+  isLocal,
+  playerCount,
+  isOnBreak,
+  onToggleBreak,
+  onLeave,
+}: {
+  gameCode: string | null
+  isLocal: boolean
+  playerCount: number
+  isOnBreak: boolean
+  onToggleBreak: () => void
+  onLeave: () => void
+}) {
+  return (
+    <header className="room-bar">
+      <div>
+        <Link href="/" className="btn-ghost btn-sm">
+          ←
+        </Link>
+        <span className="logo-sm">💋 Truth or Dare</span>
+        {isLocal ? (
+          <span className="room-code">Pass &amp; play</span>
+        ) : gameCode ? (
+          <span className="room-code">{gameCode}</span>
+        ) : null}
+      </div>
+      <div className="room-bar-actions">
+        <span className="party-count">{playerCount} in</span>
+        {!isLocal && (
+          <button type="button" className="btn-ghost btn-sm" onClick={onToggleBreak}>
+            {isOnBreak ? "I'm back" : 'Take a break'}
+          </button>
+        )}
+        <button type="button" className="btn-ghost btn-sm" onClick={onLeave}>
+          Leave
+        </button>
+      </div>
+    </header>
+  )
+}
 
 export default function TruthOrDare() {
   const room = useTodRoom()
@@ -19,45 +72,48 @@ export default function TruthOrDare() {
     avatar: me?.avatar ?? room.avatar,
   })
 
-  if (!room.roomId || !room.state) return <TodJoin room={room} />
+  if (!room.roomId || !room.state) {
+    return <TodJoin room={room} />
+  }
 
   const { state } = room
+  const chatPanel = (
+    <ChatPanel
+      messages={chat.messages}
+      meId={room.playerId}
+      onSend={chat.send}
+      title="Group chat 📸 — share your pictures here"
+    />
+  )
 
   return (
-    <div className="app-shell">
-      <header className="room-bar">
-        <div>
-          <Link href="/" className="btn-ghost btn-sm">
-            ←
-          </Link>
-          <span className="logo-sm">💋 Truth or Dare</span>
-          {room.gameCode && <span className="room-code">{room.gameCode}</span>}
-        </div>
-        <div className="room-bar-actions">
-          <span className="party-count">{room.players.length} in</span>
-          <button type="button" className="btn-ghost btn-sm" onClick={room.toggleBreak}>
-            {room.isOnBreak ? "I'm back" : 'Take a break'}
-          </button>
-          <button type="button" className="btn-ghost btn-sm" onClick={room.leaveRoom}>
-            Leave
-          </button>
-        </div>
-      </header>
-
-      {state.phase === 'lobby' && <Lobby room={room} />}
-
-      {state.phase === 'turn' && <TurnPhase room={room} />}
-
-      {state.phase === 'picture' && <PicturePhase room={room} />}
-
-      {state.phase === 'board' && <BoardView room={room} />}
-
-      <ChatPanel
-        messages={chat.messages}
-        meId={room.playerId}
-        onSend={chat.send}
-        title="Group chat 📸 — share your pictures here"
+    <div className="app-shell tod-room-shell">
+      <TodHeader
+        gameCode={room.gameCode}
+        isLocal={room.isLocal}
+        playerCount={room.players.length}
+        isOnBreak={room.isOnBreak}
+        onToggleBreak={room.toggleBreak}
+        onLeave={room.leaveRoom}
       />
+
+      {state.phase === 'board' ? (
+        <BoardView room={room} chatSidebar={chatPanel} />
+      ) : (
+        <TodGameLayout
+          stage={
+            state.phase === 'lobby' ? (
+              <Lobby room={room} />
+            ) : state.phase === 'turn' ? (
+              <TurnPhase room={room} />
+            ) : (
+              <PicturePhase room={room} />
+            )
+          }
+          board={<BoardPreview />}
+          chat={chatPanel}
+        />
+      )}
     </div>
   )
 }
@@ -69,15 +125,17 @@ function TodJoin({ room }: { room: Room }) {
 
   if (!mode) {
     return (
-      <div className="app-shell">
-        <header className="app-header compact">
-          <Link href="/" className="btn-ghost">
-            ← Home
-          </Link>
-          <h1>💋 Truth or Dare</h1>
-        </header>
-        <section className="card setup-card">
-          <p className="intro">Choose Play locally or Play online from the home screen to get started.</p>
+      <div className="app-shell tod-room-shell">
+        <TodHeader
+          gameCode={null}
+          isLocal={false}
+          playerCount={0}
+          isOnBreak={false}
+          onToggleBreak={() => {}}
+          onLeave={() => {}}
+        />
+        <section className="card tod-stage">
+          <p className="lobby-sub">Choose Play locally or Play online from the home screen.</p>
           <Link href="/" className="btn btn-primary full">
             Back to home
           </Link>
@@ -86,109 +144,121 @@ function TodJoin({ room }: { room: Room }) {
     )
   }
 
-  const intro =
-    mode === 'local'
-      ? 'Enter your name and pick a game piece. Everyone plays on this device.'
-      : mode === 'join'
-        ? 'Enter your name and pick a game piece to join the room.'
-        : 'Enter your name and pick a game piece. You\'ll wait in the lobby for friends to join.'
+  const online = mode !== 'local'
 
   function enterLobby() {
-    if (mode === 'join') room.joinRoom()
+    if (mode === 'local') room.enterLocalLobby()
+    else if (mode === 'join') room.joinRoom()
     else room.hostRoom()
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header compact">
-        <Link href="/" className="btn-ghost">
-          ← Home
-        </Link>
-        <h1>💋 Truth or Dare</h1>
-      </header>
-      <section className="card setup-card">
-        <p className="intro">{intro}</p>
-        <label className="field">
-          <span>Your name</span>
-          <input
-            value={room.playerName}
-            onChange={(e) => room.setPlayerName(e.target.value)}
-            placeholder="Alex"
-            maxLength={24}
-            autoFocus
-          />
-        </label>
-        <BoardPiecePicker selected={room.avatar} onSelect={room.setAvatar} />
+    <div className="app-shell tod-room-shell">
+      <TodHeader
+        gameCode={online ? room.gameCodeInput || room.createPassword || null : null}
+        isLocal={mode === 'local'}
+        playerCount={0}
+        isOnBreak={false}
+        onToggleBreak={() => {}}
+        onLeave={() => {}}
+      />
 
-        <button type="button" className="btn btn-primary full" onClick={enterLobby}>
-          {mode === 'join' ? 'Join lobby' : 'Enter lobby'}
-        </button>
-
-        {room.error && <p className="error">{room.error}</p>}
-      </section>
+      <TodGameLayout
+        stage={
+          <section className="card tod-stage">
+            <p className="tod-kicker">{online ? 'Join the board game' : 'Pass & play'}</p>
+            <h2 className="tod-setup-title">Set up your game</h2>
+            <p className="lobby-sub">
+              {online
+                ? mode === 'join'
+                  ? 'Enter your name and pick a game piece to join the room.'
+                  : 'Enter your name and pick a game piece. Share the password once you\'re in the lobby.'
+                : 'Enter your name and pick a game piece. Everyone plays on this device.'}
+            </p>
+            <label className="field">
+              <span>Your name</span>
+              <input
+                value={room.playerName}
+                onChange={(e) => room.setPlayerName(e.target.value)}
+                placeholder="Alex"
+                maxLength={24}
+                autoFocus
+              />
+            </label>
+            <BoardPiecePicker selected={room.avatar} onSelect={room.setAvatar} />
+            <button type="button" className="btn btn-primary full tod-lets-go" onClick={enterLobby}>
+              {mode === 'join' ? 'Join lobby' : 'Enter lobby'}
+            </button>
+            {room.error && <p className="error">{room.error}</p>}
+          </section>
+        }
+        board={<BoardPreview />}
+        chat={<ChatPlaceholder />}
+      />
     </div>
   )
 }
 
 function Lobby({ room }: { room: Room }) {
-  const isOnlineBoard = room.entryMode !== 'local'
+  const online = !room.isLocal
 
   return (
-    <>
-      <section className="card party-roster">
-        <div className="party-roster-head">
-          <span>
-            {isOnlineBoard ? 'Game password' : 'Room code'}:{' '}
-            <strong className="room-code-display">{room.gameCode}</strong>
-          </span>
-        </div>
-        <ul className="party-players">
-          {room.players.map((p) => (
-            <li key={p.id} className={p.status === 'break' ? 'is-away' : ''}>
-              <PlayerMark avatar={p.avatar} size={34} board />
-              <span>
-                {p.name}
-                {p.id === room.playerId ? ' (you)' : ''}
-                {p.status === 'break' && <span className="away-badge">away</span>}
-              </span>
-              {room.isHost && p.id !== room.playerId && (
-                <button
-                  type="button"
-                  className="btn-ghost btn-sm kick-btn"
-                  onClick={() => room.kickPlayer(p.id)}
-                  title={`Remove ${p.name}`}
-                >
-                  ✕
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section className="card tod-stage">
-        {room.isHost ? (
-          <button
-            type="button"
-            className="btn btn-primary full tod-lets-go"
-            disabled={isOnlineBoard && room.players.length < 2}
-            onClick={room.startBoardGame}
-          >
-            Let&apos;s go!
-          </button>
+    <section className="card tod-stage lobby-stage">
+      <p className="tod-kicker">{online ? 'Waiting room' : 'Pass & play'}</p>
+      {online && room.gameCode && <p className="room-code-display">{room.gameCode}</p>}
+      <p className="lobby-sub">
+        {online ? (
+          <>
+            Share the password <strong>{room.gameCode}</strong> so friends can join on their devices.
+          </>
         ) : (
-          <p className="lobby-sub">Waiting for the host to start…</p>
+          <>Add everyone playing on this device, then start the board.</>
         )}
-        {isOnlineBoard && (
-          <p className="party-hint">
-            Share the password <strong>{room.gameCode}</strong> so friends can join.
-            {room.isHost && ' When everyone\'s in, hit Let\'s go!'}
-          </p>
-        )}
-        {!isOnlineBoard && (
-          <p className="party-hint">When you&apos;re ready, hit Let&apos;s go! to start the board.</p>
-        )}
-      </section>
-    </>
+      </p>
+
+      <p className="room-players-label">Players ({room.players.length})</p>
+      <ul className="party-players">
+        {room.players.map((p) => (
+          <li key={p.id} className={p.status === 'break' ? 'is-away' : ''}>
+            <PlayerMark avatar={p.avatar} size={34} board />
+            <span>
+              {p.name}
+              {p.id === room.playerId ? ' (you)' : ''}
+              {p.status === 'break' && <span className="away-badge">away</span>}
+            </span>
+            {room.isHost && p.id !== room.playerId && (
+              <button
+                type="button"
+                className="btn-ghost btn-sm kick-btn"
+                onClick={() => room.kickPlayer(p.id)}
+                title={`Remove ${p.name}`}
+              >
+                ✕
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {room.isHost && !online && (
+        <button type="button" className="btn btn-sm lobby-add-player" onClick={room.addLocalPlayer}>
+          + Add player
+        </button>
+      )}
+
+      {room.isHost ? (
+        <button
+          type="button"
+          className="btn btn-primary full tod-lets-go"
+          disabled={online && room.players.length < 2}
+          onClick={room.startBoardGame}
+        >
+          Let&apos;s go!
+        </button>
+      ) : (
+        <p className="lobby-sub">Waiting for the host to start…</p>
+      )}
+    </section>
   )
 }
 
@@ -202,7 +272,7 @@ function PicturePhase({ room }: { room: Room }) {
         <span className="tod-picture-emoji">📸</span>
         <h2>Picture time!</h2>
         <p className="tod-forfeit">
-          Everyone has to send a picture to the group chat below. No skipping!
+          Everyone has to send a picture to the group chat. No skipping!
         </p>
       </div>
       {room.isHost ? (
@@ -227,7 +297,6 @@ function TurnPhase({ room }: { room: Room }) {
   const asker = room.players.find((p) => p.id === state?.askerId)
   const [draft, setDraft] = useState('')
 
-  // Clear the draft when the turn or choice changes.
   useEffect(() => {
     setDraft('')
   }, [state?.onSpotId, state?.choice])
@@ -235,7 +304,6 @@ function TurnPhase({ room }: { room: Room }) {
   if (!state) return null
   const isMine = state.onSpotId === room.playerId
   const onSpotAway = !room.isAvailable(state.onSpotId)
-  // The asker writes, unless they've gone missing — then the host can step in.
   const askerAway = !room.isAvailable(state.askerId)
   const canWrite = state.askerId
     ? state.askerId === room.playerId || (askerAway && room.isHost)
@@ -288,7 +356,6 @@ function TurnPhase({ room }: { room: Room }) {
           <p className="lobby-sub">Waiting for {onSpot?.name ?? 'them'} to choose…</p>
         )
       ) : !state.prompt ? (
-        // Choice made — the asker writes the truth/dare.
         canWrite ? (
           <form className="tod-write" onSubmit={submit}>
             <span className={`tod-badge ${state.choice}`}>{state.choice.toUpperCase()}</span>
@@ -337,14 +404,13 @@ function TurnPhase({ room }: { room: Room }) {
           </p>
         )
       ) : (
-        // Prompt submitted — everyone reads it, but only the player on the spot advances.
         <div className="tod-prompt-wrap">
           <span className={`tod-badge ${state.choice}`}>{state.choice.toUpperCase()}</span>
           <p className="tod-prompt">{state.prompt}</p>
           {asker && <p className="tod-asker">— from {asker.name}</p>}
           {isMine ? (
             <>
-              <p className="tod-write-label">Do your {state.choice}, then post it in the chat below 👇</p>
+              <p className="tod-write-label">Do your {state.choice}, then post it in the chat →</p>
               <button type="button" className="btn btn-primary full" onClick={room.nextTurn}>
                 {turnNum >= total
                   ? state.round % 3 === 0

@@ -98,6 +98,7 @@ export function useTodRoom() {
   const isHost = !!hostId && hostId === playerId
   const me = players.find((p) => p.id === playerId) ?? null
   const isOnBreak = me?.status === 'break'
+  const isLocal = entryMode === 'local' || roomId === 'local'
 
   // A player is available for turns if they're still in the room and not on break.
   const availableIds = useCallback(() => {
@@ -117,12 +118,11 @@ export function useTodRoom() {
   }, [roomId])
 
   useEffect(() => {
-    if (!roomId) return
-    const rid = roomId
+    if (!roomId || roomId === 'local') return
     let cancelled = false
     async function poll() {
       try {
-        const data = await getTodRoomClient(rid)
+        const data = await getTodRoomClient(roomId!)
         if (cancelled) return
         setPlayers(data.players || [])
         setHostId(data.hostId ?? null)
@@ -161,8 +161,8 @@ export function useTodRoom() {
 
   const pushState = useCallback(async (next: BoardTodState) => {
     const rid = roomIdRef.current
-    if (!rid) return
     setState(next)
+    if (!rid || rid === 'local') return
     try {
       await updateTodState(rid, next)
     } catch (e) {
@@ -443,7 +443,7 @@ export function useTodRoom() {
       }
       patchBoard({ dice, positions: swapPos, phase: 'event', tileType: 'swap', message: msg })
     } else if (type === 'picture') {
-      patchBoard({ dice, positions, phase: 'event', tileType: 'picture', message: `📸 Picture time! Everyone post a pic in the chat below.` })
+      patchBoard({ dice, positions, phase: 'event', tileType: 'picture', message: `📸 Picture time! Everyone post a pic in the group chat.` })
     } else if (type === 'special') {
       const ch = SPECIAL_CHALLENGES[b.tiles[newPos].special ?? 0]
       if (ch.kind === 'dice') {
@@ -522,7 +522,7 @@ export function useTodRoom() {
       const changed = !prev || prev.alive !== next.alive || prev.finished !== next.finished
       if (!changed && Date.now() - lastReportRef.current < REPORT_THROTTLE_MS) return
       lastReportRef.current = Date.now()
-      reportTodProgress(rid, b.mgRound, next).catch(() => {})
+      if (rid !== 'local') reportTodProgress(rid, b.mgRound, next).catch(() => {})
     },
     [playerId]
   )
@@ -585,6 +585,12 @@ export function useTodRoom() {
     if (!rid) return
     const current = playersRef.current.find((p) => p.id === playerId)
     const nextStatus = current?.status === 'break' ? 'active' : 'break'
+    if (rid === 'local') {
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === playerId ? { ...p, status: nextStatus } : p))
+      )
+      return
+    }
     try {
       const data = await setTodPresence(rid, playerId, nextStatus)
       setPlayers(data.players)
@@ -593,11 +599,14 @@ export function useTodRoom() {
     }
   }, [playerId])
 
-  // Host removes another player from the room.
   const kickPlayer = useCallback(
     async (targetId: string) => {
       const rid = roomIdRef.current
       if (!rid) return
+      if (rid === 'local') {
+        setPlayers((prev) => prev.filter((p) => p.id !== targetId))
+        return
+      }
       try {
         const data = await kickTodPlayer(rid, playerId, targetId)
         setPlayers(data.players)
@@ -609,12 +618,10 @@ export function useTodRoom() {
     [playerId]
   )
 
-  // Broadcast a "typing…" signal. Throttled so we send at most ~1/sec while
-  // typing, and an idle timer sends the stop signal after a short pause.
   const signalTyping = useCallback(
     (isTyping: boolean) => {
       const rid = roomIdRef.current
-      if (!rid) return
+      if (!rid || rid === 'local') return
       const name = playersRef.current.find((p) => p.id === playerId)?.name ?? 'Someone'
       if (typingStopTimerRef.current) {
         clearTimeout(typingStopTimerRef.current)
@@ -641,7 +648,7 @@ export function useTodRoom() {
   // Leave the room entirely and reset back to the join screen.
   const leaveRoom = useCallback(async () => {
     const rid = roomIdRef.current
-    if (rid) {
+    if (rid && rid !== 'local') {
       try {
         await leaveTodRoom(rid, playerId)
       } catch {
@@ -659,6 +666,38 @@ export function useTodRoom() {
     setPlayers([])
     setState(null)
   }, [playerId])
+
+  function enterLocalLobby() {
+    if (!playerName.trim()) {
+      setError('Enter your name')
+      return
+    }
+    setError('')
+    try {
+      localStorage.setItem(NAME_KEY, playerName.trim())
+      localStorage.setItem(
+        TOD_KEY,
+        JSON.stringify({ roomId: 'local', entryMode: 'local' })
+      )
+    } catch {
+      /* ignore */
+    }
+    const host: Player = { id: playerId, name: playerName.trim(), avatar }
+    setRoomId('local')
+    setGameCode(null)
+    setHostId(playerId)
+    setPlayers([host])
+    setState(initialTodState())
+  }
+
+  function addLocalPlayer() {
+    if (roomIdRef.current !== 'local') return
+    const n = playersRef.current.length + 1
+    setPlayers((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), name: `Player ${n}`, avatar: DEFAULT_BOARD_PIECE },
+    ])
+  }
 
   async function hostRoom(code?: string) {
     if (!playerName.trim()) {
@@ -808,13 +847,25 @@ export function useTodRoom() {
       } catch {
         saved = null
       }
-      if (!saved?.gameCode) return
+
+      if (saved?.roomId === 'local' && saved.entryMode === 'local') {
+        setEntryMode('local')
+        setRoomId('local')
+        setHostId(playerId)
+        setGameCode(null)
+        const name = playerName.trim() || 'Player'
+        setPlayers([{ id: playerId, name, avatar }])
+        setState(initialTodState())
+        return
+      }
+
+      if (!saved) return
       if (saved.entryMode === 'classic') return
-      setGameCodeInput((prev) => prev || saved!.gameCode!)
-      if (saved.entryMode === 'local' || saved.entryMode === 'join' || saved.entryMode === 'create') {
+      if (saved.gameCode) setGameCodeInput((prev) => prev || saved!.gameCode!)
+      if (saved.entryMode === 'join' || saved.entryMode === 'create') {
         setEntryMode(saved.entryMode)
       }
-      if (!saved.roomId) return
+      if (!saved.roomId || saved.roomId === 'local') return
       try {
         const data = await getTodRoomClient(saved.roomId)
         if (cancelled) return
@@ -850,6 +901,7 @@ export function useTodRoom() {
     createPassword,
     setCreatePassword,
     entryMode,
+    isLocal,
     roomId,
     gameCode,
     hostId,
@@ -865,6 +917,8 @@ export function useTodRoom() {
     isAvailable,
     signalTyping,
     hostRoom,
+    enterLocalLobby,
+    addLocalPlayer,
     joinRoom,
     startGame,
     pickChoice,

@@ -1,39 +1,98 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import BoardPiece from '@/components/tod/BoardPiece'
 import type { useTodRoom } from '@/hooks/useTodRoom'
-import { TILE_META, SPECIAL_CHALLENGES } from '@/lib/tod/board'
+import { TILE_META, SPECIAL_CHALLENGES, buildTiles, BOARD_COLS, BOARD_ROWS } from '@/lib/tod/board'
 import type { BoardTile } from '@/lib/tod/board'
 import { getQuestionById } from '@/lib/trivia'
 import { randomTodPrompt } from '@/lib/tod/prompts'
 import { getMinigame } from '@/lib/minigames/catalog'
 import type { GameViewProps } from '@/lib/minigames/types'
 import { GameViewRouter } from '@/components/minigames/views/GameViewRouter'
+import TodGameLayout from '@/components/tod/board/TodGameLayout'
 import { RaceLeaderboard } from '@/components/minigames/views/shared'
 
 type Room = ReturnType<typeof useTodRoom>
 
 const PIECE_STEP_MS = 165
 
-export default function BoardView({ room }: { room: Room }) {
+export default function BoardView({
+  room,
+  chatSidebar,
+}: {
+  room: Room
+  chatSidebar: ReactNode
+}) {
   const b = room.state?.board
   if (!b) return null
 
   return (
-    <>
-      <BoardTrack room={room} />
-      <Resolution room={room} />
-    </>
+    <TodGameLayout
+      stage={<Resolution room={room} />}
+      board={<BoardTrack room={room} />}
+      chat={chatSidebar}
+    />
   )
+}
+
+export function BoardPreview() {
+  const tiles = buildTiles()
+  return (
+    <section className="card board-card board-card-preview">
+      <p className="board-legend">🚦 Start → follow the path → 🏁 Finish</p>
+      <div className="board-track">
+        <div
+          className="board-grid"
+          style={{
+            gridTemplateColumns: `repeat(${BOARD_COLS}, 1fr)`,
+            gridTemplateRows: `repeat(${BOARD_ROWS}, 1fr)`,
+          }}
+        >
+          {tiles.map((tile, idx) => (
+            <Tile
+              key={tile.i}
+              tile={tile}
+              prev={tiles[idx - 1]}
+              next={tiles[idx + 1]}
+              arrow={arrowFor(tile, tiles[idx + 1])}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function dirBetween(from: BoardTile, to: BoardTile): 'n' | 's' | 'e' | 'w' | null {
+  if (to.col > from.col) return 'e'
+  if (to.col < from.col) return 'w'
+  if (to.row > from.row) return 's'
+  if (to.row < from.row) return 'n'
+  return null
+}
+
+function tilePathClasses(tile: BoardTile, prev: BoardTile | undefined, next: BoardTile | undefined): string {
+  const cls: string[] = []
+  if (prev) {
+    const d = dirBetween(prev, tile)
+    if (d) cls.push(`path-in-${d}`)
+  }
+  if (next) {
+    const d = dirBetween(tile, next)
+    if (d) cls.push(`path-out-${d}`)
+  }
+  return cls.join(' ')
 }
 
 function arrowFor(tile: BoardTile, next: BoardTile | undefined): string | null {
   if (!next) return null
-  if (next.col > tile.col) return '→'
-  if (next.col < tile.col) return '←'
-  if (next.row > tile.row) return '↓'
-  if (next.row < tile.row) return '↑'
+  const d = dirBetween(tile, next)
+  if (d === 'e') return '→'
+  if (d === 'w') return '←'
+  if (d === 's') return '↓'
+  if (d === 'n') return '↑'
   return null
 }
 
@@ -57,6 +116,8 @@ function BoardTrack({ room }: { room: Room }) {
             <Tile
               key={tile.i}
               tile={tile}
+              prev={b.tiles[idx - 1]}
+              next={b.tiles[idx + 1]}
               arrow={arrowFor(tile, b.tiles[idx + 1])}
             />
           ))}
@@ -159,7 +220,7 @@ function AnimatedPieces({ room }: { room: Room }) {
             }}
             title={p.name}
           >
-            <BoardPiece pieceId={p.avatar} size={28} className="tile-token board-piece-moving" />
+            <BoardPiece pieceId={p.avatar} size={22} className="tile-token board-piece-moving" />
           </div>
         ))
       })}
@@ -169,17 +230,22 @@ function AnimatedPieces({ room }: { room: Room }) {
 
 function Tile({
   tile,
+  prev,
+  next,
   arrow,
 }: {
   tile: BoardTile
+  prev?: BoardTile
+  next?: BoardTile
   arrow: string | null
 }) {
   const meta = TILE_META[tile.type]
   const special = tile.type === 'special' && tile.special != null ? SPECIAL_CHALLENGES[tile.special] : null
   const endpoint = tile.type === 'start' || tile.type === 'finish'
+  const pathCls = tilePathClasses(tile, prev, next)
   return (
     <div
-      className={`board-tile tile-${tile.type}`}
+      className={`board-tile tile-${tile.type} ${pathCls}`}
       style={{ gridColumn: tile.col + 1, gridRow: tile.row + 1, ['--tile' as string]: meta.color }}
       title={special ? special.label : meta.label}
     >
@@ -417,7 +483,7 @@ function BoardPrompt({ room }: { room: Room }) {
           {asker && <p className="tod-asker">— from {asker.name}</p>}
           {canAdvance ? (
             <>
-              <p className="tod-write-label">Do your {b.choice}, then post it in the chat 👇</p>
+              <p className="tod-write-label">Do your {b.choice}, then post it in the chat →</p>
               <button type="button" className="btn btn-primary full" onClick={room.boardContinue}>
                 I&apos;m done — next player →
               </button>
