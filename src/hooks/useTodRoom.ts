@@ -763,12 +763,42 @@ export function useTodRoom() {
         setEntryMode('join')
         setGameCodeInput(urlIntent.code)
         setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
+
+        let savedJoin: { roomId?: string; gameCode?: string } | null = null
+        try {
+          const raw = localStorage.getItem(TOD_KEY)
+          savedJoin = raw ? JSON.parse(raw) : null
+        } catch {
+          savedJoin = null
+        }
+        // Same password + refresh: slip back into the lobby. New join from home: setup first.
+        if (savedJoin?.gameCode === urlIntent.code && savedJoin.roomId) {
+          try {
+            const data = await getTodRoomClient(savedJoin.roomId)
+            if (cancelled) return
+            const stillIn = (data.players || []).some((p) => p.id === playerId)
+            if (stillIn) {
+              setRoomId(data.roomId)
+              setGameCode(data.gameCode)
+              setHostId(data.hostId ?? null)
+              setPlayers(data.players || [])
+              if (isBoardTodState(data.state)) setState(data.state)
+              setTodPresence(data.roomId, playerId, 'active').catch(() => {})
+            }
+          } catch {
+            localStorage.removeItem(TOD_KEY)
+          }
+        } else {
+          localStorage.removeItem(TOD_KEY)
+        }
         return
       }
 
       if (urlIntent?.mode === 'local') {
+        localStorage.removeItem(TOD_KEY)
         setEntryMode('local')
         setAvatar((prev) => (isBoardPiece(prev) ? prev : DEFAULT_BOARD_PIECE))
+        return
       }
 
       let saved: { roomId?: string; gameCode?: string; entryMode?: string } | null = null

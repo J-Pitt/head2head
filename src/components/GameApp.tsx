@@ -544,16 +544,19 @@ export default function GameApp() {
   if (screen === 'home') {
     return (
       <div className="app-shell tod-home">
-        <div className="tod-home-bg" aria-hidden="true" />
+        <div className="tod-home-bg" aria-hidden="true">
+          <span className="tod-glow tod-glow-rose" />
+          <span className="tod-glow tod-glow-violet" />
+        </div>
 
         <div className="tod-home-content">
           <header className="app-header tod-home-header">
-            <span className="tod-badge">18+ party game</span>
+            <span className="tod-badge">Party game · 18+</span>
             <h1 className="tod-logo">
               Truth <span className="tod-logo-or">or</span> Dare
             </h1>
             <p className="tod-tagline">
-              Spill secrets, take dares, survive the board.
+              Truths get personal. Dares get bold. Nobody leaves the same.
             </p>
           </header>
 
@@ -675,7 +678,7 @@ export default function GameApp() {
           )}
         </section>
 
-        <p className="home-divider">More games</p>
+        <p className="home-divider">Also try</p>
 
         <section className="card hero-card tod-glass home-quick-card">
           <div className="mode-grid three">
