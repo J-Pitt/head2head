@@ -34,9 +34,15 @@ export type ChatMessage = {
   image?: string
 }
 
+/** 1 = $200 (middle school) … 5 = $1000 (hardest) */
+export type TriviaDifficulty = 1 | 2 | 3 | 4 | 5
+
+export type JeopardyRound = 'single' | 'double'
+
 export type TriviaQuestion = {
   id: string
   category: CategoryId
+  difficulty: TriviaDifficulty
   question: string
   choices: [string, string, string, string]
   correctIndex: number
@@ -45,6 +51,7 @@ export type TriviaQuestion = {
 export type GameState = {
   gameStarted: boolean
   gameMode: GameMode
+  jeopardyRound: JeopardyRound
   categories: CategoryId[]
   clues: JeopardyClue[]
   usedClueIds: string[]

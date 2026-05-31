@@ -1,4 +1,4 @@
-import { createInitialGameState, getClueById, phaseDeadline } from './trivia'
+import { createInitialGameState, getClueById, phaseDeadline, transitionToDoubleJeopardy } from './trivia'
 import { isActivePlayer, nextActivePlayerIndex, normalizeToActiveIndex } from './players'
 import type { CategoryId, GameMode, GameState, Player } from './types'
 
@@ -109,6 +109,9 @@ export function advanceRound(state: GameState, players: Player[]): GameState {
   const allDone = used.length >= state.clues.length
 
   if (allDone) {
+    if ((state.jeopardyRound ?? 'single') === 'single') {
+      return transitionToDoubleJeopardy({ ...state, usedClueIds: used })
+    }
     return {
       ...state,
       usedClueIds: used,

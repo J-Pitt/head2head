@@ -12,6 +12,7 @@ import GameTimer from './GameTimer'
 import PlayerCircle from './PlayerCircle'
 import JeopardyBoard from './JeopardyBoard'
 import QuestionCard from './QuestionCard'
+import LocalPlayerName from './LocalPlayerName'
 import { getActiveQuestion, getClueById, isGameComplete, phaseDeadline } from '@/lib/trivia'
 import { advanceRound, applyAnswer, applyBuzz, applyTimeout, selectClue, startNewGame } from '@/lib/gameLogic'
 import { isActivePlayer } from '@/lib/players'
@@ -460,6 +461,13 @@ export default function GameApp() {
     setPlayers((prev) => [...prev, p])
   }
 
+  function renameLocalPlayer(targetId: string, name: string) {
+    if (mode !== 'local') return
+    const trimmed = name.trim().slice(0, 24)
+    if (!trimmed) return
+    setPlayers((prev) => prev.map((p) => (p.id === targetId ? { ...p, name: trimmed } : p)))
+  }
+
   async function hostOnline(code?: string) {
     if (!playerName.trim()) {
       setError('Enter your name')
@@ -692,9 +700,12 @@ export default function GameApp() {
 
   const gameOver = !!(gameState && isGameComplete(gameState))
 
-  const isLastClueReveal =
+  const isLastClueOfRound =
     !!gameState?.activeClueId &&
     gameState.usedClueIds.length + 1 >= gameState.clues.length
+
+  const isGameEndingReveal = isLastClueOfRound && gameState?.jeopardyRound === 'double'
+  const isDoubleJeopardyReveal = isLastClueOfRound && gameState?.jeopardyRound === 'single'
 
   const timerActive =
     gameState?.gameStarted &&
@@ -1157,7 +1168,12 @@ export default function GameApp() {
                 <ul className="lobby-players">
                   {players.map((p) => (
                     <li key={p.id}>
-                      {p.name} {p.id === playerId ? '(you)' : ''}
+                      <LocalPlayerName
+                        name={p.name}
+                        editable={mode === 'local' && p.id !== playerId}
+                        onRename={(name) => renameLocalPlayer(p.id, name)}
+                      />
+                      {p.id === playerId ? ' (you)' : ''}
                       {p.status === 'break' ? ' — on break' : ''}
                     </li>
                   ))}
@@ -1254,7 +1270,11 @@ export default function GameApp() {
 
                 {gameState.phase === 'reveal' && (mode === 'local' || isHost) && (
                   <button type="button" className="btn btn-primary next-btn" onClick={advanceAfterReveal}>
-                    {isLastClueReveal ? 'Final scores →' : 'Back to board →'}
+                    {isGameEndingReveal
+                      ? 'Final scores →'
+                      : isDoubleJeopardyReveal
+                        ? 'Double Jeopardy →'
+                        : 'Back to board →'}
                   </button>
                 )}
                 {gameState.phase === 'reveal' && mode === 'online' && !isHost && (

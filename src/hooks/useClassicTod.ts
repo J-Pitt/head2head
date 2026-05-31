@@ -191,6 +191,13 @@ export function useClassicTod() {
     ])
   }
 
+  function renameLocalPlayer(targetId: string, name: string) {
+    if (!isLocal) return
+    const trimmed = name.trim().slice(0, 24)
+    if (!trimmed) return
+    setPlayers((prev) => prev.map((p) => (p.id === targetId ? { ...p, name: trimmed } : p)))
+  }
+
   function startPlaying() {
     const s = stateRef.current
     if (!s || s.subPhase !== 'lobby') return
@@ -292,6 +299,7 @@ export function useClassicTod() {
     spotName,
     enterLobby,
     addLocalPlayer,
+    renameLocalPlayer,
     startPlaying,
     pickChoice,
     completeAnswer,

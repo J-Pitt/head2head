@@ -5,12 +5,12 @@ import type { ReactNode } from 'react'
 type Props = {
   board: ReactNode
   overlay: ReactNode | null
-  chat: ReactNode
+  chat: ReactNode | null
 }
 
 export default function TodGameLayout({ board, overlay, chat }: Props) {
   return (
-    <div className="board-play-layout">
+    <div className={`board-play-layout${chat ? '' : ' board-play-layout-solo'}`}>
       <div className="board-main-col">
         {board}
         {overlay && (
@@ -19,7 +19,7 @@ export default function TodGameLayout({ board, overlay, chat }: Props) {
           </div>
         )}
       </div>
-      <aside className="board-chat-col">{chat}</aside>
+      {chat && <aside className="board-chat-col">{chat}</aside>}
     </div>
   )
 }

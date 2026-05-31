@@ -73,4 +73,21 @@ describe('gameLogic', () => {
     expect(next.usedClueIds).toContain(clueId)
     expect(next.activeClueId).toBeNull()
   })
+
+  it('advanceRound transitions to double jeopardy when single round ends', () => {
+    let state = baseGameState(players, ['science'], 'buzzer', { phase: 'board' })
+    const lastClueId = state.clues[state.clues.length - 1]!.id
+    state = {
+      ...state,
+      phase: 'reveal',
+      activeClueId: lastClueId,
+      usedClueIds: state.clues.slice(0, -1).map((c) => c.id),
+      lastAnswer: { playerId: 'a', correct: true, choiceIndex: 0 },
+    }
+    const next = advanceRound(state, players)
+    expect(next.jeopardyRound).toBe('double')
+    expect(next.phase).toBe('board')
+    expect(next.usedClueIds).toHaveLength(0)
+    expect(next.clues.every((c) => c.value >= 400)).toBe(true)
+  })
 })

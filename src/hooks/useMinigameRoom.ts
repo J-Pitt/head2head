@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useLatest } from '@/lib/useLatest'
-import { readMinigamesUrlBootstrap } from '@/lib/minigamesUrl'
+import { readMinigamesUrlBootstrap, parseMinigamesUrlSearch } from '@/lib/minigamesUrl'
 import type { Player } from '@/lib/types'
 import type { MinigameId } from '@/lib/minigames/catalog'
 import type { Progress, ProgressMap, Session } from '@/lib/minigames/types'
@@ -65,6 +66,7 @@ export type PartyScreen = 'join' | 'hub' | 'game'
 // A single, game-agnostic "party" room. Players join once, then everyone moves
 // between the hub (choosing) and individual games together.
 export function useMinigameParty() {
+  const searchParams = useSearchParams()
   const [playerId] = useState(loadPlayerId)
   const [playerName, setPlayerName] = useState(() => {
     try {
@@ -77,7 +79,7 @@ export function useMinigameParty() {
   const [gameCodeInput, setGameCodeInput] = useState(
     () => readMinigamesUrlBootstrap()?.joinCode || loadSavedPartyCode()
   )
-  const [entryIntent] = useState(() => readMinigamesUrlBootstrap()?.intent ?? null)
+  const [entryIntent, setEntryIntent] = useState(() => readMinigamesUrlBootstrap()?.intent ?? null)
   const [roomId, setRoomId] = useState<string | null>(null)
   const [gameCode, setGameCode] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
@@ -100,6 +102,19 @@ export function useMinigameParty() {
   const activeGameId = session?.gameId ?? null
   const inGame = !!(session && session.gameId && session.status !== 'lobby')
   const screen: PartyScreen = !roomId ? 'join' : inGame ? 'game' : 'hub'
+
+  useEffect(() => {
+    const boot = parseMinigamesUrlSearch(`?${searchParams.toString()}`)
+    if (boot?.intent === 'join' && boot.joinCode) {
+      setEntryIntent('join')
+      setGameCodeInput(boot.joinCode)
+      return
+    }
+    if (boot?.intent === 'create') {
+      setEntryIntent('create')
+      setGameCodeInput('')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (!roomId) return
@@ -213,6 +228,10 @@ export function useMinigameParty() {
     if (!playerName.trim()) {
       setError('Enter your name')
       return
+    }
+    const joinCode = gameCodeInput.trim().toUpperCase()
+    if (joinCode && entryIntent === 'join') {
+      return joinRoom(joinCode)
     }
     setError('')
     try {

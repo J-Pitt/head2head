@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import MinigameParty from '@/components/minigames/MinigameParty'
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 }
 
 export default function MinigamesPage() {
-  return <MinigameParty />
+  return (
+    <Suspense fallback={null}>
+      <MinigameParty />
+    </Suspense>
+  )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { CATEGORIES, JEOPARDY_VALUES } from '@/lib/trivia'
+import { CATEGORIES } from '@/lib/trivia'
 import type { GameState } from '@/lib/types'
 
 type Props = {
@@ -12,9 +12,11 @@ type Props = {
 
 export default function JeopardyBoard({ state, pickerName, canPick, onSelect }: Props) {
   const used = new Set(state.usedClueIds)
+  const isDouble = state.jeopardyRound === 'double'
 
   return (
     <div className="jeopardy-board">
+      {isDouble && <p className="jeopardy-round-label">Double Jeopardy!</p>}
       <p className="jeopardy-board-hint">
         {canPick
           ? `${pickerName ?? 'Player'}, pick a clue`
@@ -26,24 +28,27 @@ export default function JeopardyBoard({ state, pickerName, canPick, onSelect }: 
       >
         {state.categories.map((catId) => {
           const meta = CATEGORIES.find((c) => c.id === catId)!
+          const clues = state.clues
+            .filter((c) => c.category === catId)
+            .sort((a, b) => a.value - b.value)
+
           return (
             <div key={catId} className="jeopardy-col">
               <div className="jeopardy-category">
                 <span className="jeopardy-cat-icon">{meta.icon}</span>
                 <span className="jeopardy-cat-label">{meta.label}</span>
               </div>
-              {JEOPARDY_VALUES.map((value) => {
-                const clueId = `${catId}-${value}`
-                const isUsed = used.has(clueId)
+              {clues.map((clue) => {
+                const isUsed = used.has(clue.id)
                 return (
                   <button
-                    key={clueId}
+                    key={clue.id}
                     type="button"
-                    className={`jeopardy-clue ${isUsed ? 'used' : ''}`}
+                    className={`jeopardy-clue ${isUsed ? 'used' : ''} ${isDouble ? 'double' : ''}`}
                     disabled={!canPick || isUsed}
-                    onClick={() => onSelect(clueId)}
+                    onClick={() => onSelect(clue.id)}
                   >
-                    {isUsed ? ' ' : `$${value}`}
+                    {isUsed ? ' ' : `$${clue.value}`}
                   </button>
                 )
               })}

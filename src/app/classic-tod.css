@@ -1985,6 +1985,10 @@
   align-self: stretch;
 }
 
+.qtd-game .classic-layout.classic-layout-solo {
+  max-width: 640px;
+}
+
 .qtd-game .classic-player-list {
   list-style: none;
   padding: 0;

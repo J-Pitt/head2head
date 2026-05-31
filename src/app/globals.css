@@ -1379,6 +1379,20 @@ body {
   margin: 0 0 0.75rem;
 }
 
+.jeopardy-round-label {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--accent, #ffd700);
+}
+
+.jeopardy-clue.double:not(.used) {
+  font-size: 0.85rem;
+}
+
 .jeopardy-grid {
   display: grid;
   gap: 3px;
@@ -2871,6 +2885,10 @@ body {
   width: 100%;
 }
 
+.board-play-layout-solo {
+  grid-template-columns: 1fr;
+}
+
 .board-main-col {
   min-width: 0;
   width: 100%;
@@ -3366,6 +3384,41 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.local-player-meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.local-player-name-editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.local-player-name-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.local-player-name-input {
+  width: min(9rem, 42vw);
+  padding: 0.25rem 0.45rem;
+  font-size: 0.85rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: inherit;
+}
+
+.local-player-name-edit {
+  font-size: 0.72rem;
+  opacity: 0.75;
 }
 
 .party-players li.is-away {

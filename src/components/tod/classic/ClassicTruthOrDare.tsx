@@ -5,13 +5,14 @@ import { useClassicTod } from '@/hooks/useClassicTod'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
 import ClassicAnswerForm from '@/components/tod/classic/ClassicAnswerForm'
+import LocalPlayerName from '@/components/LocalPlayerName'
 import RatingPicker from '@/components/tod/RatingPicker'
 import '@/app/classic-tod.css'
 
 export default function ClassicTruthOrDare() {
   const g = useClassicTod()
   const me = g.players.find((p) => p.id === g.playerId)
-  const chat = useRoomChat(g.roomId, {
+  const chat = useRoomChat(g.isLocal ? null : g.roomId, {
     playerId: g.playerId,
     playerName: me?.name ?? g.playerName ?? 'Player',
     avatar: me?.avatar ?? g.avatar,
@@ -21,9 +22,11 @@ export default function ClassicTruthOrDare() {
   const s = g.state
 
   async function submitAnswer(text: string, image?: string) {
-    const label = s?.chosenCategory === 'truth' ? 'Truth answer' : 'Dare complete'
-    const body = text ? `${label}: ${text}` : label
-    await chat.send(body, image)
+    if (!g.isLocal) {
+      const label = s?.chosenCategory === 'truth' ? 'Truth answer' : 'Dare complete'
+      const body = text ? `${label}: ${text}` : label
+      await chat.send(body, image)
+    }
     g.completeAnswer()
   }
 
@@ -78,7 +81,7 @@ export default function ClassicTruthOrDare() {
     )
   }
 
-  const chatPanel = (
+  const chatPanel = g.isLocal ? null : (
     <ChatPanel
       messages={chat.messages}
       meId={g.playerId}
@@ -112,7 +115,7 @@ export default function ClassicTruthOrDare() {
       </header>
 
       <div className="qtd-game-body">
-        <div className="game-with-chat classic-layout">
+        <div className={`game-with-chat classic-layout${chatPanel ? '' : ' classic-layout-solo'}`}>
           <div className="game-area">
             <div className="game">
               {s.subPhase === 'lobby' && (
@@ -127,7 +130,11 @@ export default function ClassicTruthOrDare() {
                   <ul className="classic-player-list">
                     {g.players.map((p) => (
                       <li key={p.id}>
-                        {p.name}
+                        <LocalPlayerName
+                          name={p.name}
+                          editable={g.isLocal && p.id !== g.playerId}
+                          onRename={(name) => g.renameLocalPlayer(p.id, name)}
+                        />
                         {p.id === g.playerId ? ' (you)' : ''}
                       </li>
                     ))}
@@ -199,7 +206,7 @@ export default function ClassicTruthOrDare() {
             </div>
           </div>
 
-          <aside className="chat-sidebar">{chatPanel}</aside>
+          {chatPanel && <aside className="chat-sidebar">{chatPanel}</aside>}
         </div>
       </div>
     </div>

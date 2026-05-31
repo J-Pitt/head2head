@@ -1,5 +1,14 @@
 import { firstActiveIndex } from '../players'
-import type { CategoryId, GameMode, GameState, JeopardyClue, Player, TriviaQuestion } from '../types'
+import type {
+  CategoryId,
+  GameMode,
+  GameState,
+  JeopardyClue,
+  JeopardyRound,
+  Player,
+  TriviaDifficulty,
+  TriviaQuestion,
+} from '../types'
 import { ANIMALS_QUESTIONS } from './animals'
 import { GENERAL_QUESTIONS } from './general'
 import { HISTORY_QUESTIONS } from './history'
@@ -25,20 +34,38 @@ export const TRIVIA_QUESTIONS = [
   ...GENERAL_QUESTIONS,
 ]
 
-/** Pick a trivia question not yet used this board game. */
-export function pickRandomQuestion(usedIds: string[]): TriviaQuestion | null {
-  if (TRIVIA_QUESTIONS.length === 0) return null
-  const used = new Set(usedIds)
-  const available = TRIVIA_QUESTIONS.filter((q) => !used.has(q.id))
-  if (available.length === 0) return null
-  return available[Math.floor(Math.random() * available.length)]
-}
+export const SINGLE_JEOPARDY_VALUES = [200, 400, 600, 800, 1000] as const
+export const DOUBLE_JEOPARDY_VALUES = [400, 800, 1200, 1600, 2000] as const
 
-export const JEOPARDY_VALUES = [200, 400, 600, 800, 1000] as const
+/** @deprecated Use round-specific values via `valuesForRound` */
+export const JEOPARDY_VALUES = SINGLE_JEOPARDY_VALUES
 
 export const BUZZ_WINDOW_SEC = 12
 export const ANSWER_WINDOW_SEC = 18
 export const TURN_ANSWER_SEC = 25
+
+export function valuesForRound(round: JeopardyRound): readonly number[] {
+  return round === 'single' ? SINGLE_JEOPARDY_VALUES : DOUBLE_JEOPARDY_VALUES
+}
+
+export function valueForDifficulty(difficulty: TriviaDifficulty, round: JeopardyRound): number {
+  return valuesForRound(round)[difficulty - 1]!
+}
+
+/** Pick a trivia question for board ToD — moderate difficulty, not Jeopardy extremes. */
+export function pickRandomQuestion(usedIds: string[]): TriviaQuestion | null {
+  if (TRIVIA_QUESTIONS.length === 0) return null
+  const used = new Set(usedIds)
+  const preferred: TriviaDifficulty[] = [2, 3]
+  let available = TRIVIA_QUESTIONS.filter(
+    (q) => !used.has(q.id) && preferred.includes(q.difficulty)
+  )
+  if (available.length === 0) {
+    available = TRIVIA_QUESTIONS.filter((q) => !used.has(q.id))
+  }
+  if (available.length === 0) return null
+  return available[Math.floor(Math.random() * available.length)]
+}
 
 export function getCategoryMeta(id: CategoryId) {
   return CATEGORIES.find((c) => c.id === id)!
@@ -46,6 +73,17 @@ export function getCategoryMeta(id: CategoryId) {
 
 export function questionsForCategory(category: CategoryId) {
   return TRIVIA_QUESTIONS.filter((q) => q.category === category)
+}
+
+export function questionsForCategoryAndDifficulty(
+  category: CategoryId,
+  difficulty: TriviaDifficulty,
+  excludeIds: string[] = []
+) {
+  const exclude = new Set(excludeIds)
+  return questionsForCategory(category).filter(
+    (q) => q.difficulty === difficulty && !exclude.has(q.id)
+  )
 }
 
 export function getQuestionById(id: string) {
@@ -62,26 +100,56 @@ export function getActiveQuestion(state: GameState) {
   return clue ? getQuestionById(clue.questionId) : null
 }
 
-export function buildJeopardyBoard(categories: CategoryId[]): JeopardyClue[] {
+export function buildJeopardyBoard(
+  categories: CategoryId[],
+  round: JeopardyRound = 'single',
+  excludeQuestionIds: string[] = []
+): JeopardyClue[] {
+  const prefix = round === 'single' ? 'j1' : 'j2'
   const clues: JeopardyClue[] = []
+
   for (const category of categories) {
-    const pool = shuffle([...questionsForCategory(category)])
-    for (let i = 0; i < JEOPARDY_VALUES.length; i++) {
-      const q = pool[i % pool.length]
-      const value = JEOPARDY_VALUES[i]
+    for (let difficulty = 1 as TriviaDifficulty; difficulty <= 5; difficulty++) {
+      const pool = questionsForCategoryAndDifficulty(category, difficulty, excludeQuestionIds)
+      const fallback = questionsForCategoryAndDifficulty(category, difficulty)
+      const shuffled = shuffle([...(pool.length > 0 ? pool : fallback)])
+      const q = shuffled[0]
+      if (!q) continue
+
+      const value = valueForDifficulty(difficulty, round)
       clues.push({
-        id: `${category}-${value}`,
+        id: `${prefix}-${category}-${value}`,
         category,
         value,
         questionId: q.id,
       })
     }
   }
+
   return clues
 }
 
+export function transitionToDoubleJeopardy(state: GameState): GameState {
+  const usedQuestionIds = state.clues.map((c) => c.questionId)
+  const clues = buildJeopardyBoard(state.categories, 'double', usedQuestionIds)
+
+  return {
+    ...state,
+    jeopardyRound: 'double',
+    clues,
+    usedClueIds: [],
+    activeClueId: null,
+    phase: 'board',
+    phaseStartedAt: Date.now(),
+    buzzedBy: null,
+    lastAnswer: undefined,
+  }
+}
+
 export function isGameComplete(state: GameState) {
+  const round = state.jeopardyRound ?? 'single'
   return (
+    round === 'double' &&
     state.clues.length > 0 &&
     state.usedClueIds.length >= state.clues.length &&
     state.phase === 'reveal' &&
@@ -94,13 +162,14 @@ export function createInitialGameState(
   categories: CategoryId[],
   gameMode: GameMode
 ): GameState {
-  const clues = buildJeopardyBoard(categories)
+  const clues = buildJeopardyBoard(categories, 'single')
   const scores: Record<string, number> = {}
   for (const p of players) scores[p.id] = 0
 
   return {
     gameStarted: true,
     gameMode,
+    jeopardyRound: 'single',
     categories: [...categories],
     clues,
     usedClueIds: [],

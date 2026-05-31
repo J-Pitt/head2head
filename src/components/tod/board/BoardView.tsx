@@ -24,7 +24,7 @@ export default function BoardView({
   chatSidebar,
 }: {
   room: Room
-  chatSidebar: ReactNode
+  chatSidebar: ReactNode | null
 }) {
   const b = room.state?.board
   if (!b) return null
@@ -107,7 +107,7 @@ function BoardTrack({ room }: { room: Room }) {
   const cols = b.cols ?? b.size ?? 4
   const rows = b.rows ?? b.size ?? 9
   const roller = room.players.find((p) => p.id === b.rollerId)
-  const myTurn = b.rollerId === room.playerId
+  const canRoll = b.rollerId === room.playerId || (room.isLocal && !!b.rollerId)
 
   return (
     <section className="card board-card">
@@ -115,9 +115,13 @@ function BoardTrack({ room }: { room: Room }) {
 
       {b.phase === 'rolling' && (
         <div className="board-roll-banner">
-          {myTurn ? (
+          {canRoll ? (
             <>
-              <span className="board-roll-label">Your turn, {roller?.name ?? 'you'}!</span>
+              <span className="board-roll-label">
+                {room.isLocal
+                  ? `${roller?.name ?? 'Someone'}'s turn — roll the dice!`
+                  : `Your turn, ${roller?.name ?? 'you'}!`}
+              </span>
               <button type="button" className="btn btn-primary board-roll-btn" onClick={room.rollDice}>
                 🎲 Roll the dice
               </button>
@@ -359,7 +363,7 @@ function Resolution({ room }: { room: Room }) {
 
   // event (jail / movement / picture / group)
   const dice = b.dice
-  const canAdvance = b.rollerId === room.playerId || room.isHost
+  const canAdvance = b.rollerId === room.playerId || (room.isLocal && !!b.rollerId) || room.isHost
   return (
     <section className="card tod-stage">
       <p className="tod-kicker">
@@ -391,7 +395,11 @@ function BoardPrompt({ room }: { room: Room }) {
 
   const isMine = b.onSpotId === room.playerId
   const askerAway = !room.isAvailable(b.askerId)
-  const canWrite = b.askerId ? b.askerId === room.playerId || (askerAway && room.isHost) : isMine || room.isHost
+  const canWrite = b.askerId
+    ? b.askerId === room.playerId ||
+      (askerAway && room.isHost) ||
+      (room.isLocal && !!b.askerId)
+    : isMine || room.isHost || (room.isLocal && !!b.onSpotId)
   const canAdvance = isMine || (room.isLocal && !!b.onSpotId)
   const forfeit = b.phase === 'forfeit'
 
@@ -570,7 +578,11 @@ function BoardPrompt({ room }: { room: Room }) {
           {asker && <p className="tod-asker">— from {asker.name}</p>}
           {canAdvance ? (
             <>
-              <p className="tod-write-label">Do your {b.choice}, then post your answer in the chat →</p>
+              <p className="tod-write-label">
+                {room.isLocal
+                  ? `Do your ${b.choice}, then tap Done when you're finished →`
+                  : `Do your ${b.choice}, then post your answer in the chat →`}
+              </p>
               <button type="button" className="btn btn-primary full" onClick={room.boardContinue}>
                 Done — next player →
               </button>

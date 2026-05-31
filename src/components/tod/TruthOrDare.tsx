@@ -9,8 +9,16 @@ import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
 import BoardView from '@/components/tod/board/BoardView'
+import LocalPlayerName from '@/components/LocalPlayerName'
 
-function TodSideLayout({ main, chat }: { main: ReactNode; chat: ReactNode }) {
+function TodSideLayout({ main, chat }: { main: ReactNode; chat: ReactNode | null }) {
+  if (!chat) {
+    return (
+      <div className="tod-setup-only">
+        <main className="tod-setup-main">{main}</main>
+      </div>
+    )
+  }
   return (
     <div className="tod-setup-layout">
       <main className="tod-setup-main">{main}</main>
@@ -73,7 +81,7 @@ function TodHeader({
 export default function TruthOrDare() {
   const room = useTodRoom()
   const me = room.players.find((p) => p.id === room.playerId)
-  const chat = useRoomChat(room.roomId, {
+  const chat = useRoomChat(room.isLocal ? null : room.roomId, {
     playerId: room.playerId,
     playerName: me?.name ?? room.playerName ?? 'Player',
     avatar: me?.avatar ?? room.avatar,
@@ -84,7 +92,7 @@ export default function TruthOrDare() {
   }
 
   const { state } = room
-  const chatPanel = (
+  const chatPanel = room.isLocal ? null : (
     <ChatPanel
       messages={chat.messages}
       meId={room.playerId}
@@ -142,9 +150,10 @@ function TodJoin({ room }: { room: Room }) {
   const online = mode !== 'local'
 
   function enterLobby() {
+    const joinCode = room.gameCodeInput.trim()
     if (mode === 'local') room.enterLocalLobby()
-    else if (mode === 'join') room.joinRoom()
-    else room.hostRoom()
+    else if (mode === 'join' || joinCode) room.joinRoom(joinCode || undefined)
+    else if (mode === 'create') room.hostRoom()
   }
 
   return (
@@ -216,8 +225,12 @@ function Lobby({ room }: { room: Room }) {
         {room.players.map((p) => (
           <li key={p.id} className={p.status === 'break' ? 'is-away' : ''}>
             <PlayerMark avatar={p.avatar} size={34} board />
-            <span>
-              {p.name}
+            <LocalPlayerName
+              name={p.name}
+              editable={!online && p.id !== room.playerId}
+              onRename={(name) => room.renameLocalPlayer(p.id, name)}
+            />
+            <span className="local-player-meta">
               {p.id === room.playerId ? ' (you)' : ''}
               {p.status === 'break' && <span className="away-badge">away</span>}
             </span>
