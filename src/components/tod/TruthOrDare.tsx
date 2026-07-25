@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import AvatarPicker from '@/components/AvatarPicker'
 import Avatar from '@/components/Avatar'
+import ThreeDBoardTruthOrDare from '@/components/tod/ThreeDBoardTruthOrDare'
 import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
@@ -62,6 +63,25 @@ export default function TruthOrDare() {
 type Room = ReturnType<typeof useTodRoom>
 
 function TodJoin({ room }: { room: Room }) {
+  const [showBoardMode, setShowBoardMode] = useState(false)
+
+  if (showBoardMode) {
+    return (
+      <div className="app-shell">
+        <header className="app-header compact">
+          <Link href="/" className="btn-ghost">
+            ← Home
+          </Link>
+          <h1>💋 Truth or Dare</h1>
+        </header>
+        <ThreeDBoardTruthOrDare />
+        <button type="button" className="btn-ghost btn-sm" onClick={() => setShowBoardMode(false)}>
+          ← Back to room mode
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header compact">
@@ -101,6 +121,14 @@ function TodJoin({ room }: { room: Room }) {
               Join
             </button>
           </div>
+        </div>
+        <div className="tod-board3d-entry">
+          <p className="lobby-sub">
+            Want a board game version? Try the local 3D race mode with dice and player pieces.
+          </p>
+          <button type="button" className="btn-ghost btn-sm" onClick={() => setShowBoardMode(true)}>
+            Launch 3D board mode
+          </button>
         </div>
         {room.error && <p className="error">{room.error}</p>}
       </section>
