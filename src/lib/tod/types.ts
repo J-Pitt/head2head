@@ -1,3 +1,5 @@
+import type { TodDeckId } from './prompts'
+
 export type TodPhase = 'lobby' | 'turn' | 'picture'
 
 export type TodState = {
@@ -10,6 +12,8 @@ export type TodState = {
   askerId: string | null
   choice: 'truth' | 'dare' | null
   prompt: string | null
+  // Which prompt decks feed the "surprise me" generator.
+  decks: TodDeckId[]
 }
 
 export function initialTodState(): TodState {
@@ -22,6 +26,7 @@ export function initialTodState(): TodState {
     askerId: null,
     choice: null,
     prompt: null,
+    decks: ['party'],
   }
 }
 

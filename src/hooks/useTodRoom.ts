@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Player } from '@/lib/types'
 import type { TodState } from '@/lib/tod/types'
+import type { TodDeckId } from '@/lib/tod/prompts'
 import { initialTodState, PICTURE_EVERY } from '@/lib/tod/types'
 import { DEFAULT_AVATAR } from '@/lib/avatars'
 import {
@@ -166,6 +167,15 @@ export function useTodRoom() {
   // Host starts the game from the lobby.
   const startGame = useCallback(() => beginRound(1), [beginRound])
 
+  // Host picks which prompt decks feed the "surprise me" generator.
+  const setDecks = useCallback(
+    (decks: TodDeckId[]) => {
+      if (!decks.length) return
+      patchState({ decks })
+    },
+    [patchState]
+  )
+
   // The player on the spot picks truth or dare; the asker then writes the prompt.
   const pickChoice = useCallback(
     (choice: 'truth' | 'dare') => {
@@ -223,7 +233,12 @@ export function useTodRoom() {
   }, [beginRound])
 
   const endParty = useCallback(
-    () => pushState({ ...initialTodState(), round: stateRef.current?.round ?? 0 }),
+    () =>
+      pushState({
+        ...initialTodState(),
+        round: stateRef.current?.round ?? 0,
+        decks: stateRef.current?.decks ?? ['party'],
+      }),
     [pushState]
   )
 
@@ -409,6 +424,7 @@ export function useTodRoom() {
     hostRoom,
     joinRoom,
     startGame,
+    setDecks,
     pickChoice,
     submitPrompt,
     nextTurn,

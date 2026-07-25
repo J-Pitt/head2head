@@ -7,7 +7,7 @@ import Avatar from '@/components/Avatar'
 import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
-import { randomTodPrompt } from '@/lib/tod/prompts'
+import { randomTodPrompt, TOD_DECKS, type TodDeckId } from '@/lib/tod/prompts'
 
 export default function TruthOrDare() {
   const room = useTodRoom()
@@ -108,6 +108,54 @@ function TodJoin({ room }: { room: Room }) {
   )
 }
 
+function DeckPicker({ room }: { room: Room }) {
+  // Older rooms may predate deck selection in their stored state.
+  const selected: TodDeckId[] = room.state?.decks?.length ? room.state.decks : ['party']
+
+  function toggle(id: TodDeckId) {
+    if (selected.includes(id)) {
+      if (selected.length === 1) return
+      room.setDecks(selected.filter((d) => d !== id))
+    } else {
+      room.setDecks([...selected, id])
+    }
+  }
+
+  if (!room.isHost) {
+    return (
+      <p className="category-hint">
+        Decks:{' '}
+        {TOD_DECKS.filter((d) => selected.includes(d.id))
+          .map((d) => `${d.icon} ${d.label}`)
+          .join(', ')}
+      </p>
+    )
+  }
+
+  return (
+    <div className="category-picker">
+      <p className="label">Prompt decks</p>
+      <div className="category-chips">
+        {TOD_DECKS.map((d) => {
+          const on = selected.includes(d.id)
+          return (
+            <button
+              key={d.id}
+              type="button"
+              className={`category-chip ${on ? 'on' : ''}`}
+              onClick={() => toggle(d.id)}
+              aria-pressed={on}
+            >
+              <span>{d.icon}</span> {d.label}
+            </button>
+          )
+        })}
+      </div>
+      <p className="category-hint">Feeds the 🎲 Surprise me generator. Pick at least one.</p>
+    </div>
+  )
+}
+
 function Lobby({ room }: { room: Room }) {
   return (
     <>
@@ -141,6 +189,7 @@ function Lobby({ room }: { room: Room }) {
         </ul>
       </section>
       <section className="card tod-stage">
+        <DeckPicker room={room} />
         {room.isHost ? (
           <button type="button" className="btn btn-primary full" onClick={room.startGame}>
             Start round 1 →
@@ -274,7 +323,7 @@ function TurnPhase({ room }: { room: Room }) {
               type="button"
               className="btn-ghost btn-sm tod-generate"
               onClick={() => {
-                const idea = randomTodPrompt(state.choice!)
+                const idea = randomTodPrompt(state.choice!, state.decks)
                 setDraft(idea)
                 room.signalTyping(true)
               }}
