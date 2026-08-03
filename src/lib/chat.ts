@@ -64,3 +64,28 @@ export function compressImage(file: File, maxSize = 420, quality = 0.5): Promise
     reader.readAsDataURL(file)
   })
 }
+
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024 // 50MB
+
+/** Image (compressed) or short video as a data URL for board answers. */
+export async function readAnswerMedia(file: File): Promise<string> {
+  if (file.type.startsWith('video/')) {
+    if (file.size > MAX_VIDEO_BYTES) {
+      throw new Error('Video is too large — keep it under 50MB')
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onerror = () => reject(new Error('Could not read video'))
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(file)
+    })
+  }
+  if (file.type.startsWith('image/') || !file.type) {
+    return compressImage(file)
+  }
+  throw new Error('Use a photo or video')
+}
+
+export function isVideoDataUrl(src: string | null | undefined): boolean {
+  return !!src && /^data:video\//i.test(src)
+}

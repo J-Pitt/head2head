@@ -2,8 +2,8 @@ import type { Player } from '@/lib/types'
 import type { Session } from '@/lib/minigames/types'
 import type { ClassicListMode } from '@/lib/tod/classic/lists'
 
-// Linear race board: START at one corner, FINISH at the opposite end. Tiles
-// snake row-by-row (left→right, then right→left, …).
+// Race board: START at bottom-left, path hugs the outer ring clockwise,
+// FINISH sits on the left edge just above start — Monopoly-style table.
 export type TileType =
   | 'start'
   | 'finish'
@@ -34,6 +34,18 @@ export const SPECIAL_CHALLENGES: SpecialChallenge[] = [
   { icon: '✨', label: 'Put on your most attractive look and show the group', kind: 'do' },
   { icon: '💫', label: 'Make up a seductive alter ego name for yourself', kind: 'do' },
   { icon: '🔮', label: 'Predict the romantic future of another player', kind: 'do' },
+]
+
+/** Penalty tasks assigned when someone lands on Jail (complete before play continues). */
+export const JAIL_PENALTIES: string[] = [
+  'Send a sad selfie to the chat — full pity-party energy.',
+  'Confess your most embarrassing crush out loud (or in chat).',
+  'Do 10 dramatic fake sobs on camera for the group.',
+  'Write a one-sentence apology to the person who sent you to jail vibes.',
+  'Post a voice note of your saddest "I\'m innocent" plea.',
+  'Tell the group one secret you\'d rather keep locked up.',
+  'Strike your most pathetic "behind bars" pose and send a photo.',
+  'Beg the group (politely, filthily — your call) for early release in chat.',
 ]
 
 export type BoardTile = {
@@ -96,13 +108,67 @@ export type BoardState = {
   listMode: ClassicListMode
   usedTruths: number[]
   usedDares: number[]
+  /** Used indices into the Kink deck (separate from standard NSFW). */
+  usedKinkTruths: number[]
+  usedKinkDares: number[]
   usedQuestionIds: string[]
 }
 
-export const BOARD_COLS = 6
-export const BOARD_ROWS = 6
+export const BOARD_COLS = 10
+export const BOARD_ROWS = 10
+/** Perimeter length of a 10×10 table. */
+export const BOARD_PATH_LENGTH = 2 * (BOARD_COLS - 1) + 2 * (BOARD_ROWS - 1)
 
-// Tile mix for middle squares (34 on a 6×6 board). Shuffled each game.
+/**
+ * Monopoly-style loop: start bottom-left, walk the outer ring clockwise,
+ * finish on the left edge just above start.
+ */
+export function buildPerimeterWaypoints(
+  cols: number,
+  rows: number
+): { row: number; col: number }[] {
+  const path: { row: number; col: number }[] = []
+  const lastRow = rows - 1
+  const lastCol = cols - 1
+
+  // Bottom edge: left → right
+  for (let col = 0; col <= lastCol; col++) path.push({ row: lastRow, col })
+  // Right edge: up
+  for (let row = lastRow - 1; row >= 0; row--) path.push({ row, col: lastCol })
+  // Top edge: right → left
+  for (let col = lastCol - 1; col >= 0; col--) path.push({ row: 0, col })
+  // Left edge: down (stop before closing on start)
+  for (let row = 1; row < lastRow; row++) path.push({ row, col: 0 })
+
+  return path
+}
+
+/** @deprecated Prefer buildPerimeterWaypoints. */
+export function buildZigzagWaypoints(
+  cols: number,
+  rows: number,
+  _steps?: number
+): { row: number; col: number }[] {
+  return buildPerimeterWaypoints(cols, rows)
+}
+
+/** Split path into contiguous same-row legs. */
+export function splitZigzagLegs(tiles: BoardTile[]): BoardTile[][] {
+  const legs: BoardTile[][] = []
+  let i = 0
+  while (i < tiles.length) {
+    const leg: BoardTile[] = [tiles[i]!]
+    i++
+    while (i < tiles.length && tiles[i]!.row === leg[0]!.row) {
+      leg.push(tiles[i]!)
+      i++
+    }
+    legs.push(leg)
+  }
+  return legs
+}
+
+// Tile mix for middle squares. Shuffled each game.
 const MIDDLE_TILE_POOL: TileType[] = [
   'truth', 'dare', 'trivia', 'minigame', 'special', 'dare',
   'truth', 'trivia', 'dare', 'special', 'truth', 'minigame',
@@ -117,26 +183,108 @@ export type BuildTilesOptions = {
   randomize?: boolean
 }
 
-function middleTypePool(cols: number, rows: number): TileType[] {
-  const middleCount = cols * rows - 2
+function middleTypePool(count: number): TileType[] {
   const pool: TileType[] = []
-  for (let i = 0; i < middleCount; i++) {
+  for (let i = 0; i < count; i++) {
     pool.push(MIDDLE_TILE_POOL[i % MIDDLE_TILE_POOL.length]!)
   }
   return pool
 }
 
-// Serpentine path: row 0 left→right, row 1 right→left, etc.
-function serpentineCoords(cols: number, rows: number): { row: number; col: number }[] {
-  const res: { row: number; col: number }[] = []
-  for (let row = 0; row < rows; row++) {
-    if (row % 2 === 0) {
-      for (let col = 0; col < cols; col++) res.push({ row, col })
-    } else {
-      for (let col = cols - 1; col >= 0; col--) res.push({ row, col })
-    }
+/** Perimeter path coordinates for the logical board grid. */
+export function perimeterCourseCoords(
+  cols: number,
+  rows: number
+): { row: number; col: number }[] {
+  return buildPerimeterWaypoints(cols, rows)
+}
+
+/** @deprecated Alias for perimeterCourseCoords. */
+export const zigzagCourseCoords = (cols: number, rows: number, _steps?: number) =>
+  perimeterCourseCoords(cols, rows)
+
+/** Bounds of tiles on the logical grid. */
+export function getPathBounds(tiles: BoardTile[]) {
+  let minRow = Infinity
+  let maxRow = -Infinity
+  let minCol = Infinity
+  let maxCol = -Infinity
+  for (const t of tiles) {
+    minRow = Math.min(minRow, t.row)
+    maxRow = Math.max(maxRow, t.row)
+    minCol = Math.min(minCol, t.col)
+    maxCol = Math.max(maxCol, t.col)
   }
-  return res
+  return { minRow, maxRow, minCol, maxCol }
+}
+
+/**
+ * Map path tiles onto the full table grid so the route hugs the outer ring
+ * and the center stays open for turn controls.
+ */
+export function getBoardDisplayLayout(tiles: BoardTile[]) {
+  const { minRow, maxRow, minCol, maxCol } = getPathBounds(tiles)
+  const spanRows = Math.max(maxRow - minRow + 1, BOARD_ROWS)
+  const spanCols = Math.max(maxCol - minCol + 1, BOARD_COLS)
+
+  return {
+    spanRows,
+    spanCols,
+    minRow,
+    maxRow,
+    minCol,
+    maxCol,
+    displayRow: (tile: BoardTile) => tile.row - minRow,
+    displayCol: (tile: BoardTile) => tile.col - minCol,
+  }
+}
+
+export type BoardDisplayLayout = ReturnType<typeof getBoardDisplayLayout>
+
+/** Center point (0–100) for pieces / trail. */
+export function tileCenterPercent(layout: BoardDisplayLayout, tile: BoardTile) {
+  const dc = layout.displayCol(tile)
+  const dr = layout.displayRow(tile)
+  return {
+    left: ((dc + 0.5) / layout.spanCols) * 100,
+    top: ((dr + 0.5) / layout.spanRows) * 100,
+  }
+}
+
+/** Absolute slot for a perimeter tile. */
+export function tileSlotStyle(layout: BoardDisplayLayout, tile: BoardTile): {
+  left: string
+  top: string
+  width: string
+  height: string
+} {
+  const dc = layout.displayCol(tile)
+  const dr = layout.displayRow(tile)
+  const w = 100 / layout.spanCols
+  const h = 100 / layout.spanRows
+  return {
+    left: `${dc * w}%`,
+    top: `${dr * h}%`,
+    width: `${w}%`,
+    height: `${h}%`,
+  }
+}
+
+/** Open table center inside the perimeter ring (for dice / status hub). */
+export function boardCenterSlotStyle(layout: BoardDisplayLayout): {
+  left: string
+  top: string
+  width: string
+  height: string
+} {
+  const w = 100 / layout.spanCols
+  const h = 100 / layout.spanRows
+  return {
+    left: `${w}%`,
+    top: `${h}%`,
+    width: `${(layout.spanCols - 2) * w}%`,
+    height: `${(layout.spanRows - 2) * h}%`,
+  }
 }
 
 export function buildTiles(
@@ -145,9 +293,9 @@ export function buildTiles(
   options: BuildTilesOptions = {}
 ): BoardTile[] {
   const { randomize = true } = options
-  const coords = serpentineCoords(cols, rows)
+  const coords = perimeterCourseCoords(cols, rows)
   const total = coords.length
-  const shuffledMiddle = randomize ? shuffle(middleTypePool(cols, rows)) : middleTypePool(cols, rows)
+  const shuffledMiddle = randomize ? shuffle(middleTypePool(total - 2)) : middleTypePool(total - 2)
   let middleIdx = 0
   let specialCounter = 0
   return coords.map((c, i) => {
@@ -216,6 +364,8 @@ export function createBoardState(
     listMode,
     usedTruths: [],
     usedDares: [],
+    usedKinkTruths: [],
+    usedKinkDares: [],
     usedQuestionIds: [],
   }
 }

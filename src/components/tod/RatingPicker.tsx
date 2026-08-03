@@ -29,7 +29,7 @@ export default function RatingPicker({
       <p className="setup-rating-hint">
         {value === 'pg'
           ? 'Playful truths and dares for any group.'
-          : '18+ — spicy truths and dares from Truth or Dare Now.'}
+          : '18+ — each prompt you can pick Standard NSFW or the Kink deck.'}
       </p>
     </fieldset>
   )

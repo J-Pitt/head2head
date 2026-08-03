@@ -1,4 +1,5 @@
 import type { SceneFactory } from './PhaserGame'
+import { drawBoxOnGround, drawPerspectiveFloor, drawSky, drawSphere, shade } from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -87,7 +88,11 @@ export const makeMeteorScene: SceneFactory = (Phaser, bridgeRef) => {
         if (pm === 'left') move -= 1
         if (pm === 'right') move += 1
         bridgeRef.current.pendingMove = null
-        this.shipX = Phaser.Math.Clamp(this.shipX + move * 320 * dt, SHIP_W / 2 + 4, METEOR_W - SHIP_W / 2 - 4)
+        this.shipX = Phaser.Math.Clamp(
+          this.shipX + move * 320 * dt,
+          SHIP_W / 2 + 4,
+          METEOR_W - SHIP_W / 2 - 4
+        )
 
         this.spawnAcc += dms
         const spawnEvery = Math.max(450, 900 - this.score * 12)
@@ -129,29 +134,42 @@ export const makeMeteorScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      g.fillStyle(0x020617, 1)
-      g.fillRect(0, 0, METEOR_W, METEOR_H)
+      drawSky(g, METEOR_W, METEOR_H - 40, 0x020617, 0x1e1b4b, 16)
+      drawPerspectiveFloor(g, METEOR_W, METEOR_H, METEOR_H - 40, 0x312e81, 0x6366f1)
 
-      for (let i = 0; i < 24; i++) {
-        g.fillStyle(0xffffff, 0.35)
-        g.fillCircle((i * 47) % METEOR_W, (i * 83) % (METEOR_H - 60), 1)
+      for (let i = 0; i < 28; i++) {
+        g.fillStyle(0xffffff, 0.4)
+        g.fillCircle((i * 47) % METEOR_W, (i * 83) % (METEOR_H - 80), 1.2)
       }
 
-      for (const m of this.meteors) {
-        g.fillStyle(0x78716c, 1)
-        g.fillCircle(m.x, m.y, m.r)
-        g.fillStyle(0xf97316, 0.6)
-        g.fillCircle(m.x - m.r * 0.2, m.y - m.r * 0.2, m.r * 0.55)
+      // Sort meteors by y so nearer ones draw last
+      const sorted = [...this.meteors].sort((a, b) => a.y - b.y)
+      for (const m of sorted) {
+        const depthScale = 0.7 + (m.y / METEOR_H) * 0.5
+        drawSphere(g, m.x, m.y, m.r * depthScale, shade(0x78716c, 0.9 + depthScale * 0.2))
+        g.fillStyle(0xf97316, 0.45)
+        g.fillCircle(m.x - m.r * 0.2, m.y - m.r * 0.2, m.r * 0.4 * depthScale)
       }
 
-      g.fillStyle(0x38bdf8, 1)
-      g.fillTriangle(
-        this.shipX,
-        SHIP_Y,
+      // Ship as extruded wedge / hull
+      drawBoxOnGround(
+        g,
         this.shipX - SHIP_W / 2,
         SHIP_Y + SHIP_H,
-        this.shipX + SHIP_W / 2,
-        SHIP_Y + SHIP_H
+        SHIP_W,
+        SHIP_H,
+        12,
+        0x38bdf8,
+        { round: 4 }
+      )
+      g.fillStyle(0x7dd3fc, 1)
+      g.fillTriangle(
+        this.shipX,
+        SHIP_Y - 6,
+        this.shipX - 10,
+        SHIP_Y + 8,
+        this.shipX + 10,
+        SHIP_Y + 8
       )
 
       this.scoreText.setText('Score: ' + this.score)

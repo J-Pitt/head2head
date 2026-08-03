@@ -7,6 +7,7 @@ import ChatPanel from '@/components/ChatPanel'
 import LocalPlayerName from '@/components/LocalPlayerName'
 import { WHEEL_GAMES, type MinigameId, type MinigameMeta } from '@/lib/minigames/catalog'
 import type { Player } from '@/lib/types'
+import type { ChatMsg } from '@/lib/chat'
 import { partyWinBoard } from '@/lib/minigames/types'
 
 type Props = {

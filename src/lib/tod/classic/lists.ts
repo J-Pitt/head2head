@@ -1,4 +1,9 @@
-import { TRUTHS as NSFW_TRUTHS, DARES as NSFW_DARES } from '@/lib/tod/prompts'
+import {
+  TRUTHS as NSFW_TRUTHS,
+  DARES as NSFW_DARES,
+  KINK_TRUTHS,
+  KINK_DARES,
+} from '@/lib/tod/prompts'
 
 export const PG_TRUTHS = [
   "What's the most embarrassing thing you've ever done in front of a crush?",
@@ -58,12 +63,23 @@ export const PG_DARES = [
 
 export type ClassicListMode = 'pg' | 'nsfw'
 
+/** Per-question deck when the game is NSFW. */
+export type PromptDeckId = 'standard' | 'kink'
+
 export function getTruthsForMode(mode: ClassicListMode): string[] {
   return mode === 'nsfw' ? NSFW_TRUTHS : PG_TRUTHS
 }
 
 export function getDaresForMode(mode: ClassicListMode): string[] {
   return mode === 'nsfw' ? NSFW_DARES : PG_DARES
+}
+
+export function getTruthsForDeck(deck: PromptDeckId): string[] {
+  return deck === 'kink' ? KINK_TRUTHS : NSFW_TRUTHS
+}
+
+export function getDaresForDeck(deck: PromptDeckId): string[] {
+  return deck === 'kink' ? KINK_DARES : NSFW_DARES
 }
 
 export function findPromptIndex(pool: string[], text: string): number | null {

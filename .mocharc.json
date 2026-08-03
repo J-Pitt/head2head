@@ -1,0 +1,10 @@
+{
+  "extension": ["ts"],
+  "spec": ["e2e/**/*.test.ts"],
+  "require": ["tsx/cjs"],
+  "timeout": 90000,
+  "slow": 10000,
+  "bail": false,
+  "color": true,
+  "exit": true
+}

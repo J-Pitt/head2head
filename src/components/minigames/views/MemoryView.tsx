@@ -1,97 +1,42 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import type { GameViewProps } from '@/lib/minigames/types'
-import { seededShuffle } from '@/lib/minigames/rng'
+import PhaserGame from './phaser/PhaserGame'
+import { makeMemoryScene, MEMORY_W, MEMORY_H, type MemoryBridge } from './phaser/memoryScene'
 import { RaceLeaderboard, RoundStatusBar } from './shared'
 
-const FACES = ['🍎', '🚀', '🐙', '🎸', '🍕', '🌈', '👾', '⚽']
-
-function MemoryGrid({
-  deck,
-  session,
-  now,
-  report,
-}: {
-  deck: string[]
-  session: GameViewProps['session']
-  now: number
-  report: GameViewProps['report']
-}) {
-  const [flipped, setFlipped] = useState<number[]>([])
-  const [matched, setMatched] = useState<number[]>([])
-  const [busy, setBusy] = useState(false)
-  const reportedDone = useRef(false)
-
-  const started = session.startAt != null && now >= session.startAt
-  const locked = !started || session.status !== 'live' || busy
-
-  function flip(i: number) {
-    if (locked || flipped.includes(i) || matched.includes(i)) return
-    const next = [...flipped, i]
-    setFlipped(next)
-    if (next.length === 2) {
-      setBusy(true)
-      const [a, b] = next
-      if (deck[a] === deck[b]) {
-        const nextMatched = [...matched, a, b]
-        setMatched(nextMatched)
-        setFlipped([])
-        setBusy(false)
-        const pairs = nextMatched.length / 2
-        if (nextMatched.length === deck.length) {
-          reportedDone.current = true
-          const startAt = session.startAt ?? now
-          report({ score: pairs, finished: true, finishAt: now - startAt })
-        } else {
-          report({ score: pairs })
-        }
-      } else {
-        setTimeout(() => {
-          setFlipped([])
-          setBusy(false)
-        }, 700)
-      }
-    }
-  }
-
-  return (
-    <div className="memory-grid">
-      {deck.map((face, i) => {
-        const open = flipped.includes(i) || matched.includes(i)
-        return (
-          <button
-            key={i}
-            type="button"
-            className={`memory-card ${open ? 'open' : ''} ${matched.includes(i) ? 'matched' : ''}`}
-            onClick={() => flip(i)}
-            disabled={locked && !open}
-          >
-            {open ? face : '?'}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 export function MemoryView(props: GameViewProps) {
-  const { session, now } = props
-  const deck = useMemo(
-    () => seededShuffle([...FACES, ...FACES], session.seed || 1),
-    [session.seed]
-  )
+  const { session, report } = props
+  const bridgeRef = useRef<MemoryBridge>({
+    startAt: session.startAt ?? 0,
+    endAt: session.endAt ?? null,
+    active: session.status === 'live',
+    seed: session.seed || 1,
+    round: session.round,
+    report: () => {},
+  })
+
+  useEffect(() => {
+    bridgeRef.current.startAt = session.startAt ?? 0
+    bridgeRef.current.endAt = session.endAt ?? null
+    bridgeRef.current.active = session.status === 'live'
+    bridgeRef.current.seed = session.seed || 1
+    bridgeRef.current.round = session.round
+    bridgeRef.current.report = (p) => report(p)
+  }, [session.startAt, session.endAt, session.status, session.seed, session.round, report])
 
   return (
     <div className="race-layout">
       <div className="race-main">
-        <RoundStatusBar session={session} now={now} />
-        <MemoryGrid
-          key={`${session.round}-${session.seed}`}
-          deck={deck}
-          session={session}
-          now={now}
-          report={props.report}
+        <RoundStatusBar session={session} now={props.now} />
+        <PhaserGame
+          sceneFactory={makeMemoryScene}
+          bridgeRef={bridgeRef}
+          width={MEMORY_W}
+          height={MEMORY_H}
+          background="#0c1220"
+          className="phaser-canvas"
         />
         <p className="race-hint">Same board for everyone — clear all 8 pairs before your friends.</p>
       </div>

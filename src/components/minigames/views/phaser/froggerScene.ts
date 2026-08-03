@@ -1,4 +1,5 @@
 import type { SceneFactory } from './PhaserGame'
+import { drawBox, drawBoxOnGround, drawDisc3d, drawSky } from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -47,7 +48,7 @@ export const makeFroggerScene: SceneFactory = (Phaser, bridgeRef) => {
 
       const palette = [0xef4444, 0x3b82f6, 0xf59e0b, 0x10b981, 0xa855f7, 0xec4899]
       for (let r = 1; r <= ROWS - 2; r++) {
-        if (r % 4 === 0) continue // safe breathing row
+        if (r % 4 === 0) continue
         const dir = r % 2 === 0 ? 1 : -1
         const speed = 55 + ((r * 37) % 95)
         const len = 1.4 * CELL
@@ -140,24 +141,53 @@ export const makeFroggerScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
+      drawSky(g, FROGGER_W, FROGGER_H, 0x0b3d2e, 0x052016, 12)
+
       for (let r = 0; r < ROWS; r++) {
         let col = 0x166534
-        if (r === 0) col = 0x0ea5e9
-        else if (this.lanes.find((l) => l.row === r)) col = 0x1f2937
-        g.fillStyle(col, 1)
-        g.fillRect(0, r * CELL, FROGGER_W, CELL)
+        let elev = 4
+        if (r === 0) {
+          col = 0x0ea5e9
+          elev = 8
+        } else if (this.lanes.find((l) => l.row === r)) {
+          col = 0x1f2937
+          elev = 3
+        } else if (r % 4 === 0) {
+          col = 0x14532d
+          elev = 6
+        }
+        // Draw tiles back-to-front for depth
+        for (let c = 0; c < COLS; c++) {
+          drawBox(g, c * CELL + 1, r * CELL + 6, CELL - 4, CELL - 8, elev, col, { round: 3 })
+        }
       }
-      g.fillStyle(0x22c55e, 1)
-      for (let c = 0; c < COLS; c += 2) g.fillRect(c * CELL + 8, 8, CELL - 16, CELL - 16)
+
+      // Goal pads
+      for (let c = 0; c < COLS; c += 2) {
+        drawBox(g, c * CELL + 8, 10, CELL - 16, CELL - 18, 6, 0x22c55e, { round: 4 })
+      }
+
       for (const lane of this.lanes) {
-        g.fillStyle(lane.color, 1)
-        for (const cx of lane.cars) g.fillRoundedRect(cx, lane.row * CELL + 6, lane.len, CELL - 12, 6)
+        for (const cx of lane.cars) {
+          drawBoxOnGround(
+            g,
+            cx,
+            lane.row * CELL + CELL - 6,
+            lane.len,
+            CELL - 14,
+            8,
+            lane.color,
+            { round: 5 }
+          )
+        }
       }
-      g.fillStyle(0x34d399, 1)
-      g.fillRoundedRect(this.col * CELL + 5, this.row * CELL + 5, CELL - 10, CELL - 10, 8)
-      g.fillStyle(0x064e3b, 1)
-      g.fillCircle(this.col * CELL + 14, this.row * CELL + 15, 3)
-      g.fillCircle(this.col * CELL + CELL - 14, this.row * CELL + 15, 3)
+
+      // Frog
+      const fx = this.col * CELL + 5
+      const fy = this.row * CELL + CELL - 6
+      drawBoxOnGround(g, fx, fy, CELL - 10, CELL - 12, 10, 0x34d399, { round: 7 })
+      drawDisc3d(g, fx + 9, fy - (CELL - 12) + 10, 3.2, 2, 0x064e3b)
+      drawDisc3d(g, fx + CELL - 19, fy - (CELL - 12) + 10, 3.2, 2, 0x064e3b)
 
       this.scoreText.setText('Crossings: ' + this.score)
       if (!this.started()) {

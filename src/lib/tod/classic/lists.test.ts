@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   getDaresForMode,
   getTruthsForMode,
+  getDaresForDeck,
+  getTruthsForDeck,
   pickRandomPrompt,
   PG_DARES,
   PG_TRUTHS,
@@ -17,10 +19,16 @@ describe('classic lists', () => {
     expect(getTruthsForMode('nsfw').length).toBeGreaterThan(PG_TRUTHS.length)
   })
 
+  it('kink deck is separate from standard nsfw', () => {
+    expect(getTruthsForDeck('kink').length).toBe(25)
+    expect(getDaresForDeck('kink').length).toBe(25)
+    expect(getTruthsForDeck('standard')[0]).not.toBe(getTruthsForDeck('kink')[0])
+  })
+
   it('pickRandomPrompt avoids used indices', () => {
     const pool = ['a', 'b', 'c']
-    const { idx } = pickRandomPrompt(pool, [0, 1])
-    expect(idx).toBe(2)
+    const pick = pickRandomPrompt(pool, [0, 1])
+    expect(pick?.idx).toBe(2)
   })
 
   it('pickRandomPrompt can exclude one index (refresh without reusing same line)', () => {

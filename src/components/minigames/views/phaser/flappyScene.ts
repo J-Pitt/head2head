@@ -1,4 +1,5 @@
 import type { SceneFactory } from './PhaserGame'
+import { drawBox, drawBoxOnGround, drawPerspectiveFloor, drawSphere, shade } from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -83,7 +84,6 @@ export const makeFlappyScene: SceneFactory = (Phaser, bridgeRef) => {
       const dt = Math.min(dms, 40) / 1000
       const running = this.started() && !this.over() && this.alive
 
-      // bridge.flap from on-screen button
       if (bridgeRef.current.flap) {
         bridgeRef.current.flap = false
         this.flap()
@@ -121,19 +121,50 @@ export const makeFlappyScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      g.fillStyle(0x0c1a2b, 1)
-      g.fillRect(0, 0, FLAPPY_W, FLAPPY_H)
-      g.fillStyle(0x14532d, 1)
-      g.fillRect(0, FLAPPY_H - 16, FLAPPY_W, 16)
-      g.fillStyle(0x22c55e, 1)
+      drawPerspectiveFloor(g, FLAPPY_W, FLAPPY_H, FLAPPY_H - 48, 0x14532d, 0x22c55e)
+
+      // Clouds
+      g.fillStyle(0xffffff, 0.12)
+      g.fillEllipse(60, 70, 90, 28)
+      g.fillEllipse(220, 110, 110, 32)
+      g.fillEllipse(300, 55, 70, 22)
+
       for (const p of this.pipes) {
-        g.fillRect(p.x, 0, PIPE_W, p.gapY)
-        g.fillRect(p.x, p.gapY + GAP, PIPE_W, FLAPPY_H - p.gapY - GAP)
+        const depth = 14
+        // Top pipe
+        drawBox(g, p.x, 8, PIPE_W, Math.max(4, p.gapY - 8), depth, 0x16a34a, { round: 4 })
+        drawBox(g, p.x - 4, p.gapY - 18, PIPE_W + 8, 18, depth + 2, shade(0x22c55e, 1.05), {
+          round: 3,
+        })
+        // Bottom pipe
+        const by = p.gapY + GAP
+        drawBox(
+          g,
+          p.x - 4,
+          by,
+          PIPE_W + 8,
+          18,
+          depth + 2,
+          shade(0x22c55e, 1.05),
+          { round: 3 }
+        )
+        drawBox(
+          g,
+          p.x,
+          by + 18,
+          PIPE_W,
+          Math.max(4, FLAPPY_H - by - 18 - 40),
+          depth,
+          0x16a34a,
+          { round: 4 }
+        )
       }
-      g.fillStyle(0xfacc15, 1)
-      g.fillCircle(BIRD_X, this.y, R)
+
+      drawSphere(g, BIRD_X, this.y, R, 0xfacc15)
       g.fillStyle(0x111827, 1)
       g.fillCircle(BIRD_X + 5, this.y - 4, 2.5)
+      // Beak
+      drawBoxOnGround(g, BIRD_X + 8, this.y + 4, 10, 6, 3, 0xf97316, { round: 2, shadow: false })
 
       this.scoreText.setText('Score: ' + this.score)
       if (!this.started()) {

@@ -7,14 +7,20 @@ import type { Player } from '@/lib/types'
 import type { BoardTodState } from '@/lib/tod/types'
 import { initialTodState, isBoardTodState, PICTURE_EVERY } from '@/lib/tod/types'
 import type { BoardState, TileType } from '@/lib/tod/board'
-import { createBoardState, rollDie, SPECIAL_CHALLENGES } from '@/lib/tod/board'
+import { createBoardState, rollDie, SPECIAL_CHALLENGES, JAIL_PENALTIES } from '@/lib/tod/board'
 import type { Progress, Session } from '@/lib/minigames/types'
 import { getGameConfig, computeRaceLoser, isRoundComplete } from '@/lib/minigames/registry'
 import { randomTodMinigame } from '@/lib/minigames/catalog'
 import { pickRandomQuestion, getQuestionById } from '@/lib/trivia'
 import { DEFAULT_BOARD_PIECE, isBoardPiece } from '@/lib/tod/boardPieces'
-import type { ClassicListMode } from '@/lib/tod/classic/lists'
-import { findPromptIndex, getDaresForMode, getTruthsForMode } from '@/lib/tod/classic/lists'
+import type { ClassicListMode, PromptDeckId } from '@/lib/tod/classic/lists'
+import {
+  findPromptIndex,
+  getDaresForMode,
+  getTruthsForMode,
+  getDaresForDeck,
+  getTruthsForDeck,
+} from '@/lib/tod/classic/lists'
 import { parseBoardTodUrlSearch, readBoardTodUrlBootstrap } from '@/lib/tod/boardUrl'
 import {
   createTodRoom,
@@ -500,12 +506,20 @@ export function useTodRoom() {
         loserName: null,
       })
     } else if (type === 'jail') {
+      const penalty = JAIL_PENALTIES[Math.floor(Math.random() * JAIL_PENALTIES.length)]!
       patchBoard({
         dice,
         positions,
-        phase: 'event',
+        phase: 'prompt',
         tileType: 'jail',
-        message: `🚔 ${name} landed on Jail — skip your next turn!`,
+        onSpotId: roller,
+        askerId: null,
+        choice: 'dare',
+        prompt: `🚔 Jail penalty: ${penalty}`,
+        answerText: null,
+        answerImage: null,
+        answerSubmitted: false,
+        message: `${name} is locked up — miss next turn after the penalty!`,
         jail: { ...b.jail, [roller]: 1 },
       })
     } else if (type === 'forward') {
@@ -547,7 +561,21 @@ export function useTodRoom() {
           message: `🎲 Group roll! ${best.name} rolled highest (${best.roll}) and jumps ahead 5 spaces.`,
         })
       } else {
-        patchBoard({ dice, positions, phase: 'event', tileType: 'special', message: `${ch.icon} ${ch.label}` })
+        // Do / group challenges — same text + photo/video response as a dare.
+        patchBoard({
+          dice,
+          positions,
+          phase: 'prompt',
+          tileType: 'special',
+          onSpotId: roller,
+          askerId: null,
+          choice: 'dare',
+          prompt: `${ch.icon} ${ch.label}`,
+          answerText: null,
+          answerImage: null,
+          answerSubmitted: false,
+          message: null,
+        })
       }
     } else if (type === 'start') {
       patchBoard({
@@ -574,10 +602,17 @@ export function useTodRoom() {
   )
 
   const boardMarkPromptUsed = useCallback(
-    (choice: 'truth' | 'dare', idx: number) => {
+    (choice: 'truth' | 'dare', idx: number, deck: PromptDeckId = 'standard') => {
       const b = stateRef.current?.board
       if (!b) return
-      const key = choice === 'truth' ? 'usedTruths' : 'usedDares'
+      const key =
+        deck === 'kink'
+          ? choice === 'truth'
+            ? 'usedKinkTruths'
+            : 'usedKinkDares'
+          : choice === 'truth'
+            ? 'usedTruths'
+            : 'usedDares'
       const used = b[key] ?? []
       if (used.includes(idx)) return
       patchBoard({ [key]: [...used, idx] })
@@ -586,7 +621,10 @@ export function useTodRoom() {
   )
 
   const boardSubmitPrompt = useCallback(
-    (text: string, fromList?: { choice: 'truth' | 'dare'; idx: number }) => {
+    (
+      text: string,
+      fromList?: { choice?: 'truth' | 'dare'; idx?: number; deck?: PromptDeckId }
+    ) => {
       const t = text.trim()
       if (!t) return
       const b = stateRef.current?.board
@@ -596,19 +634,32 @@ export function useTodRoom() {
         answerImage: null,
         answerSubmitted: false,
       }
-      let source = fromList
-      if (!source && b?.choice) {
+      const choice = fromList?.choice ?? b?.choice
+      const deck: PromptDeckId = fromList?.deck ?? 'standard'
+      let idx = fromList?.idx
+      if (idx == null && choice && b) {
         const pool =
-          b.choice === 'truth'
-            ? getTruthsForMode(b.listMode ?? 'nsfw')
-            : getDaresForMode(b.listMode ?? 'nsfw')
-        const idx = findPromptIndex(pool, t)
-        if (idx != null) source = { choice: b.choice, idx }
+          b.listMode === 'pg'
+            ? choice === 'truth'
+              ? getTruthsForMode('pg')
+              : getDaresForMode('pg')
+            : choice === 'truth'
+              ? getTruthsForDeck(deck)
+              : getDaresForDeck(deck)
+        const found = findPromptIndex(pool, t)
+        if (found != null) idx = found
       }
-      if (source && b) {
-        const key = source.choice === 'truth' ? 'usedTruths' : 'usedDares'
+      if (choice != null && idx != null && b) {
+        const key =
+          deck === 'kink'
+            ? choice === 'truth'
+              ? 'usedKinkTruths'
+              : 'usedKinkDares'
+            : choice === 'truth'
+              ? 'usedTruths'
+              : 'usedDares'
         const used = b[key] ?? []
-        if (!used.includes(source.idx)) patch[key] = [...used, source.idx]
+        if (!used.includes(idx)) patch[key] = [...used, idx]
       }
       patchBoard(patch)
     },

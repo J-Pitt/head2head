@@ -1,4 +1,5 @@
 import type { SceneFactory } from './PhaserGame'
+import { drawBox, drawBoxOnGround, drawPerspectiveFloor, drawSky } from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -9,7 +10,7 @@ export const DINO_H = 480
 type Obstacle = { x: number; w: number; h: number; scored: boolean }
 
 export const makeDinoScene: SceneFactory = (Phaser, bridgeRef) => {
-  const GROUND_H = 36
+  const GROUND_H = 48
   const GROUND_Y = DINO_H - GROUND_H
   const DINO_X = 72
   const DINO_W_BOX = 30
@@ -41,13 +42,13 @@ export const makeDinoScene: SceneFactory = (Phaser, bridgeRef) => {
     create() {
       this.g = this.add.graphics()
       this.scoreText = this.add
-        .text(8, 6, 'Score: 0', { fontFamily: 'monospace', fontSize: '16px', color: '#374151' })
+        .text(8, 6, 'Score: 0', { fontFamily: 'monospace', fontSize: '16px', color: '#e5e7eb' })
         .setDepth(10)
       this.statusText = this.add
         .text(DINO_W / 2, DINO_H / 2 - 40, '', {
           fontFamily: 'monospace',
           fontSize: '36px',
-          color: '#6b7280',
+          color: '#fde68a',
           fontStyle: 'bold',
         })
         .setOrigin(0.5)
@@ -156,47 +157,47 @@ export const makeDinoScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
+      drawSky(g, DINO_W, GROUND_Y, 0x1e293b, 0x334155, 14)
+      drawPerspectiveFloor(g, DINO_W, DINO_H, GROUND_Y, 0x3f3f46, 0x71717a)
 
-      // Sky
-      g.fillStyle(0xf7f7f7, 1)
-      g.fillRect(0, 0, DINO_W, DINO_H)
+      // Distant mountains
+      g.fillStyle(0x27272a, 0.7)
+      g.fillTriangle(40, GROUND_Y, 110, GROUND_Y - 70, 180, GROUND_Y)
+      g.fillTriangle(160, GROUND_Y, 240, GROUND_Y - 95, 320, GROUND_Y)
 
-      // Ground strip
-      g.fillStyle(0xe5e7eb, 1)
-      g.fillRect(0, GROUND_Y, DINO_W, GROUND_H)
-      g.lineStyle(2, 0x9ca3af, 1)
-      g.beginPath()
-      g.moveTo(0, GROUND_Y)
-      g.lineTo(DINO_W, GROUND_Y)
-      g.strokePath()
-
-      // Obstacles (cacti)
       for (const o of this.obstacles) {
-        g.fillStyle(0x16a34a, 1)
-        g.fillRect(o.x, GROUND_Y - o.h, o.w, o.h)
+        drawBoxOnGround(g, o.x, GROUND_Y, o.w, o.h, 10, 0x16a34a, { round: 3 })
         if (o.h > 32) {
-          g.fillRect(o.x - 6, GROUND_Y - o.h + 12, 8, 14)
-          g.fillRect(o.x + o.w - 2, GROUND_Y - o.h + 8, 8, 12)
+          drawBoxOnGround(g, o.x - 6, GROUND_Y - o.h + 26, 8, 14, 6, 0x15803d, {
+            round: 2,
+            shadow: false,
+          })
+          drawBoxOnGround(g, o.x + o.w - 2, GROUND_Y - o.h + 20, 8, 12, 6, 0x15803d, {
+            round: 2,
+            shadow: false,
+          })
         }
       }
 
-      // Dino body
       const running = this.started() && !this.over() && this.alive
       const legUp = running && this.onGround && Math.floor(this.legFrame / 120) % 2 === 0
-      g.fillStyle(0x374151, 1)
-      g.fillRect(DINO_X, this.dinoY, DINO_W_BOX, DINO_H_BOX - 6)
-      // Head
-      g.fillRect(DINO_X + DINO_W_BOX - 4, this.dinoY - 10, 14, 12)
-      // Eye
+      const bodyBottom = this.dinoY + DINO_H_BOX - 6
+      drawBoxOnGround(g, DINO_X, bodyBottom, DINO_W_BOX, DINO_H_BOX - 6, 12, 0x4b5563, {
+        round: 4,
+      })
+      drawBox(g, DINO_X + DINO_W_BOX - 4, this.dinoY - 10, 14, 12, 8, 0x6b7280, { round: 3 })
       g.fillStyle(0xffffff, 1)
-      g.fillRect(DINO_X + DINO_W_BOX + 2, this.dinoY - 8, 4, 4)
-      // Tail
-      g.fillStyle(0x374151, 1)
-      g.fillRect(DINO_X - 10, this.dinoY + 8, 12, 6)
-      // Legs
+      g.fillCircle(DINO_X + DINO_W_BOX + 4, this.dinoY - 5, 2.5)
+      drawBox(g, DINO_X - 10, this.dinoY + 8, 12, 6, 5, 0x4b5563, { round: 2 })
       if (this.onGround) {
-        g.fillRect(DINO_X + 4, this.dinoY + DINO_H_BOX - 8, 8, legUp ? 4 : 10)
-        g.fillRect(DINO_X + 16, this.dinoY + DINO_H_BOX - 8, 8, legUp ? 10 : 4)
+        drawBoxOnGround(g, DINO_X + 4, bodyBottom + 8, 8, legUp ? 4 : 10, 4, 0x374151, {
+          round: 1,
+          shadow: false,
+        })
+        drawBoxOnGround(g, DINO_X + 16, bodyBottom + 8, 8, legUp ? 10 : 4, 4, 0x374151, {
+          round: 1,
+          shadow: false,
+        })
       }
 
       this.scoreText.setText('Score: ' + this.score)

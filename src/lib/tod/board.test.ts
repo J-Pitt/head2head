@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   BOARD_COLS,
+  BOARD_PATH_LENGTH,
   BOARD_ROWS,
   buildTiles,
   createBoardState,
@@ -10,11 +11,14 @@ import {
 import { player } from '@/lib/__tests__/helpers'
 
 describe('tod board', () => {
-  it('buildTiles has start and finish', () => {
+  it('buildTiles has start and finish on a perimeter path', () => {
     const tiles = buildTiles(BOARD_COLS, BOARD_ROWS, { randomize: false })
     expect(tiles[0]!.type).toBe('start')
     expect(tiles[tiles.length - 1]!.type).toBe('finish')
-    expect(tiles.length).toBe(BOARD_COLS * BOARD_ROWS)
+    expect(tiles.length).toBe(BOARD_PATH_LENGTH)
+    // Start bottom-left, finish on left edge just above start
+    expect(tiles[0]).toMatchObject({ row: BOARD_ROWS - 1, col: 0 })
+    expect(tiles[tiles.length - 1]).toMatchObject({ row: BOARD_ROWS - 2, col: 0 })
   })
 
   it('special tiles reference challenges cyclically when not randomized', () => {

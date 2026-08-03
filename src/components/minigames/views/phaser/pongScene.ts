@@ -1,4 +1,5 @@
 import type { SceneFactory } from './PhaserGame'
+import { drawBox, drawPerspectiveFloor, drawSphere } from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -57,15 +58,6 @@ export const makePongScene: SceneFactory = (Phaser, bridgeRef) => {
       return !bridgeRef.current.active || (e != null && Date.now() >= e)
     }
 
-    resetBall() {
-      this.ballX = PONG_W / 2
-      this.ballY = PONG_H / 2
-      const angle = Phaser.Math.FloatBetween(-0.6, 0.6)
-      const speed = 220 + this.score * 4
-      this.ballVx = Math.sin(angle) * speed
-      this.ballVy = -Math.abs(Math.cos(angle) * speed)
-    }
-
     die() {
       this.alive = false
       if (!this.reportedDead) {
@@ -86,7 +78,11 @@ export const makePongScene: SceneFactory = (Phaser, bridgeRef) => {
         if (pm === 'left') move -= 1
         if (pm === 'right') move += 1
         bridgeRef.current.pendingMove = null
-        this.paddleX = Phaser.Math.Clamp(this.paddleX + move * 360 * dt, PADDLE_W / 2 + 4, PONG_W - PADDLE_W / 2 - 4)
+        this.paddleX = Phaser.Math.Clamp(
+          this.paddleX + move * 360 * dt,
+          PADDLE_W / 2 + 4,
+          PONG_W - PADDLE_W / 2 - 4
+        )
 
         this.ballX += this.ballVx * dt
         this.ballY += this.ballVy * dt
@@ -133,20 +129,29 @@ export const makePongScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      g.fillStyle(0x052e16, 1)
-      g.fillRect(0, 0, PONG_W, PONG_H)
+      drawPerspectiveFloor(g, PONG_W, PONG_H, 40, 0x052e16, 0x166534)
 
-      g.lineStyle(2, 0x166534, 0.5)
-      g.beginPath()
-      g.moveTo(PONG_W / 2, 0)
-      g.lineTo(PONG_W / 2, PONG_H)
-      g.strokePath()
+      // Court rails
+      drawBox(g, 4, 44, 8, PONG_H - 60, 10, 0x166534)
+      drawBox(g, PONG_W - 12, 44, 8, PONG_H - 60, 10, 0x166534)
+      drawBox(g, 4, 40, PONG_W - 8, 10, 8, 0x15803d)
 
-      g.fillStyle(0x4ade80, 1)
-      g.fillRect(this.paddleX - PADDLE_W / 2, PADDLE_Y, PADDLE_W, PADDLE_H)
+      // Center net posts
+      for (let y = 60; y < PONG_H - 50; y += 28) {
+        drawBox(g, PONG_W / 2 - 3, y, 6, 14, 5, 0x4ade80, { round: 1 })
+      }
 
-      g.fillStyle(0xffffff, 1)
-      g.fillCircle(this.ballX, this.ballY, BALL_R)
+      drawBox(
+        g,
+        this.paddleX - PADDLE_W / 2,
+        PADDLE_Y,
+        PADDLE_W,
+        PADDLE_H,
+        12,
+        0x4ade80,
+        { round: 4 }
+      )
+      drawSphere(g, this.ballX, this.ballY, BALL_R, 0xffffff)
 
       this.scoreText.setText('Rally: ' + this.score)
       if (!this.started()) {

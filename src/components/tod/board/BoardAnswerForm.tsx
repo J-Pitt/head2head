@@ -1,43 +1,50 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { compressImage } from '@/lib/chat'
+import { isVideoDataUrl, readAnswerMedia } from '@/lib/chat'
 
 type Props = {
   category: 'truth' | 'dare'
-  onSubmit: (text: string, image?: string) => void | Promise<void>
+  onSubmit: (text: string, media?: string) => void | Promise<void>
   disabled?: boolean
+  /** Override labels for special / challenge tiles. */
+  labels?: { text: string; placeholder: string; upload: string }
 }
 
-export default function BoardAnswerForm({ category, onSubmit, disabled }: Props) {
+export default function BoardAnswerForm({ category, onSubmit, disabled, labels }: Props) {
   const [text, setText] = useState('')
-  const [image, setImage] = useState<string | null>(null)
+  const [media, setMedia] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  const textLabel = labels?.text ?? (category === 'truth' ? 'Your answer' : 'What you did')
+  const placeholder =
+    labels?.placeholder ?? (category === 'truth' ? 'Type your honest answer…' : 'Describe what you did…')
+  const uploadLabel = labels?.upload ?? '📸 Add a photo or video'
 
   async function handleFile(file: File | null) {
     if (!file) return
     setError('')
     try {
-      const dataUrl = await compressImage(file)
-      setImage(dataUrl)
+      const dataUrl = await readAnswerMedia(file)
+      setMedia(dataUrl)
       setPreview(dataUrl)
-    } catch {
-      setError('Could not load that image')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load that file')
     }
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!text.trim() && !image) {
-      setError('Write your answer or attach a photo')
+    if (!text.trim() && !media) {
+      setError('Write your answer or attach a photo / video')
       return
     }
     setBusy(true)
     setError('')
     try {
-      await onSubmit(text.trim(), image ?? undefined)
+      await onSubmit(text.trim(), media ?? undefined)
     } catch {
       setError('Could not submit — try again')
     } finally {
@@ -48,12 +55,12 @@ export default function BoardAnswerForm({ category, onSubmit, disabled }: Props)
   return (
     <form className="board-answer-form" onSubmit={handleSubmit}>
       <label className="field">
-        <span>{category === 'truth' ? 'Your answer' : 'What you did'}</span>
+        <span>{textLabel}</span>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           className="tod-textarea board-answer-text"
-          placeholder={category === 'truth' ? 'Type your honest answer…' : 'Describe what you did…'}
+          placeholder={placeholder}
           rows={4}
           maxLength={600}
           disabled={disabled || busy}
@@ -63,10 +70,10 @@ export default function BoardAnswerForm({ category, onSubmit, disabled }: Props)
 
       <div className="board-answer-upload">
         <label className="btn btn-sm board-upload-btn">
-          📸 Add a photo
+          {uploadLabel}
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             className="sr-only"
             disabled={disabled || busy}
             onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
@@ -74,12 +81,16 @@ export default function BoardAnswerForm({ category, onSubmit, disabled }: Props)
         </label>
         {preview && (
           <div className="board-answer-preview">
-            <img src={preview} alt="Answer photo" />
+            {isVideoDataUrl(preview) ? (
+              <video src={preview} controls playsInline muted />
+            ) : (
+              <img src={preview} alt="Answer media" />
+            )}
             <button
               type="button"
               className="btn-ghost btn-sm"
               onClick={() => {
-                setImage(null)
+                setMedia(null)
                 setPreview(null)
               }}
             >

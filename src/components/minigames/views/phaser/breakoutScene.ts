@@ -1,4 +1,5 @@
 import type { SceneFactory } from './PhaserGame'
+import { drawBox, drawPerspectiveFloor, drawSphere } from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -113,7 +114,11 @@ export const makeBreakoutScene: SceneFactory = (Phaser, bridgeRef) => {
         if (pm === 'left') move -= 1
         if (pm === 'right') move += 1
         bridgeRef.current.pendingMove = null
-        this.paddleX = Phaser.Math.Clamp(this.paddleX + move * 340 * dt, PADDLE_W / 2 + 4, BREAKOUT_W - PADDLE_W / 2 - 4)
+        this.paddleX = Phaser.Math.Clamp(
+          this.paddleX + move * 340 * dt,
+          PADDLE_W / 2 + 4,
+          BREAKOUT_W - PADDLE_W / 2 - 4
+        )
 
         this.ballX += this.ballVx * dt
         this.ballY += this.ballVy * dt
@@ -180,20 +185,29 @@ export const makeBreakoutScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      g.fillStyle(0x0f172a, 1)
-      g.fillRect(0, 0, BREAKOUT_W, BREAKOUT_H)
+      drawPerspectiveFloor(g, BREAKOUT_W, BREAKOUT_H, 36, 0x0f172a, 0x1e293b)
+
+      // Wall rails
+      drawBox(g, 0, 36, 6, BREAKOUT_H - 48, 8, 0x334155)
+      drawBox(g, BREAKOUT_W - 6, 36, 6, BREAKOUT_H - 48, 8, 0x334155)
+      drawBox(g, 0, 28, BREAKOUT_W, 10, 10, 0x475569)
 
       for (const b of this.bricks) {
         if (!b.alive) continue
-        g.fillStyle(b.color, 1)
-        g.fillRect(b.x, b.y, b.w, b.h)
+        drawBox(g, b.x, b.y, b.w, b.h, 8, b.color, { round: 3 })
       }
 
-      g.fillStyle(0x22d3ee, 1)
-      g.fillRect(this.paddleX - PADDLE_W / 2, PADDLE_Y, PADDLE_W, PADDLE_H)
-
-      g.fillStyle(0xffffff, 1)
-      g.fillCircle(this.ballX, this.ballY, BALL_R)
+      drawBox(
+        g,
+        this.paddleX - PADDLE_W / 2,
+        PADDLE_Y,
+        PADDLE_W,
+        PADDLE_H,
+        10,
+        0x22d3ee,
+        { round: 4 }
+      )
+      drawSphere(g, this.ballX, this.ballY, BALL_R, 0xffffff)
 
       this.scoreText.setText('Bricks: ' + this.score)
       if (!this.started()) {

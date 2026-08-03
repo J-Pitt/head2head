@@ -16,29 +16,32 @@ export type GameBridge = {
   flap: boolean
 }
 
-export type BridgeRef = { current: GameBridge }
+export type BridgeRef<B = GameBridge> = { current: B }
 
 export type SceneCtor = new (...args: unknown[]) => Phaser.Scene
 
-export type SceneFactory = (PhaserLib: PhaserModule, bridgeRef: BridgeRef) => SceneCtor
+export type SceneFactory<B = GameBridge> = (
+  PhaserLib: PhaserModule,
+  bridgeRef: BridgeRef<B>
+) => SceneCtor
 
-type Props = {
-  sceneFactory: SceneFactory
-  bridgeRef: BridgeRef
+type Props<B = GameBridge> = {
+  sceneFactory: SceneFactory<B>
+  bridgeRef: BridgeRef<B>
   width: number
   height: number
   background?: string
   className?: string
 }
 
-export default function PhaserGame({
+export default function PhaserGame<B = GameBridge>({
   sceneFactory,
   bridgeRef,
   width,
   height,
   background = '#0b0e16',
   className,
-}: Props) {
+}: Props<B>) {
   const parentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -71,5 +74,5 @@ export default function PhaserGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return <div ref={parentRef} className={className} style={{ width: '100%', maxWidth: width }} />
+  return <div ref={parentRef} className={`phaser-stage ${className ?? ''}`.trim()} style={{ width: '100%', maxWidth: width }} />
 }

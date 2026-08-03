@@ -4,15 +4,30 @@ import type { ReactNode } from 'react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import BoardPiece from '@/components/tod/BoardPiece'
 import type { useTodRoom } from '@/hooks/useTodRoom'
-import { TILE_META, SPECIAL_CHALLENGES, buildTiles, BOARD_COLS, BOARD_ROWS } from '@/lib/tod/board'
-import type { BoardTile } from '@/lib/tod/board'
+import {
+  TILE_META,
+  SPECIAL_CHALLENGES,
+  buildTiles,
+  BOARD_COLS,
+  BOARD_ROWS,
+  getBoardDisplayLayout,
+  tileCenterPercent,
+  tileSlotStyle,
+  boardCenterSlotStyle,
+} from '@/lib/tod/board'
+import type { BoardTile, BoardDisplayLayout } from '@/lib/tod/board'
 import { getQuestionById } from '@/lib/trivia'
-import { getDaresForMode, getTruthsForMode, pickRandomPrompt } from '@/lib/tod/classic/lists'
+import { getDaresForMode, getTruthsForMode, getDaresForDeck, getTruthsForDeck, pickRandomPrompt } from '@/lib/tod/classic/lists'
+import type { PromptDeckId } from '@/lib/tod/classic/lists'
+import { isVideoDataUrl } from '@/lib/chat'
 import { getMinigame } from '@/lib/minigames/catalog'
 import type { GameViewProps } from '@/lib/minigames/types'
 import { GameViewRouter } from '@/components/minigames/views/GameViewRouter'
 import BoardAnswerForm from '@/components/tod/board/BoardAnswerForm'
 import TodGameLayout from '@/components/tod/board/TodGameLayout'
+import { DiceRollOverlay } from '@/components/tod/board/BoardDice'
+import JailLockup from '@/components/tod/board/JailLockup'
+import VictoryFireworks from '@/components/tod/board/VictoryFireworks'
 import { RaceLeaderboard } from '@/components/minigames/views/shared'
 
 type Room = ReturnType<typeof useTodRoom>
@@ -33,60 +48,109 @@ export default function BoardView({
   chatSidebar: ReactNode | null
 }) {
   const b = room.state?.board
+  const [pendingDice, setPendingDice] = useState<number | null>(null)
+  const prevDiceRef = useRef<number | null | undefined>(undefined)
+
+  useEffect(() => {
+    if (!b) return
+    if (prevDiceRef.current === undefined) {
+      prevDiceRef.current = b.dice
+      return
+    }
+    if (prevDiceRef.current == null && b.dice != null) {
+      setPendingDice(b.dice)
+    }
+    prevDiceRef.current = b.dice
+  }, [b, b?.dice])
+
+  const onDiceDone = () => setPendingDice(null)
+
   if (!b) return null
 
   const overlayKey = `${b.phase}-${b.rollerId ?? ''}-${b.onSpotId ?? ''}-${b.questionId ?? ''}-${b.dice ?? ''}-${b.prompt ?? ''}`
 
-  // Rolling phase stays inline on the board; everything else pops up as an overlay
-  const overlay = b.phase !== 'rolling' ? <Resolution key={overlayKey} room={room} /> : null
+  // Hold the resolution overlay until the dice tumble finishes so everyone sees the roll.
+  const overlay =
+    b.phase !== 'rolling' && pendingDice == null ? <Resolution key={overlayKey} room={room} /> : null
+
+  const roller = room.players.find((p) => p.id === b.rollerId)
 
   return (
     <TodGameLayout
-      board={<BoardTrack room={room} />}
+      board={
+        <BoardTrack
+          room={room}
+          holdPieces={pendingDice != null}
+          diceOverlay={
+            pendingDice != null ? (
+              <DiceRollOverlay
+                value={pendingDice}
+                rollerName={roller?.name}
+                onDone={onDiceDone}
+              />
+            ) : null
+          }
+        />
+      }
       overlay={overlay}
       chat={chatSidebar}
     />
   )
 }
 
+function CourseTrail({
+  tiles,
+  layout,
+}: {
+  tiles: BoardTile[]
+  layout: BoardDisplayLayout
+}) {
+  if (tiles.length < 2) return null
+  const pts = tiles.map((t) => tileCenterPercent(layout, t))
+  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.left.toFixed(2)} ${p.top.toFixed(2)}`).join(' ')
+  return (
+    <svg className="board-course-trail" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+      <path d={d} className="board-course-trail-glow" vectorEffect="non-scaling-stroke" />
+      <path d={d} className="board-course-trail-line" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
 function BoardMaze({
   tiles,
-  cols,
-  rows,
+  center,
   children,
 }: {
   tiles: BoardTile[]
-  cols: number
-  rows: number
+  center?: ReactNode
   children?: ReactNode
 }) {
+  const layout = getBoardDisplayLayout(tiles)
+
   return (
-    <div className="board-track board-track-whimsy">
-      <div className="board-deco-layer" aria-hidden="true">
-        <span className="board-float board-float-a">✨</span>
-        <span className="board-float board-float-b">🌈</span>
-        <span className="board-float board-float-c">⭐</span>
-        <span className="board-float board-float-d">💫</span>
-        <span className="board-float board-float-e">🎀</span>
-      </div>
+    <div className="board-track board-track-course">
       <div
-        className="board-grid board-grid-maze"
-        style={{
-          gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gridTemplateRows: `repeat(${rows}, 1fr)`,
-        }}
+        className="board-course-canvas board-course-canvas-table"
+        style={{ aspectRatio: `${layout.spanCols} / ${layout.spanRows}` }}
       >
+        <CourseTrail tiles={tiles} layout={layout} />
         {tiles.map((tile, idx) => (
           <Tile
             key={tile.i}
             tile={tile}
+            layout={layout}
             prev={tiles[idx - 1]}
             next={tiles[idx + 1]}
             arrow={arrowFor(tile, tiles[idx + 1])}
           />
         ))}
+        {center && (
+          <div className="board-center-hub" style={boardCenterSlotStyle(layout)}>
+            {center}
+          </div>
+        )}
+        {children}
       </div>
-      {children}
     </div>
   )
 }
@@ -94,9 +158,17 @@ function BoardMaze({
 export function BoardPreview() {
   const tiles = buildTiles(BOARD_COLS, BOARD_ROWS, { randomize: false })
   return (
-    <div className="board-play-panel board-play-panel-preview">
-      <p className="board-legend">🚦 START → follow the path → 🏁 FINISH</p>
-      <BoardMaze tiles={tiles} cols={BOARD_COLS} rows={BOARD_ROWS} />
+    <div className="board-play-panel board-play-panel-preview board-play-panel-table">
+      <p className="board-legend">🚦 GO → around the board → 🏁 WIN</p>
+      <BoardMaze
+        tiles={tiles}
+        center={
+          <div className="board-center-hub-inner">
+            <p className="board-center-title">Head2Head</p>
+            <p className="board-center-sub">Race the outer path</p>
+          </div>
+        }
+      />
     </div>
   )
 }
@@ -132,62 +204,72 @@ function arrowFor(tile: BoardTile, next: BoardTile | undefined): string | null {
   return null
 }
 
-function BoardTrack({ room }: { room: Room }) {
+function BoardTrack({
+  room,
+  holdPieces,
+  diceOverlay,
+}: {
+  room: Room
+  holdPieces: boolean
+  diceOverlay: ReactNode
+}) {
   const b = room.state!.board!
-  const cols = b.cols ?? b.size ?? 4
-  const rows = b.rows ?? b.size ?? 9
   const roller = room.players.find((p) => p.id === b.rollerId)
   const canRoll = b.rollerId === room.playerId || (room.isLocal && !!b.rollerId)
 
-  return (
-    <div className="board-play-panel">
-      <header className="board-play-head">
-        <p className="board-legend">🚦 START → follow the path → 🏁 FINISH</p>
-
-        {b.phase === 'rolling' && (
-          <div className="board-turn-bar">
-            {canRoll ? (
-              <>
-                <p className="board-turn-label">
-                  {room.isLocal
-                    ? `${roller?.name ?? 'Someone'}'s turn — roll the dice!`
-                    : `Your turn, ${roller?.name ?? 'you'}!`}
-                </p>
-                <button type="button" className="btn btn-primary board-roll-btn" onClick={room.rollDice}>
-                  🎲 Roll the dice
-                </button>
-              </>
-            ) : (
-              <p className="board-turn-label">
-                Waiting for {roller?.name ?? 'someone'} to roll…
-              </p>
-            )}
-            {room.isHost && (
-              <button type="button" className="btn-ghost btn-sm tod-end" onClick={room.restartBoard}>
-                End game
-              </button>
-            )}
-          </div>
+  const hub =
+    b.phase === 'rolling' ? (
+      <div className="board-center-hub-inner">
+        <p className="board-center-title">🎲</p>
+        {canRoll ? (
+          <>
+            <p className="board-turn-label">
+              {room.isLocal
+                ? `${roller?.name ?? 'Someone'}'s turn`
+                : `Your turn, ${roller?.name ?? 'you'}!`}
+            </p>
+            <button type="button" className="btn btn-primary board-roll-btn" onClick={room.rollDice}>
+              Roll the dice
+            </button>
+          </>
+        ) : (
+          <p className="board-turn-label">Waiting for {roller?.name ?? 'someone'}…</p>
         )}
-      </header>
+        {room.isHost && (
+          <button type="button" className="btn-ghost btn-sm tod-end" onClick={room.restartBoard}>
+            End game
+          </button>
+        )}
+      </div>
+    ) : (
+      <div className="board-center-hub-inner">
+        <p className="board-center-title">Head2Head</p>
+        <p className="board-center-sub">Around the board</p>
+      </div>
+    )
 
-      <BoardMaze tiles={b.tiles} cols={cols} rows={rows}>
-        <AnimatedPieces room={room} />
+  return (
+    <div className="board-play-panel board-play-panel-table">
+      <BoardMaze tiles={b.tiles} center={hub}>
+        <AnimatedPieces room={room} hold={holdPieces} />
       </BoardMaze>
+      {diceOverlay}
     </div>
   )
 }
 
-function AnimatedPieces({ room }: { room: Room }) {
+function AnimatedPieces({ room, hold }: { room: Room; hold: boolean }) {
   const b = room.state!.board!
-  const cols = b.cols ?? b.size ?? 4
-  const rows = b.rows ?? b.size ?? 9
+  const layout = getBoardDisplayLayout(b.tiles)
   const [displayPos, setDisplayPos] = useState<Record<string, number>>(() => ({ ...b.positions }))
+  const [movingIds, setMovingIds] = useState<Set<string>>(() => new Set())
   const animPosRef = useRef<Record<string, number>>({ ...b.positions })
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const isFirstRef = useRef(true)
 
   useEffect(() => {
+    if (hold) return
+
     if (isFirstRef.current) {
       isFirstRef.current = false
       animPosRef.current = { ...b.positions }
@@ -202,12 +284,14 @@ function AnimatedPieces({ room }: { room: Room }) {
     const next = b.positions
     let maxDelay = 0
     let anyMoving = false
+    const movers = new Set<string>()
 
     for (const p of room.players) {
       const from = prev[p.id] ?? 0
       const to = next[p.id] ?? 0
       if (from === to) continue
       anyMoving = true
+      movers.add(p.id)
 
       const step = from < to ? 1 : -1
       let current = from
@@ -231,12 +315,16 @@ function AnimatedPieces({ room }: { room: Room }) {
     if (!anyMoving) {
       animPosRef.current = { ...next }
       setDisplayPos({ ...next })
+      setMovingIds(new Set())
       return
     }
+
+    setMovingIds(movers)
 
     timersRef.current.push(
       setTimeout(() => {
         animPosRef.current = { ...next }
+        setMovingIds(new Set())
       }, maxDelay)
     )
 
@@ -244,7 +332,7 @@ function AnimatedPieces({ room }: { room: Room }) {
       timersRef.current.forEach(clearTimeout)
       timersRef.current = []
     }
-  }, [b.positions, room.players])
+  }, [b.positions, room.players, hold])
 
   const byTile: Record<number, typeof room.players> = {}
   for (const p of room.players) {
@@ -258,33 +346,72 @@ function AnimatedPieces({ room }: { room: Room }) {
         const idx = Number(idxStr)
         const tile = b.tiles[idx]
         if (!tile) return null
-        return players.map((p, i) => (
-          <div
-            key={p.id}
-            className="board-piece-anim"
-            style={{
-              left: `${((tile.col + 0.5) / cols) * 100}%`,
-              top: `${((tile.row + 0.5) / rows) * 100}%`,
-              ['--stack' as string]: i,
-              ['--stack-total' as string]: players.length,
-            }}
-            title={p.name}
-          >
-            <BoardPiece pieceId={p.avatar} size={22} className="tile-token board-piece-moving" />
-          </div>
-        ))
+        const center = tileCenterPercent(layout, tile)
+        return players.map((p, i) => {
+          const tileIdx = displayPos[p.id] ?? b.positions[p.id] ?? 0
+          const hopping = movingIds.has(p.id)
+          return (
+            <div
+              key={p.id}
+              className={`board-piece-anim${hopping ? ' board-piece-anim--moving' : ''}`}
+              style={{
+                left: `${center.left}%`,
+                top: `${center.top}%`,
+                ['--stack' as string]: i,
+                ['--stack-total' as string]: players.length,
+              }}
+              title={p.name}
+            >
+              <div key={hopping ? tileIdx : 'idle'} className="board-piece-hop">
+                <BoardPiece pieceId={p.avatar} size={40} className="tile-token board-piece" />
+              </div>
+            </div>
+          )
+        })
       })}
     </div>
   )
 }
 
+function isPathCorner(prev: BoardTile | undefined, tile: BoardTile, next: BoardTile | undefined): boolean {
+  if (!prev || !next) return false
+  const din = dirBetween(prev, tile)
+  const dout = dirBetween(tile, next)
+  if (!din || !dout) return false
+  return din !== dout
+}
+
+function cornerTilt(
+  prev: BoardTile | undefined,
+  tile: BoardTile,
+  next: BoardTile | undefined
+): string {
+  if (!prev || !next) return '0deg'
+  const din = dirBetween(prev, tile)
+  const dout = dirBetween(tile, next)
+  const key = `${din}-${dout}`
+  const tilts: Record<string, string> = {
+    'e-n': '-6deg',
+    'e-s': '6deg',
+    'w-n': '6deg',
+    'w-s': '-6deg',
+    'n-e': '6deg',
+    'n-w': '-6deg',
+    's-e': '-6deg',
+    's-w': '6deg',
+  }
+  return tilts[key] ?? '0deg'
+}
+
 function Tile({
   tile,
+  layout,
   prev,
   next,
   arrow,
 }: {
   tile: BoardTile
+  layout: BoardDisplayLayout
   prev?: BoardTile
   next?: BoardTile
   arrow: string | null
@@ -295,32 +422,35 @@ function Tile({
   const pathCls = tilePathClasses(tile, prev, next)
   const label = special ? 'Special' : meta.label
   const hasTunnel = pathCls.includes('path-')
+  const corner = isPathCorner(prev, tile, next)
+  const slot = tileSlotStyle(layout, tile)
   return (
-    <div
-      className={`board-tile tile-${tile.type} ${pathCls}${hasTunnel ? ' has-tunnel' : ''}`}
-      style={{
-        gridColumn: tile.col + 1,
-        gridRow: tile.row + 1,
-        ['--tile' as string]: meta.color,
-        ['--tile-i' as string]: tile.i,
-        ['--tile-tilt' as string]: `${((tile.i % 3) - 1) * 1.4}deg`,
-      }}
-      title={special ? special.label : meta.label}
-    >
-      <span className="board-tile-shine" aria-hidden />
-      <div className="board-tile-inner">
-        <span className="tile-emoji" aria-hidden>
-          {special ? special.icon : meta.emoji}
-        </span>
-        <span className={endpoint ? 'tile-label' : 'tile-type-name'}>
-          {endpoint ? (tile.type === 'start' ? 'START' : 'FINISH') : label}
-        </span>
+    <div className="board-tile-slot" style={slot}>
+      <div
+        className={`board-tile tile-${tile.type} ${pathCls}${hasTunnel ? ' has-tunnel' : ''}${corner ? ' board-tile-corner' : ''}${endpoint ? ' board-tile-endpoint' : ''}`}
+        style={{
+          ['--tile' as string]: meta.color,
+          ['--tile-glow' as string]: meta.color,
+          ['--tile-i' as string]: tile.i,
+          ['--tile-tilt' as string]: corner ? cornerTilt(prev, tile, next) : '0deg',
+        }}
+        title={special ? special.label : meta.label}
+      >
+        <span className="board-tile-shine" aria-hidden />
+        <div className="board-tile-inner">
+          <span className="tile-emoji" aria-hidden>
+            {special ? special.icon : meta.emoji}
+          </span>
+          <span className={endpoint ? 'tile-label' : 'tile-type-name'}>
+            {endpoint ? (tile.type === 'start' ? 'GO' : 'WIN') : label}
+          </span>
+        </div>
+        {arrow && corner && !endpoint && (
+          <span className="tile-arrow" aria-hidden>
+            {arrow}
+          </span>
+        )}
       </div>
-      {arrow && !endpoint && (
-        <span className="tile-arrow" aria-hidden>
-          {arrow}
-        </span>
-      )}
     </div>
   )
 }
@@ -333,20 +463,12 @@ function Resolution({ room }: { room: Room }) {
   if (b.phase === 'finished') {
     const winner = playerById(b.winnerId)
     return (
-      <section className="card tod-stage">
-        <p className="tod-kicker">🏁 Race over</p>
-        <div className="tod-onspot">
-          {winner && <BoardPiece pieceId={winner.avatar} size={72} />}
-          <h2>{b.winnerName ?? 'Someone'} reached the finish! 🎉</h2>
-        </div>
-        {room.isHost ? (
-          <button type="button" className="btn btn-primary full" onClick={room.restartBoard}>
-            Back to lobby →
-          </button>
-        ) : (
-          <p className="lobby-sub">Waiting for the host…</p>
-        )}
-      </section>
+      <VictoryFireworks
+        winnerName={b.winnerName ?? winner?.name ?? 'Someone'}
+        pieceId={winner?.avatar ?? 'rocket'}
+        isHost={room.isHost}
+        onBackToLobby={room.restartBoard}
+      />
     )
   }
 
@@ -419,6 +541,7 @@ function BoardPrompt({ room }: { room: Room }) {
   const [draft, setDraft] = useState('')
   const [promptMode, setPromptMode] = useState<'list' | 'custom'>('list')
   const [suggestion, setSuggestion] = useState<{ text: string; idx: number } | null>(null)
+  const [promptDeck, setPromptDeck] = useState<PromptDeckId | null>(null)
 
   const isMine = b.onSpotId === room.playerId
   const canAnswer = isMine || (room.isLocal && !!b.onSpotId)
@@ -430,15 +553,47 @@ function BoardPrompt({ room }: { room: Room }) {
     : isMine || room.isHost || (room.isLocal && !!b.onSpotId)
   const canAdvance = isMine || (room.isLocal && !!b.onSpotId)
   const forfeit = b.phase === 'forfeit'
+  const isJail = b.tileType === 'jail'
+  const isSpecialChallenge = b.tileType === 'special' && !!b.prompt
+  const challengeBadge = isJail
+    ? 'JAIL'
+    : b.tileType === 'special'
+      ? 'SPECIAL'
+      : b.tileType === 'wild'
+        ? 'WILD'
+        : b.choice?.toUpperCase()
 
   const listMode = b.listMode ?? 'nsfw'
   const choice = b.choice
   const promptSessionKey = boardPromptSessionKey(b)
+  const needsDeckPick = listMode === 'nsfw' && !promptDeck
+  const activeDeck: PromptDeckId = promptDeck ?? 'standard'
 
   useEffect(() => {
-    if (!promptSessionKey || !choice) return
-    const pool = choice === 'truth' ? getTruthsForMode(listMode) : getDaresForMode(listMode)
-    const used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
+    setPromptDeck(listMode === 'nsfw' ? null : 'standard')
+    setSuggestion(null)
+    setDraft('')
+    setPromptMode('list')
+  }, [promptSessionKey, listMode, choice])
+
+  useEffect(() => {
+    if (!promptSessionKey || !choice || needsDeckPick) return
+    const pool =
+      listMode === 'pg'
+        ? choice === 'truth'
+          ? getTruthsForMode('pg')
+          : getDaresForMode('pg')
+        : choice === 'truth'
+          ? getTruthsForDeck(activeDeck)
+          : getDaresForDeck(activeDeck)
+    const used =
+      activeDeck === 'kink'
+        ? choice === 'truth'
+          ? (b.usedKinkTruths ?? [])
+          : (b.usedKinkDares ?? [])
+        : choice === 'truth'
+          ? (b.usedTruths ?? [])
+          : (b.usedDares ?? [])
     const pick = pickRandomPrompt(pool, used)
     if (pick) {
       setSuggestion(pick)
@@ -448,13 +603,26 @@ function BoardPrompt({ room }: { room: Room }) {
       setPromptMode('custom')
     }
     setDraft('')
-    // Only re-pick when a new truth/dare round starts — not when refreshing or marking used.
-  }, [promptSessionKey, listMode, choice])
+  }, [promptSessionKey, listMode, choice, activeDeck, needsDeckPick])
 
   function refreshSuggestion() {
-    if (!choice) return
-    const pool = choice === 'truth' ? getTruthsForMode(listMode) : getDaresForMode(listMode)
-    const used = choice === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
+    if (!choice || needsDeckPick) return
+    const pool =
+      listMode === 'pg'
+        ? choice === 'truth'
+          ? getTruthsForMode('pg')
+          : getDaresForMode('pg')
+        : choice === 'truth'
+          ? getTruthsForDeck(activeDeck)
+          : getDaresForDeck(activeDeck)
+    const used =
+      activeDeck === 'kink'
+        ? choice === 'truth'
+          ? (b.usedKinkTruths ?? [])
+          : (b.usedKinkDares ?? [])
+        : choice === 'truth'
+          ? (b.usedTruths ?? [])
+          : (b.usedDares ?? [])
     const next = pickRandomPrompt(pool, used, suggestion?.idx)
     if (next) {
       setSuggestion(next)
@@ -470,23 +638,85 @@ function BoardPrompt({ room }: { room: Room }) {
   function useSuggestion() {
     if (!suggestion || !choice) return
     room.signalTyping(false)
-    room.boardSubmitPrompt(suggestion.text, { choice, idx: suggestion.idx })
+    room.boardSubmitPrompt(suggestion.text, {
+      choice,
+      idx: suggestion.idx,
+      deck: listMode === 'nsfw' ? activeDeck : undefined,
+    })
   }
 
   function submitCustom(e: FormEvent) {
     e.preventDefault()
     if (draft.trim()) {
       room.signalTyping(false)
-      room.boardSubmitPrompt(draft)
+      room.boardSubmitPrompt(draft, listMode === 'nsfw' && promptDeck ? { deck: promptDeck } : undefined)
     }
   }
 
   const targetName = isMine ? 'yourself' : onSpot?.name ?? 'them'
 
+  if (isJail && b.prompt) {
+    return (
+      <section className="card tod-stage jail-stage">
+        <JailLockup
+          name={onSpot?.name ?? 'Someone'}
+          pieceId={onSpot?.avatar ?? 'rocket'}
+          penalty={b.prompt}
+        />
+        {!b.answerSubmitted ? (
+          canAnswer ? (
+            <BoardAnswerForm
+              category="dare"
+              labels={{
+                text: 'Complete your jail penalty',
+                placeholder: 'Describe what you did — or attach photo/video proof…',
+                upload: '📸 Add a photo or video',
+              }}
+              onSubmit={(text, media) => room.boardSubmitAnswer(text, media)}
+            />
+          ) : (
+            <p className="lobby-sub jail-waiting">
+              Waiting for {onSpot?.name ?? 'them'} to finish their penalty…
+            </p>
+          )
+        ) : (
+          <div className="tod-prompt-wrap">
+            <div className="board-answer-reveal">
+              <p className="board-answer-reveal-label">{onSpot?.name ?? 'Player'}&apos;s penalty</p>
+              {b.answerText && <p className="board-answer-reveal-text">{b.answerText}</p>}
+              {b.answerImage && (
+                <div className="board-answer-reveal-photo">
+                  {isVideoDataUrl(b.answerImage) ? (
+                    <video src={b.answerImage} controls playsInline />
+                  ) : (
+                    <img src={b.answerImage} alt={`${onSpot?.name ?? 'Player'}'s penalty`} />
+                  )}
+                </div>
+              )}
+            </div>
+            {canAdvance ? (
+              <button type="button" className="btn btn-primary full" onClick={room.boardContinue}>
+                Lock them up — next player →
+              </button>
+            ) : (
+              <p className="lobby-sub">Penalty done — waiting for {onSpot?.name ?? 'them'} to continue…</p>
+            )}
+          </div>
+        )}
+      </section>
+    )
+  }
+
   return (
     <section className="card tod-stage">
       <p className="tod-kicker">
-        {forfeit ? 'Mini game forfeit' : TILE_META[b.tileType ?? 'truth'].label + ' tile'}
+        {forfeit
+          ? 'Mini game forfeit'
+          : b.tileType === 'special'
+            ? '⭐ Special challenge'
+            : b.tileType === 'wild'
+              ? '🎲 Wild tile'
+              : TILE_META[b.tileType ?? 'truth'].label + ' tile'}
       </p>
       <div className="tod-onspot">
         {onSpot && <BoardPiece pieceId={onSpot.avatar} size={72} />}
@@ -522,66 +752,107 @@ function BoardPrompt({ room }: { room: Room }) {
         canWrite ? (
           <div className="tod-write">
             <span className={`tod-badge ${b.choice}`}>{b.choice!.toUpperCase()}</span>
-            <p className="tod-write-label">
-              {promptMode === 'list' && suggestion
-                ? `Suggested ${b.choice} for ${targetName}:`
-                : `Pick a ${b.choice} for ${targetName}:`}
-            </p>
-            {promptMode === 'list' && suggestion ? (
+            {needsDeckPick ? (
               <>
-                <div className="tod-prompt-suggestion">
-                  <p className="tod-prompt">{suggestion.text}</p>
-                </div>
-                <button type="button" className="btn btn-primary full" onClick={useSuggestion}>
-                  Use this prompt →
-                </button>
-                <div className="tod-prompt-alt">
-                  {canRefresh && suggestion && (
-                    <button type="button" className="btn-ghost btn-sm" onClick={refreshSuggestion}>
-                      🔄 Refresh
-                    </button>
-                  )}
-                  <button type="button" className="btn-ghost btn-sm" onClick={() => setPromptMode('custom')}>
-                    ✏️ Write your own
+                <p className="tod-write-label">Pick a deck for this {b.choice}:</p>
+                <div className="tod-deck-pick">
+                  <button
+                    type="button"
+                    className="btn tod-deck-standard"
+                    onClick={() => setPromptDeck('standard')}
+                  >
+                    💋 Standard NSFW
+                  </button>
+                  <button type="button" className="btn tod-deck-kink" onClick={() => setPromptDeck('kink')}>
+                    ⛓️ Kink
                   </button>
                 </div>
+                <p className="lobby-sub">
+                  Standard is spicy party prompts. Kink is power-exchange / restraint / control.
+                </p>
               </>
             ) : (
               <>
-                {promptMode === 'list' && !suggestion && (
-                  <p className="lobby-sub">All suggested prompts have been used — write your own:</p>
-                )}
-                <form className="tod-write-custom" onSubmit={submitCustom}>
-                  <textarea
-                    value={draft}
-                    onChange={(e) => {
-                      setDraft(e.target.value)
-                      room.signalTyping(e.target.value.trim().length > 0)
-                    }}
-                    onBlur={() => room.signalTyping(false)}
-                    placeholder={b.choice === 'truth' ? 'Ask them anything…' : 'Dare them to…'}
-                    maxLength={400}
-                    rows={3}
-                    className="tod-textarea"
-                    autoFocus
-                  />
-                  <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
-                    Submit for everyone →
-                  </button>
-                  {suggestion && (
+                <p className="tod-write-label">
+                  {promptMode === 'list' && suggestion
+                    ? `Suggested ${activeDeck === 'kink' ? 'kink ' : ''}${b.choice} for ${targetName}:`
+                    : `Pick a ${b.choice} for ${targetName}:`}
+                </p>
+                {listMode === 'nsfw' && (
+                  <div className="tod-deck-switch">
                     <button
                       type="button"
-                      className="btn-ghost btn-sm"
-                      onClick={() => {
-                        setPromptMode('list')
-                        setDraft('')
-                        room.signalTyping(false)
-                      }}
+                      className={`btn-ghost btn-sm${activeDeck === 'standard' ? ' active' : ''}`}
+                      onClick={() => setPromptDeck('standard')}
                     >
-                      ← Back to suggestions
+                      💋 Standard
                     </button>
-                  )}
-                </form>
+                    <button
+                      type="button"
+                      className={`btn-ghost btn-sm${activeDeck === 'kink' ? ' active' : ''}`}
+                      onClick={() => setPromptDeck('kink')}
+                    >
+                      ⛓️ Kink
+                    </button>
+                  </div>
+                )}
+                {promptMode === 'list' && suggestion ? (
+                  <>
+                    <div className="tod-prompt-suggestion">
+                      <p className="tod-prompt">{suggestion.text}</p>
+                    </div>
+                    <button type="button" className="btn btn-primary full" onClick={useSuggestion}>
+                      Use this prompt →
+                    </button>
+                    <div className="tod-prompt-alt">
+                      {canRefresh && suggestion && (
+                        <button type="button" className="btn-ghost btn-sm" onClick={refreshSuggestion}>
+                          🔄 Refresh
+                        </button>
+                      )}
+                      <button type="button" className="btn-ghost btn-sm" onClick={() => setPromptMode('custom')}>
+                        ✏️ Write your own
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {promptMode === 'list' && !suggestion && (
+                      <p className="lobby-sub">All suggested prompts have been used — write your own:</p>
+                    )}
+                    <form className="tod-write-custom" onSubmit={submitCustom}>
+                      <textarea
+                        value={draft}
+                        onChange={(e) => {
+                          setDraft(e.target.value)
+                          room.signalTyping(e.target.value.trim().length > 0)
+                        }}
+                        onBlur={() => room.signalTyping(false)}
+                        placeholder={b.choice === 'truth' ? 'Ask them anything…' : 'Dare them to…'}
+                        maxLength={400}
+                        rows={3}
+                        className="tod-textarea"
+                        autoFocus
+                      />
+                      <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
+                        Submit for everyone →
+                      </button>
+                      {suggestion && (
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
+                          onClick={() => {
+                            setPromptMode('list')
+                            setDraft('')
+                            room.signalTyping(false)
+                          }}
+                        >
+                          ← Back to suggestions
+                        </button>
+                      )}
+                    </form>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -600,14 +871,23 @@ function BoardPrompt({ room }: { room: Room }) {
       ) : !b.answerSubmitted ? (
         <>
           <div className="tod-prompt-wrap">
-            <span className={`tod-badge ${b.choice}`}>{b.choice.toUpperCase()}</span>
+            <span className={`tod-badge ${b.choice ?? 'dare'}`}>{challengeBadge}</span>
             <p className="tod-prompt">{b.prompt}</p>
             {asker && <p className="tod-asker">— from {asker.name}</p>}
           </div>
           {canAnswer ? (
             <BoardAnswerForm
-              category={b.choice!}
-              onSubmit={(text, image) => room.boardSubmitAnswer(text, image)}
+              category={b.choice ?? 'dare'}
+              labels={
+                isSpecialChallenge
+                  ? {
+                      text: 'Your response',
+                      placeholder: 'Describe what you did — or just attach proof…',
+                      upload: '📸 Add a photo or video',
+                    }
+                  : undefined
+              }
+              onSubmit={(text, media) => room.boardSubmitAnswer(text, media)}
             />
           ) : (
             <p className="lobby-sub">Waiting for {onSpot?.name ?? 'them'} to answer…</p>
@@ -615,7 +895,7 @@ function BoardPrompt({ room }: { room: Room }) {
         </>
       ) : (
         <div className="tod-prompt-wrap">
-          <span className={`tod-badge ${b.choice}`}>{b.choice.toUpperCase()}</span>
+          <span className={`tod-badge ${b.choice ?? 'dare'}`}>{challengeBadge}</span>
           <p className="tod-prompt">{b.prompt}</p>
           {asker && <p className="tod-asker">— from {asker.name}</p>}
           <div className="board-answer-reveal">
@@ -623,7 +903,11 @@ function BoardPrompt({ room }: { room: Room }) {
             {b.answerText && <p className="board-answer-reveal-text">{b.answerText}</p>}
             {b.answerImage && (
               <div className="board-answer-reveal-photo">
-                <img src={b.answerImage} alt={`${onSpot?.name ?? 'Player'}'s answer`} />
+                {isVideoDataUrl(b.answerImage) ? (
+                  <video src={b.answerImage} controls playsInline />
+                ) : (
+                  <img src={b.answerImage} alt={`${onSpot?.name ?? 'Player'}'s answer`} />
+                )}
               </div>
             )}
             {!b.answerText && !b.answerImage && (
