@@ -5,9 +5,10 @@ import { WHEEL_GAMES, type MinigameMeta } from '@/lib/minigames/catalog'
 
 type Props = {
   onPlay: (game: MinigameMeta) => void
+  disabled?: boolean
 }
 
-export default function SpinWheel({ onPlay }: Props) {
+export default function SpinWheel({ onPlay, disabled = false }: Props) {
   const [spinning, setSpinning] = useState(false)
   const [rotation, setRotation] = useState(0)
   const [result, setResult] = useState<MinigameMeta | null>(null)
@@ -19,7 +20,7 @@ export default function SpinWheel({ onPlay }: Props) {
   ).join(', ')
 
   const spin = useCallback(() => {
-    if (spinning) return
+    if (spinning || disabled) return
     setSpinning(true)
     setResult(null)
 
@@ -38,10 +39,10 @@ export default function SpinWheel({ onPlay }: Props) {
       setSpinning(false)
       setResult(picked)
     }, 4200)
-  }, [spinning, n, slice])
+  }, [spinning, disabled, n, slice])
 
   return (
-    <div className="wheel-wrap">
+    <div className={`wheel-wrap${disabled ? ' wheel-wrap-disabled' : ''}`}>
       <div className="wheel-pointer" aria-hidden>
         ▼
       </div>
@@ -66,8 +67,8 @@ export default function SpinWheel({ onPlay }: Props) {
             )
           })}
         </div>
-        <button type="button" className="wheel-hub" onClick={spin} disabled={spinning}>
-          {spinning ? '…' : 'SPIN'}
+        <button type="button" className="wheel-hub" onClick={spin} disabled={spinning || disabled}>
+          {disabled ? 'WAIT' : spinning ? '…' : 'SPIN'}
         </button>
       </div>
 
@@ -78,7 +79,12 @@ export default function SpinWheel({ onPlay }: Props) {
             <strong>{result.label}</strong>
           </p>
           <p className="wheel-result-blurb">{result.blurb}</p>
-          <button type="button" className="btn btn-primary" onClick={() => onPlay(result)}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => onPlay(result)}
+            disabled={disabled}
+          >
             Play {result.label}
           </button>
         </div>

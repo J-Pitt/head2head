@@ -1,6 +1,21 @@
-export type CategoryId = 'science' | 'nineties'
+export type CategoryId =
+  | 'science'
+  | 'popculture'
+  | 'literature'
+  | 'animals'
+  | 'history'
+  | 'general'
+
+export type GamePhase = 'board' | 'question' | 'buzzing' | 'answering' | 'reveal'
+
+export type JeopardyClue = {
+  id: string
+  category: CategoryId
+  value: number
+  questionId: string
+}
+
 export type GameMode = 'turns' | 'buzzer'
-export type GamePhase = 'question' | 'buzzing' | 'answering' | 'reveal'
 
 export type PlayerStatus = 'active' | 'break'
 
@@ -19,9 +34,15 @@ export type ChatMessage = {
   image?: string
 }
 
+/** 1 = $200 (middle school) … 5 = $1000 (hardest) */
+export type TriviaDifficulty = 1 | 2 | 3 | 4 | 5
+
+export type JeopardyRound = 'single' | 'double'
+
 export type TriviaQuestion = {
   id: string
   category: CategoryId
+  difficulty: TriviaDifficulty
   question: string
   choices: [string, string, string, string]
   correctIndex: number
@@ -30,9 +51,11 @@ export type TriviaQuestion = {
 export type GameState = {
   gameStarted: boolean
   gameMode: GameMode
+  jeopardyRound: JeopardyRound
   categories: CategoryId[]
-  questionIds: string[]
-  questionIndex: number
+  clues: JeopardyClue[]
+  usedClueIds: string[]
+  activeClueId: string | null
   currentPlayerIndex: number
   scores: Record<string, number>
   phase: GamePhase

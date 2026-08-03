@@ -1,7 +1,10 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import type { GameViewProps } from '@/lib/minigames/types'
 import Avatar from '@/components/Avatar'
+import PhaserGame from './phaser/PhaserGame'
+import { makeConnect4Scene, C4_W, C4_H, type Connect4Bridge } from './phaser/connect4Scene'
 
 const W = 7
 const H = 6
@@ -38,23 +41,22 @@ function wins(board: number[], v: number): boolean {
 export function Connect4View(props: GameViewProps) {
   const { session, players, playerId, setSession } = props
   const c4 = session.connect4
-  if (!c4) return <p className="race-hint">Setting up the board…</p>
-
   const myIndex = players.findIndex((p) => p.id === playerId)
-  const myTurn = session.status === 'live' && c4.turnPlayerId === playerId && myIndex >= 0
-  const turnPlayer = players.find((p) => p.id === c4.turnPlayerId)
+  const myTurn = session.status === 'live' && c4?.turnPlayerId === playerId && myIndex >= 0
+  const turnPlayer = players.find((p) => p.id === c4?.turnPlayerId)
 
-  function drop(col: number) {
-    if (!myTurn) return
-    const row = dropRow(c4!.board, col)
+  const dropRef = useRef<(col: number) => void>(() => {})
+  dropRef.current = (col: number) => {
+    if (!c4 || !myTurn) return
+    const row = dropRow(c4.board, col)
     if (row < 0) return
-    const board = [...c4!.board]
+    const board = [...c4.board]
     const v = myIndex + 1
     board[row * W + col] = v
 
     if (wins(board, v)) {
       setSession({
-        connect4: { board, turnPlayerId: c4!.turnPlayerId, lastCol: col },
+        connect4: { board, turnPlayerId: c4.turnPlayerId, lastCol: col },
         status: 'over',
         winnerId: playerId,
         winnerName: players[myIndex]?.name ?? 'Winner',
@@ -63,16 +65,36 @@ export function Connect4View(props: GameViewProps) {
     }
     if (board.every((x) => x !== 0)) {
       setSession({
-        connect4: { board, turnPlayerId: c4!.turnPlayerId, lastCol: col },
+        connect4: { board, turnPlayerId: c4.turnPlayerId, lastCol: col },
         status: 'over',
         winnerId: null,
         winnerName: null,
       })
       return
     }
-    const nextId = players[(myIndex + 1) % players.length]?.id ?? c4!.turnPlayerId
+    const nextId = players[(myIndex + 1) % players.length]?.id ?? c4.turnPlayerId
     setSession({ connect4: { board, turnPlayerId: nextId, lastCol: col } })
   }
+
+  const bridgeRef = useRef<Connect4Bridge>({
+    board: c4?.board ?? Array(W * H).fill(0),
+    myTurn: false,
+    myValue: Math.max(1, myIndex + 1),
+    colors: DISC_COLORS,
+    status: session.status,
+    drop: (col) => dropRef.current(col),
+  })
+
+  useEffect(() => {
+    bridgeRef.current.board = c4?.board ?? Array(W * H).fill(0)
+    bridgeRef.current.myTurn = !!myTurn
+    bridgeRef.current.myValue = Math.max(1, myIndex + 1)
+    bridgeRef.current.colors = DISC_COLORS
+    bridgeRef.current.status = session.status
+    bridgeRef.current.drop = (col) => dropRef.current(col)
+  }, [c4?.board, myTurn, myIndex, session.status])
+
+  if (!c4) return <p className="race-hint">Setting up the board…</p>
 
   return (
     <div className="race-layout">
@@ -96,30 +118,14 @@ export function Connect4View(props: GameViewProps) {
           )}
         </div>
 
-        <div className="connect4-cols">
-          {Array.from({ length: W }).map((_, col) => (
-            <button
-              key={col}
-              type="button"
-              className="c4-drop"
-              onClick={() => drop(col)}
-              disabled={!myTurn || dropRow(c4.board, col) < 0}
-              aria-label={`Drop in column ${col + 1}`}
-            >
-              ▼
-            </button>
-          ))}
-        </div>
-
-        <div className="connect4-board">
-          {c4.board.map((v, i) => (
-            <div
-              key={i}
-              className="connect4-cell"
-              style={v > 0 ? { background: DISC_COLORS[(v - 1) % DISC_COLORS.length] } : undefined}
-            />
-          ))}
-        </div>
+        <PhaserGame
+          sceneFactory={makeConnect4Scene}
+          bridgeRef={bridgeRef}
+          width={C4_W}
+          height={C4_H}
+          background="#0b1220"
+          className="phaser-canvas"
+        />
       </div>
 
       <aside className="race-side">

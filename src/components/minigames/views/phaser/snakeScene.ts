@@ -1,4 +1,5 @@
 import type { SceneFactory } from './PhaserGame'
+import { drawBox, drawDisc3d, drawSky, shade } from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -72,7 +73,6 @@ export const makeSnakeScene: SceneFactory = (Phaser, bridgeRef) => {
     }
 
     turn(d: Pt) {
-      // Disallow reversing directly into the neck.
       if (d.x === -this.dir.x && d.y === -this.dir.y) return
       this.nextDir = d
     }
@@ -130,7 +130,6 @@ export const makeSnakeScene: SceneFactory = (Phaser, bridgeRef) => {
           this.step()
         }
       } else if (this.alive && this.over()) {
-        // round timed out while still alive — lock in final score
         if (!this.reportedDead) {
           this.reportedDead = true
           bridgeRef.current.report({ score: this.score, alive: true, finished: false })
@@ -142,23 +141,48 @@ export const makeSnakeScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      g.fillStyle(0x10151f, 1)
-      g.fillRect(0, 0, SNAKE_W, SNAKE_H)
-      g.lineStyle(1, 0x1b2433, 1)
-      for (let i = 1; i < GRID; i++) {
-        g.beginPath()
-        g.moveTo(i * SCELL, 0)
-        g.lineTo(i * SCELL, SNAKE_H)
-        g.moveTo(0, i * SCELL)
-        g.lineTo(SNAKE_W, i * SCELL)
-        g.strokePath()
+      drawSky(g, SNAKE_W, SNAKE_H, 0x0c1220, 0x070b12, 10)
+
+      for (let y = 0; y < GRID; y++) {
+        for (let x = 0; x < GRID; x++) {
+          const odd = (x + y) % 2 === 0
+          drawBox(
+            g,
+            x * SCELL + 1,
+            y * SCELL + 5,
+            SCELL - 3,
+            SCELL - 6,
+            3,
+            odd ? 0x152033 : 0x101826,
+            { round: 2 }
+          )
+        }
       }
-      g.fillStyle(0xf87171, 1)
-      g.fillCircle(this.food.x * SCELL + SCELL / 2, this.food.y * SCELL + SCELL / 2, SCELL / 2 - 3)
-      this.body.forEach((s, i) => {
-        g.fillStyle(i === 0 ? 0xc4b5fd : 0xa78bfa, 1)
-        g.fillRoundedRect(s.x * SCELL + 2, s.y * SCELL + 2, SCELL - 4, SCELL - 4, 5)
-      })
+
+      drawDisc3d(
+        g,
+        this.food.x * SCELL + SCELL / 2,
+        this.food.y * SCELL + SCELL / 2,
+        SCELL / 2 - 4,
+        6,
+        0xf87171
+      )
+
+      // Draw snake from tail → head so head sits on top
+      for (let i = this.body.length - 1; i >= 0; i--) {
+        const s = this.body[i]!
+        const isHead = i === 0
+        drawBox(
+          g,
+          s.x * SCELL + 3,
+          s.y * SCELL + 6,
+          SCELL - 6,
+          SCELL - 8,
+          isHead ? 9 : 6,
+          isHead ? 0xc4b5fd : shade(0xa78bfa, 0.85 + (i / this.body.length) * 0.2),
+          { round: 5 }
+        )
+      }
 
       this.scoreText.setText('Length: ' + this.body.length)
       if (!this.started()) {

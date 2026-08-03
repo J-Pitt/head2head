@@ -6,12 +6,14 @@ import { getMinigame } from '@/lib/minigames/catalog'
 import type { GameViewProps } from '@/lib/minigames/types'
 import PartyJoin from './PartyJoin'
 import PartyHub from './PartyHub'
+import ChatPanel from '@/components/ChatPanel'
 import { GameViewRouter } from './views/GameViewRouter'
 
 export default function MinigameParty() {
   const party = useMinigameParty()
+  const showChat = party.isOnline
   const me = party.players.find((p) => p.id === party.playerId)
-  const chat = useRoomChat(party.roomId, {
+  const chat = useRoomChat(showChat ? party.roomId : null, {
     playerId: party.playerId,
     playerName: me?.name ?? party.playerName ?? 'Player',
     avatar: me?.avatar ?? party.avatar,
@@ -27,7 +29,15 @@ export default function MinigameParty() {
         players={party.players}
         playerId={party.playerId}
         gameCode={party.gameCode}
+        isSolo={party.isSolo}
+        isLocal={party.isLocal}
+        multiplayerPick={party.multiplayerPick}
+        pickerPlayerId={party.pickerPlayerId}
+        canPickGame={party.canPickGame}
         beginGame={party.beginGame}
+        addLocalPlayer={party.isLocal ? party.addLocalPlayer : undefined}
+        renameLocalPlayer={party.isLocal ? party.renameLocalPlayer : undefined}
+        partyWins={party.partyWins}
         chatMessages={chat.messages}
         onSendChat={chat.send}
       />
@@ -62,6 +72,8 @@ export default function MinigameParty() {
             {meta.emoji} {meta.label}
           </span>
           {party.gameCode && <span className="room-code">{party.gameCode}</span>}
+          {party.isSolo && <span className="room-code">Solo</span>}
+          {party.isLocal && <span className="room-code">Local</span>}
         </div>
       </header>
 
@@ -79,7 +91,21 @@ export default function MinigameParty() {
         </div>
       )}
 
-      <GameViewRouter gameId={gameId} {...viewProps} />
+      <div className={`room-layout minigame-play-layout${showChat ? '' : ' room-layout-solo'}`}>
+        <main className="minigame-play-main">
+          <GameViewRouter gameId={gameId} {...viewProps} />
+        </main>
+        {showChat && (
+          <aside className="room-sidebar">
+            <ChatPanel
+              messages={chat.messages}
+              meId={party.playerId}
+              onSend={chat.send}
+              title="Room chat 📸"
+            />
+          </aside>
+        )}
+      </div>
     </div>
   )
 }

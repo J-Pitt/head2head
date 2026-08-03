@@ -12,15 +12,26 @@ async function parseResponse(res: Response, fallback: string) {
   } catch {
     data = {}
   }
-  if (!res.ok) throw new Error((data.error as string) || res.statusText || fallback)
+  if (!res.ok) throw new Error(formatJoinError(data, fallback, res))
   return data
 }
 
-export async function createTodRoom(hostName: string, avatar: string, playerId: string) {
+function formatJoinError(data: Record<string, unknown>, fallback: string, res: Response) {
+  const msg = (data.error as string) || res.statusText || fallback
+  const joinPath = data.joinPath as string | undefined
+  return joinPath ? `${msg} Try opening ${joinPath}` : msg
+}
+
+export async function createTodRoom(
+  hostName: string,
+  avatar: string,
+  playerId: string,
+  gameCode?: string
+) {
   const res = await fetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hostName, avatar, playerId }),
+    body: JSON.stringify({ hostName, avatar, playerId, gameCode: gameCode?.trim().toUpperCase() || undefined }),
   })
   const data = await parseResponse(res, 'Failed to create room')
   return data as { roomId: string; gameCode: string; hostId: string; players: Player[] }

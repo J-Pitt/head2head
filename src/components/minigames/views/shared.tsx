@@ -1,26 +1,28 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Player } from '@/lib/types'
 import type { GameViewProps, Progress } from '@/lib/minigames/types'
 import Avatar from '@/components/Avatar'
 import type { GameBridge, BridgeRef } from './phaser/PhaserGame'
 
-// Build a stable bridge object whose fields are refreshed every render so the
-// Phaser scene always sees current session timing + the latest report fn.
+// Stable bridge object; Phaser reads ref.current after each sync effect.
 export function useGameBridge(props: GameViewProps): BridgeRef {
   const ref = useRef<GameBridge>({
-    startAt: props.session.startAt ?? Date.now(),
+    startAt: props.session.startAt ?? 0,
     endAt: props.session.endAt ?? null,
     active: props.session.status === 'live',
     report: () => {},
     pendingMove: null,
     flap: false,
   })
-  ref.current.startAt = props.session.startAt ?? Date.now()
-  ref.current.endAt = props.session.endAt ?? null
-  ref.current.active = props.session.status === 'live'
-  ref.current.report = (p) => props.report(p)
+  const { session, report } = props
+  useEffect(() => {
+    ref.current.startAt = session.startAt ?? 0
+    ref.current.endAt = session.endAt ?? null
+    ref.current.active = session.status === 'live'
+    ref.current.report = (p) => report(p)
+  }, [session.startAt, session.endAt, session.status, report])
   return ref as BridgeRef
 }
 

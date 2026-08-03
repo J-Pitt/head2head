@@ -116,8 +116,9 @@ export async function POST(request: Request) {
 
     // Create room.
     const hostName = body.hostName && String(body.hostName).trim() ? String(body.hostName).trim() : 'Host'
-    const avatar = body.avatar ? String(body.avatar) : 'Maverick'
+    const avatar = body.avatar ? String(body.avatar) : 'duck'
     const playerId = body.playerId ? String(body.playerId) : randomUUID()
+    const requestedCode = body.gameCode ? String(body.gameCode).trim().toUpperCase() : ''
 
     const r = getRedis()
     if (!r) {
@@ -125,14 +126,28 @@ export async function POST(request: Request) {
     }
 
     let code = ''
-    let exists = true
-    for (let attempt = 0; attempt < 10 && exists; attempt++) {
-      code = randomGameCode()
-      const v = await r.get(todCodeKey(code))
-      exists = v != null
-    }
-    if (exists) {
-      return NextResponse.json({ success: false, error: 'Could not generate unique code' }, { status: 500 })
+    if (requestedCode) {
+      if (!/^[A-Z0-9]{4,6}$/.test(requestedCode)) {
+        return NextResponse.json(
+          { success: false, error: 'Password must be 4–6 letters or numbers' },
+          { status: 400 }
+        )
+      }
+      const taken = await r.get(todCodeKey(requestedCode))
+      if (taken) {
+        return NextResponse.json({ success: false, error: 'That password is already taken' }, { status: 409 })
+      }
+      code = requestedCode
+    } else {
+      let exists = true
+      for (let attempt = 0; attempt < 10 && exists; attempt++) {
+        code = randomGameCode()
+        const v = await r.get(todCodeKey(code))
+        exists = v != null
+      }
+      if (exists) {
+        return NextResponse.json({ success: false, error: 'Could not generate unique code' }, { status: 500 })
+      }
     }
 
     const roomId = randomUUID()

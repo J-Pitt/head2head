@@ -1,59 +1,122 @@
-// NSFW / spicy Truth or Dare prompts for an adults-only (18+) party game.
-
-export type TodDeckId = 'party' | 'kink'
-
-export const TOD_DECKS = [
-  { id: 'party' as const, label: 'Party', icon: '💋' },
-  { id: 'kink' as const, label: 'Kink', icon: '⛓️' },
+// NSFW truth + dare lists for an adults-only (18+) party game.
+// Sourced from the Truth or Dare "sexy" mode question lists.
+export const TRUTHS: string[] = [
+  "What's the most attractive quality in someone that has nothing to do with looks?",
+  "What's the best kiss you've ever had and why?",
+  "What's something that instantly puts you in the mood?",
+  "What's your idea of a perfect date night?",
+  "What's the most romantic or flirty thing someone has done for you?",
+  "What's a turn-on you're a little embarrassed to admit?",
+  "What's the sexiest compliment you've ever received?",
+  "What's your favorite way to be touched?",
+  "What's something you find attractive that most people don't?",
+  "What's the most daring thing you've done for someone you liked?",
+  "What's your wildest fantasy you'd actually try?",
+  "What's the riskiest place you've ever hooked up or fooled around?",
+  "What's the hottest text or DM you've ever sent or received?",
+  "What's something that always gets you going no matter what?",
+  "What body part on someone else turns you on the most?",
+  "What's a song or movie scene that always turns you on?",
+  "What's the most spontaneous sexual thing you've ever done?",
+  "What's one thing you've always wanted to try in bed?",
+  "What's the most attractive outfit you've seen someone wear?",
+  "What's your favorite part of foreplay?",
+  "What's the most impulsive or bold move you've made on someone?",
+  "What's a kink you've recently discovered you have?",
+  "What's the sexiest memory you keep coming back to?",
+  "What's something you'd only do with someone you really trust?",
+  "What's the most turned on you've ever been without actually doing anything?",
+  "What's the freakiest thing you've actually done in bed — not just thought about?",
+  "Have you ever been caught hooking up? What happened?",
+  "What's the most bodies you've had in one week?",
+  "Have you ever faked it? How many times and why?",
+  "What's the weirdest place you've ever masturbated?",
+  "Have you ever sent nudes to the wrong person? What happened?",
+  "What's something you've done during sex that you'd never admit to your friends?",
+  "What's your body count and are you proud or ashamed?",
+  "Have you ever hooked up with someone you definitely shouldn't have? Who?",
+  "What's the kinkiest thing someone has asked you to do — and did you do it?",
+  "Have you ever been with more than one person at the same time?",
+  "What's the longest you've gone at it in one session?",
+  "What's something you pretend you're not into but secretly love?",
+  "Have you ever recorded yourself or been recorded during sex?",
+  "What's the fastest you've ever gone from meeting someone to sleeping with them?",
+  "What's a sexual boundary you used to have that you've completely thrown out?",
+  "Have you ever sexted someone while you were in a relationship with someone else?",
+  "What's the most desperate thing you've ever done because you were horny?",
+  "If you could have anyone in this game do anything to you right now, who and what?",
 ]
 
-const PARTY_TRUTHS: string[] = [
-  "What's the wildest place you've ever hooked up?",
-  "What's a fantasy you've never told your partner about?",
-  "Who in this room would you most want to spend a night with?",
-  "What's the kinkiest thing you're secretly into?",
-  "When was the last time you sent or received a nude?",
-  "What's your favorite position, and why?",
-  "What's the most adventurous thing you've done in bed?",
-  "Have you ever had a one-night stand? Spill the details.",
-  "What's a turn-on you're a little embarrassed about?",
-  "What's the dirtiest thought you've had about someone here?",
-  "What's your body count, roughly?",
-  "Have you ever faked it? How often?",
-  "What's the naughtiest dream you can remember?",
-  "Where on your body do you most like to be touched?",
-  "What's the most scandalous thing in your search history?",
-  "Have you ever been caught in the act? What happened?",
-  "What's something you've always wanted to try but haven't?",
-  "Who was the best you've ever had, and what made them great?",
-  "What's your go-to move to turn someone on?",
-  "What's the most recent thing that got you hot and bothered?",
+export const DARES: string[] = [
+  "📸 Take a selfie right now — no fixing anything. Send it to the chat as-is.",
+  "📸 Take a photo from the neck down in whatever you're wearing. Send it.",
+  "📸 Send your sexiest mirror selfie to the chat. Work your angles.",
+  "📸 Take a close-up photo of your lips. Make it as seductive as possible.",
+  "📸 Send a photo of your neck and collarbone. Make it look hot.",
+  "📸 Take a photo showing off your legs. Send it.",
+  "📸 Snap a pic of yourself biting your lip. Send it.",
+  "📸 Take a 'just woke up in bed' photo and send it to the chat.",
+  "📸 Take a suggestive photo using only shadows and lighting. Send it.",
+  "📸 Send a photo of yourself with one less piece of clothing than you have on now.",
+  "📸 Take a photo of yourself from behind, looking over your shoulder. Send it.",
+  "📸 Show the group the last spicy photo in your camera roll (blur faces if needed).",
+  "📸 Take a photo in just your underwear and send it to the chat.",
+  "📸 Take a photo of your stomach — shirt pulled up or off. Send it.",
+  "📸 Send a chest/cleavage photo to the chat. You decide how much to show.",
+  "Run your fingers slowly from your neck down to your waist on camera.",
+  "Trace circles on your inner thigh with your fingertips for 15 seconds on camera.",
+  "Run your hands slowly through your hair, tilt your head back, and hold it for 10 seconds.",
+  "Touch yourself wherever feels good — 20 seconds, on camera, you pick the spot.",
+  "Rub the back of your neck slowly with your eyes closed for 15 seconds. Let everyone watch.",
+  "Run an ice cube or cold water across your chest on camera and react naturally.",
+  "Slowly trace your fingers across your stomach for 15 seconds on camera.",
+  "Place your hand on your inner thigh and slide it up as far as you dare. Show the group.",
+  "Caress your own arms, shoulders, and neck like someone else is doing it — 20 seconds.",
+  "Put your hand under your shirt and run it across your body for 15 seconds on camera.",
+  "Run your fingertips along the waistband of your pants or underwear slowly on camera.",
+  "Press your hands against your chest and slide them down your body to your hips. Do it slow.",
+  "Massage your own thigh slowly for 15 seconds while looking at the camera.",
+  "Take off one piece of clothing right now. Show the group.",
+  "Choose: lose your shirt or your pants for the next 3 rounds. Send proof.",
+  "Do a slow striptease — remove at least one item. Take your time with it.",
+  "Show the group your underwear without fully undressing. Get creative.",
+  "Undress to your underwear and do a slow spin on camera.",
+  "Unbutton or unzip something and leave it open for the rest of the round.",
+  "Put on the least amount of clothing you're comfortable with and show the group.",
+  "Pull your shirt off over your head as slowly as you can on camera.",
+  "Lower your waistband just enough to show your hip bones. Hold it for 10 seconds.",
+  "Record a 15-second voice note of your sexiest moan. Send it to the chat.",
+  "Whisper into a voice note exactly what you want done to you tonight. Send it.",
+  "Say 'I want you' in the most seductive voice you can. Record it and send it.",
+  "Do your best fake orgasm for the group. Full commitment — sell it.",
+  "Record yourself moaning someone's name the way you'd say it in bed. Send it.",
+  "Whisper a dirty fantasy into a voice note — 30 seconds minimum. Send it.",
+  "Do a sexy dance for 30 seconds. No laughing — commit to it.",
+  "Suck on your finger slowly while looking at the camera for 10 seconds.",
+  "Bite your lip and give the camera your best 'come here' eyes for 15 seconds.",
+  "Lick your lips slowly and tell the group one thing that makes you weak.",
+  "Do a slow, sexy walk across the room on camera.",
+  "Demonstrate how you kiss — use the back of your hand. Make it look real.",
+  "Lay back and arch your back like something amazing just happened. Hold it 10 seconds.",
+  "Blindfold yourself with a shirt or scarf and describe your hottest fantasy for 60 seconds.",
+  "Strike your most seductive pose and hold it for 15 seconds. The group rates you 1–10.",
+  "Crawl across the bed or floor toward the camera as seductively as you can.",
+  "Pretend the camera is someone you're into — seduce it for 20 seconds without speaking.",
+  "Lay on your back, close your eyes, and act out exactly how you react when you're being pleased — 15 seconds.",
+  "Describe in detail how you like to be touched — where, how slow, how hard. Be specific.",
+  "Tell the group your dirtiest fantasy. Leave nothing out.",
+  "Describe step by step what you'd do to someone if you had them alone for one hour.",
+  "Describe the hottest sexual experience you've ever had. Set the scene.",
+  "Tell the group exactly what turns you on the fastest. Be specific.",
+  "Describe your body the way you'd want a lover to describe it.",
+  "Describe what you'd do on a one-night stand — from the first look to the morning after.",
+  "Tell the group the one move you do that always gets a reaction. Demonstrate if you dare.",
+  "Describe the last time you touched yourself — what were you thinking about?",
+  "Tell the group your biggest bedroom secret — something nobody here knows.",
 ]
 
-const PARTY_DARES: string[] = [
-  'Give someone in the room a slow, sensual shoulder massage for 30 seconds.',
-  'Demonstrate your best moan.',
-  'Take off one item of clothing of your choice.',
-  'Whisper the dirtiest thing you can think of to the person on your right.',
-  'Do your sexiest slow dance for the group for 20 seconds.',
-  'Send a flirty "I want you" text to your crush right now.',
-  'Let the group pick someone for you to give a lap dance for 15 seconds.',
-  'Show the spiciest photo currently in your camera roll.',
-  'Suck on your finger as seductively as you can for 10 seconds.',
-  'Describe in detail what you would do to the person across from you.',
-  'Recreate your favorite intimate sound effect.',
-  'Let someone in the room leave a (clothed) handprint anywhere they choose.',
-  'Do your best striptease to one verse of any song.',
-  'Bite your lip and give every person here your most seductive look.',
-  'Text your ex something flirty and read their reply aloud.',
-  'Act out your favorite position using only your hands.',
-  "Give a hickey-free neck kiss to the person of the group's choice.",
-  'Read the last spicy message you sent out loud.',
-  'Crawl across the room in your most seductive way.',
-  'Let the group dare you to do one thing — no take-backs.',
-]
-
-const KINK_TRUTHS: string[] = [
+/** BDSM / power-exchange prompts — opt-in per question via the Kink deck. */
+export const KINK_TRUTHS: string[] = [
   'Do you want to own me tonight, or be owned — and how absolute should that feel?',
   "What's the filthiest order you've wanted to give me but never dared?",
   "What's the most humiliating praise or degradation that would actually turn you on?",
@@ -81,7 +144,7 @@ const KINK_TRUTHS: string[] = [
   'If I put a collar, belt, or my hand on your throat (safe pressure only), what does that do to you?',
 ]
 
-const KINK_DARES: string[] = [
+export const KINK_DARES: string[] = [
   "Kneel. Ask permission to touch me. Don't move until I say yes.",
   'Present: hands behind your back, chest out / ass up — whichever I choose — and hold it.',
   "Let me restrain your wrists. You don't get them back until you earn it.",
@@ -106,34 +169,19 @@ const KINK_DARES: string[] = [
   'Hair pulled back, throat offered, mouth used — controlled, not reckless.',
   'I write a temporary rule on you (marker/lipstick): "Don\'t come," "Mine," "Ask." Obey it for the scene.',
   'Prone bone / bent over / folded — your choice of vulnerable position — and tell me to take you apart.',
-  "Endgame: I pick one — fuck you restrained until I'm done, sit on your face until I come, or edge you until you break etiquette and get punished. You say \"yes\" and we start.",
+  'Endgame: I pick one — fuck you restrained until I\'m done, sit on your face until I come, or edge you until you break etiquette and get punished. You say "yes" and we start.',
 ]
-
-const DECK_POOLS: Record<TodDeckId, { truth: string[]; dare: string[] }> = {
-  party: { truth: PARTY_TRUTHS, dare: PARTY_DARES },
-  kink: { truth: KINK_TRUTHS, dare: KINK_DARES },
-}
-
-// Kept for compatibility: the full pools across every deck.
-export const TRUTHS: string[] = [...PARTY_TRUTHS, ...KINK_TRUTHS]
-export const DARES: string[] = [...PARTY_DARES, ...KINK_DARES]
-
-function poolFor(kind: 'truth' | 'dare', decks?: TodDeckId[]): string[] {
-  const active = decks?.filter((d) => d in DECK_POOLS)
-  const ids: TodDeckId[] = active && active.length ? active : ['party']
-  return ids.flatMap((d) => DECK_POOLS[d][kind])
-}
 
 // The minigame loser's forfeit.
 export const FORFEIT = 'Send a sexy photo to the group chat 📸🔥'
 
-// Random prompt for the "surprise me" generator.
-export function randomTodPrompt(kind: 'truth' | 'dare', decks?: TodDeckId[]): string {
-  const list = poolFor(kind, decks)
+// Random prompt for the "surprise me" generator (standard NSFW pool).
+export function randomTodPrompt(kind: 'truth' | 'dare'): string {
+  const list = kind === 'truth' ? TRUTHS : DARES
   return list[Math.floor(Math.random() * list.length)]
 }
 
-export function randomPrompt(kind: 'truth' | 'dare', seed: number, decks?: TodDeckId[]): string {
-  const list = poolFor(kind, decks)
+export function randomPrompt(kind: 'truth' | 'dare', seed: number): string {
+  const list = kind === 'truth' ? TRUTHS : DARES
   return list[Math.abs(seed) % list.length]
 }
