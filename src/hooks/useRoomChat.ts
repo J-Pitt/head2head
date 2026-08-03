@@ -18,8 +18,12 @@ export function useRoomChat(
     if (!roomId || roomId === 'local') return
     let cancelled = false
     async function poll() {
-      const msgs = await fetchMessages(roomId as string)
-      if (!cancelled) setMessages(msgs)
+      try {
+        const msgs = await fetchMessages(roomId as string)
+        if (!cancelled) setMessages(msgs)
+      } catch {
+        /* retry next poll */
+      }
     }
     poll()
     const iv = setInterval(poll, CHAT_POLL_MS)

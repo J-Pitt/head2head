@@ -11,10 +11,14 @@ export type ChatMsg = {
 const BASE = '/api/head2head/chat'
 
 export async function fetchMessages(roomId: string): Promise<ChatMsg[]> {
-  const res = await fetch(`${BASE}?roomId=${encodeURIComponent(roomId)}`, { cache: 'no-store' })
-  if (!res.ok) return []
-  const data = await res.json().catch(() => ({}))
-  return Array.isArray(data.messages) ? (data.messages as ChatMsg[]) : []
+  try {
+    const res = await fetch(`${BASE}?roomId=${encodeURIComponent(roomId)}`, { cache: 'no-store' })
+    if (!res.ok) return []
+    const data = await res.json().catch(() => ({}))
+    return Array.isArray(data.messages) ? (data.messages as ChatMsg[]) : []
+  } catch {
+    return []
+  }
 }
 
 export async function sendMessage(

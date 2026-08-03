@@ -190,7 +190,7 @@ function TodJoin({ room }: { room: Room }) {
                 placeholder="GAME CODE"
                 maxLength={6}
                 className="code-input"
-                autoFocus={!room.playerName.trim()}
+                autoFocus={!joinCode}
               />
             </label>
           )}
@@ -201,7 +201,7 @@ function TodJoin({ room }: { room: Room }) {
               onChange={(e) => room.setPlayerName(e.target.value)}
               placeholder="Alex"
               maxLength={24}
-              autoFocus
+              autoFocus={mode !== 'join' || !!joinCode}
             />
           </label>
           <BoardPiecePicker selected={room.avatar} onSelect={room.setAvatar} />

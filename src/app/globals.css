@@ -956,14 +956,30 @@ body {
 }
 
 .room-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(176px, 220px);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 0.75rem;
-  align-items: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.room-layout > main {
+  flex: 1;
+  min-width: 0;
+}
+
+.room-layout > .room-sidebar {
+  flex: 0 0 clamp(176px, 20vw, 220px);
+  min-width: 0;
 }
 
 .room-layout-solo {
-  grid-template-columns: 1fr;
+  flex-direction: column;
+}
+
+.room-layout-solo > .room-sidebar {
+  display: none;
 }
 
 /* Sidebar chat: compact on desktop, short strip below game on mobile */
@@ -994,40 +1010,103 @@ body {
   .board-play-layout,
   .tod-setup-layout,
   .room-layout {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     gap: 0.65rem;
   }
 
-  .board-main-col {
-    order: 1;
+  .room-layout {
+    display: flex;
   }
 
-  .tod-setup-main {
-    order: 1;
-  }
-
+  .board-main-col,
+  .tod-setup-main,
   .room-layout > main {
     order: 1;
+    width: 100%;
   }
 
+  .board-play-layout > .board-chat-col,
+  .tod-setup-layout .tod-room-sidebar,
   .board-chat-col,
   .tod-room-sidebar,
   .room-layout > .room-sidebar {
     order: 2;
     position: static;
+    flex: none;
+    width: 100%;
+    align-self: stretch;
   }
 
   .board-chat-col .chat-embed,
   .tod-room-sidebar .chat-embed,
   .room-sidebar .chat-embed,
   .room-sidebar .chat-panel {
-    height: 200px;
-    max-height: 32dvh;
-    min-height: 160px;
+    height: auto;
+    max-height: 28dvh;
+    min-height: 140px;
   }
 
   .board-track {
     max-width: 100%;
+  }
+
+  .app-shell.tod-room-shell,
+  .tod-room-shell {
+    padding-left: max(0.65rem, env(safe-area-inset-left));
+    padding-right: max(0.65rem, env(safe-area-inset-right));
+    padding-top: max(0.65rem, env(safe-area-inset-top));
+  }
+
+  .room-bar {
+    gap: 0.45rem;
+  }
+
+  .room-bar > div:first-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    min-width: 0;
+  }
+
+  .room-code {
+    margin-left: 0;
+  }
+
+  .card.tod-stage,
+  .tod-stage.card {
+    padding: 1rem 0.85rem;
+    width: 100%;
+  }
+
+  .tod-setup-title {
+    font-size: clamp(1.35rem, 6vw, 1.75rem);
+  }
+
+  .lobby-stage .room-code-display {
+    font-size: clamp(1.35rem, 7vw, 1.75rem);
+  }
+
+  .board-stage-overlay-inner {
+    max-width: min(420px, 100%);
+    padding: 0 0.35rem;
+  }
+
+  .board-piece-anim {
+    transform: translate(
+      calc(-50% + (var(--stack) - (var(--stack-total) - 1) / 2) * 10px),
+      -50%
+    );
+  }
+
+  .board-piece-anim .board-piece {
+    width: min(100%, 28px) !important;
+    height: min(100%, 28px) !important;
+  }
+
+  .board-piece-picker .board-piece {
+    width: 40px !important;
+    height: 40px !important;
   }
 }
 
@@ -2945,7 +3024,10 @@ body {
   max-width: 1400px;
   display: flex;
   flex-direction: column;
-  padding-bottom: 1rem;
+  gap: 0.65rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  min-height: 100dvh;
+  overflow-x: clip;
 }
 
 .tod-room-layout {
@@ -2971,18 +3053,24 @@ body {
 }
 
 .tod-setup-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(176px, 220px);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 0.75rem;
-  align-items: start;
   width: 100%;
-}
-
-.tod-setup-main {
   min-width: 0;
 }
 
+.tod-setup-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .tod-setup-card {
+  width: 100%;
   max-width: 500px;
 }
 
@@ -2999,10 +3087,13 @@ body {
 }
 
 .tod-setup-layout .tod-room-sidebar {
+  flex: 0 0 clamp(176px, 22vw, 220px);
   position: sticky;
   top: 0.5rem;
   min-width: 0;
-  align-self: start;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
 }
 
 .tod-setup-layout .tod-room-sidebar .chat-embed {
@@ -3125,20 +3216,29 @@ body {
   overflow-y: auto;
 }
 
-/* Board play: board (with overlay) | chat — 2-column on desktop */
+/* Board play: board (with overlay) | chat — flex row on desktop */
 .board-play-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 280px);
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 0.85rem;
-  align-items: start;
   width: 100%;
+  min-width: 0;
 }
 
 .board-play-layout-solo {
-  grid-template-columns: 1fr;
+  flex-direction: column;
+}
+
+.board-play-layout > .board-chat-col {
+  flex: 0 0 clamp(200px, 22vw, 280px);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .board-main-col {
+  flex: 1;
   min-width: 0;
   width: 100%;
   position: relative;
@@ -3199,7 +3299,9 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 1.5rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) 0.5rem max(0.75rem, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: rgba(5, 8, 18, 0.72);
   backdrop-filter: blur(3px);
   border-radius: 0.75rem;
@@ -3313,8 +3415,8 @@ body {
 
 .board-course-canvas {
   position: relative;
-  width: min(98vw, 94dvh, 1800px);
-  max-width: 100%;
+  width: 100%;
+  max-width: min(100%, 94dvh, 1800px);
   margin: 0 auto;
   padding: 6px;
   box-sizing: border-box;
@@ -3330,7 +3432,7 @@ body {
 }
 
 .board-course-canvas-table {
-  width: min(98vw, calc(100dvh - 5.5rem), 1800px);
+  max-width: min(100%, calc(100dvh - 5.5rem), 1800px);
 }
 
 .board-course-trail {
@@ -4415,37 +4517,89 @@ body {
 @media (max-width: 767px) {
   .board-course-canvas,
   .board-course-canvas-table {
-    width: min(98vw, calc(100dvh - 8rem));
+    width: 100%;
+    max-width: min(100%, calc(100dvh - 8rem));
+    border-width: 3px;
+    border-radius: 14px;
+    padding: 4px;
+    box-shadow:
+      0 0 0 3px #fbbf24,
+      0 10px 28px rgba(30, 27, 75, 0.45);
   }
 
   .board-tile-slot {
     padding: 0;
   }
 
+  .board-tile-slot .board-tile,
   .board-tile {
-    transform: rotate(var(--tile-tilt, 0deg)) scale(1.12);
-    min-height: clamp(42px, 12vw, 64px);
+    transform: rotate(var(--tile-tilt, 0deg)) scale(1.02);
+    min-height: 0;
+    border-radius: 8px;
+    border-width: 1.5px;
   }
 
   @keyframes tile-bob {
-    0%, 100% { transform: rotate(var(--tile-tilt, 0deg)) scale(1.12) translateY(0); }
-    50% { transform: rotate(var(--tile-tilt, 0deg)) scale(1.12) translateY(-2px); }
+    0%, 100% { transform: rotate(var(--tile-tilt, 0deg)) scale(1.02) translateY(0); }
+    50% { transform: rotate(var(--tile-tilt, 0deg)) scale(1.02) translateY(-1px); }
   }
 
   .board-center-hub-inner {
-    gap: 0.4rem;
-    padding: 0.5rem;
+    gap: 0.35rem;
+    padding: 0.4rem;
+  }
+
+  .board-center-hub .board-roll-btn {
+    min-width: 0;
+    width: 100%;
+    max-width: 12rem;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.95rem;
+  }
+
+  .board-center-title {
+    font-size: clamp(1rem, 4.5vw, 1.4rem);
+  }
+
+  .board-center-sub {
+    font-size: clamp(0.65rem, 2.8vw, 0.85rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell {
+    padding: 0.75rem 0.65rem 1.25rem;
+  }
+
+  .tod-lets-go,
+  .btn.full {
+    min-height: 48px;
+  }
+
+  .board-piece-grid {
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  }
+
+  .local-player-editor-main {
+    width: 100%;
+  }
+
+  .local-player-piece-btn {
+    margin-left: 0;
   }
 }
 
 @media (min-width: 900px) {
   .board-course-canvas-table {
-    width: min(97vw, calc(100dvh - 5rem), 1800px);
+    max-width: min(100%, calc(100dvh - 5rem), 1800px);
   }
 
   .board-tile {
     border-radius: 14px;
-    min-height: clamp(56px, 9vw, 96px);
+  }
+
+  .board-tile-slot .board-tile {
+    min-height: 0;
   }
 
   .board-tile.path-out-e::after {
@@ -4530,12 +4684,6 @@ body {
 
 .board-piece-grid {
   grid-template-columns: repeat(6, 1fr);
-}
-
-@media (max-width: 480px) {
-  .board-piece-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
 
 .board-piece-option.selected {
@@ -4655,6 +4803,8 @@ body {
 .room-bar-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.4rem;
 }
 
@@ -4663,6 +4813,20 @@ body {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.lobby-stage .party-players {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  width: 100%;
+  align-items: stretch;
+}
+
+.lobby-stage .party-players li {
+  width: 100%;
+  border-radius: 0.75rem;
+  align-items: flex-start;
+  padding: 0.55rem 0.65rem;
 }
 
 .local-player-meta {
