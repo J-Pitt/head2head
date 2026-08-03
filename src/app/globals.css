@@ -1007,7 +1007,42 @@ body {
   }
 
   .app-shell.tod-room-shell {
-    max-width: min(1600px, 100vw - 1rem);
+    max-width: min(1680px, 100vw - 1rem);
+  }
+
+  /* Desktop: grid so the board column gets real width, not a shrink-wrapped flex item */
+  .board-play-layout:not(.board-play-layout-solo) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(200px, 16vw, 240px);
+    align-items: start;
+  }
+
+  .board-play-layout:not(.board-play-layout-solo) > .board-chat-col {
+    flex: none;
+    width: auto;
+  }
+
+  .board-main-col {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
+  }
+
+  .board-course-canvas {
+    width: min(calc(100vw - 18rem), 94dvh, 1800px);
+    max-width: 100%;
+  }
+
+  .board-course-canvas-table {
+    width: min(calc(100vw - 18rem), calc(100dvh - 5.5rem), 1800px);
+    max-width: 100%;
+  }
+
+  .board-play-layout-solo .board-course-canvas,
+  .board-play-layout-solo .board-course-canvas-table {
+    width: min(98vw, calc(100dvh - 5.5rem), 1800px);
+    max-width: 100%;
   }
 }
 
@@ -3026,7 +3061,7 @@ body {
 
 /* ---- Board game ---- */
 .tod-room-shell {
-  max-width: min(1600px, 100vw - 1rem);
+  max-width: min(1680px, 100vw - 1rem);
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -3036,7 +3071,7 @@ body {
 }
 
 .app-shell.tod-room-shell {
-  max-width: min(1600px, 100vw - 1rem);
+  max-width: min(1680px, 100vw - 1rem);
 }
 
 .tod-room-layout {
@@ -3247,9 +3282,9 @@ body {
 }
 
 .board-main-col {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-width: 0;
-  width: auto;
+  width: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -3424,8 +3459,8 @@ body {
 
 .board-course-canvas {
   position: relative;
-  width: min(98vw, 94dvh, 1800px);
-  max-width: 100%;
+  width: 100%;
+  max-width: min(100%, 94dvh, 1800px);
   margin: 0 auto;
   padding: 6px;
   box-sizing: border-box;
@@ -3441,7 +3476,8 @@ body {
 }
 
 .board-course-canvas-table {
-  width: min(98vw, calc(100dvh - 5.5rem), 1800px);
+  width: 100%;
+  max-width: min(100%, calc(100dvh - 5.5rem), 1800px);
 }
 
 .board-course-trail {
@@ -4599,7 +4635,14 @@ body {
 }
 
 @media (min-width: 900px) {
+  .board-course-canvas,
   .board-course-canvas-table {
+    width: min(calc(100vw - 18rem), calc(100dvh - 5rem), 1800px);
+    max-width: 100%;
+  }
+
+  .board-play-layout-solo .board-course-canvas,
+  .board-play-layout-solo .board-course-canvas-table {
     width: min(97vw, calc(100dvh - 5rem), 1800px);
   }
 
