@@ -1003,6 +1003,11 @@ body {
 
   .board-play-panel {
     max-width: none;
+    width: 100%;
+  }
+
+  .app-shell.tod-room-shell {
+    max-width: min(1600px, 100vw - 1rem);
   }
 }
 
@@ -3021,13 +3026,17 @@ body {
 
 /* ---- Board game ---- */
 .tod-room-shell {
-  max-width: 1400px;
+  max-width: min(1600px, 100vw - 1rem);
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
   min-height: 100dvh;
   overflow-x: clip;
+}
+
+.app-shell.tod-room-shell {
+  max-width: min(1600px, 100vw - 1rem);
 }
 
 .tod-room-layout {
@@ -3231,20 +3240,20 @@ body {
 }
 
 .board-play-layout > .board-chat-col {
-  flex: 0 0 clamp(200px, 22vw, 280px);
+  flex: 0 0 clamp(200px, 18vw, 260px);
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .board-main-col {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
-  width: 100%;
+  width: auto;
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0.75rem;
 }
 
@@ -3415,8 +3424,8 @@ body {
 
 .board-course-canvas {
   position: relative;
-  width: 100%;
-  max-width: min(100%, 94dvh, 1800px);
+  width: min(98vw, 94dvh, 1800px);
+  max-width: 100%;
   margin: 0 auto;
   padding: 6px;
   box-sizing: border-box;
@@ -3432,7 +3441,7 @@ body {
 }
 
 .board-course-canvas-table {
-  max-width: min(100%, calc(100dvh - 5.5rem), 1800px);
+  width: min(98vw, calc(100dvh - 5.5rem), 1800px);
 }
 
 .board-course-trail {
@@ -4591,11 +4600,12 @@ body {
 
 @media (min-width: 900px) {
   .board-course-canvas-table {
-    max-width: min(100%, calc(100dvh - 5rem), 1800px);
+    width: min(97vw, calc(100dvh - 5rem), 1800px);
   }
 
   .board-tile {
     border-radius: 14px;
+    min-height: clamp(56px, 9vw, 96px);
   }
 
   .board-tile-slot .board-tile {
