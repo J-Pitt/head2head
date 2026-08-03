@@ -1,9 +1,10 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import RatingPicker from '@/components/tod/RatingPicker'
 import BoardPiecePicker from '@/components/tod/BoardPiecePicker'
+import ThreeDBoardTruthOrDare from '@/components/tod/ThreeDBoardTruthOrDare'
 import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
@@ -124,6 +125,26 @@ type Room = ReturnType<typeof useTodRoom>
 function TodJoin({ room }: { room: Room }) {
   const mode = room.resolvedEntryMode ?? room.entryMode
   const joinCode = room.resolvedJoinCode
+  const [showBoard3d, setShowBoard3d] = useState(false)
+
+  if (showBoard3d) {
+    return (
+      <div className="app-shell tod-room-shell">
+        <TodHeader
+          gameCode={null}
+          isLocal
+          playerCount={0}
+          isOnBreak={false}
+          onToggleBreak={() => {}}
+          onLeave={() => setShowBoard3d(false)}
+        />
+        <ThreeDBoardTruthOrDare />
+        <button type="button" className="btn-ghost btn-sm" onClick={() => setShowBoard3d(false)}>
+          ← Back to setup
+        </button>
+      </div>
+    )
+  }
 
   if (!mode) {
     return (
@@ -141,6 +162,14 @@ function TodJoin({ room }: { room: Room }) {
           <Link href="/" className="btn btn-primary full">
             ← Home
           </Link>
+          <div className="tod-board3d-entry">
+            <p className="lobby-sub">
+              Or try the experimental local 3D race board with dice and selectable pieces.
+            </p>
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setShowBoard3d(true)}>
+              Launch 3D board mode
+            </button>
+          </div>
         </section>
       </div>
     )
@@ -208,6 +237,16 @@ function TodJoin({ room }: { room: Room }) {
           <button type="button" className="btn btn-primary full tod-lets-go" onClick={enterLobby}>
             {mode === 'join' ? 'Join lobby' : 'Enter lobby'}
           </button>
+          {mode === 'local' && (
+            <div className="tod-board3d-entry">
+              <p className="lobby-sub">
+                Want a 3D race board instead? Dice turns, truth/dare tiles, and player pieces.
+              </p>
+              <button type="button" className="btn-ghost btn-sm" onClick={() => setShowBoard3d(true)}>
+                Launch 3D board mode
+              </button>
+            </div>
+          )}
           {room.error && <p className="error">{room.error}</p>}
         </section>
       </TodSetupLayout>

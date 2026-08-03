@@ -5254,3 +5254,109 @@ body {
 .btn-chat-attach:hover {
   border-color: var(--accent-dim);
 }
+
+.board3d-shell {
+  margin-top: 1rem;
+}
+
+.board3d-toolbar h2 {
+  margin: 0 0 0.25rem;
+}
+
+.board3d-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+}
+
+.board3d-canvas-wrap {
+  min-height: 430px;
+  border-radius: 0.9rem;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.board3d-panel {
+  background: rgba(12, 14, 20, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  padding: 0.85rem;
+}
+
+.board3d-event {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.board3d-turn,
+.board3d-roll {
+  margin: 0.35rem 0;
+  color: var(--muted);
+}
+
+.board3d-actions {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.board3d-actions input {
+  width: 100%;
+  border-radius: 0.55rem;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0.5rem 0.65rem;
+}
+
+.board3d-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.board3d-pieces .is-selected {
+  border-color: var(--accent-dim);
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.board3d-players {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.board3d-players li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.board3d-players li.is-turn {
+  border-color: var(--accent-dim);
+  color: var(--text);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.tod-board3d-entry {
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed var(--border);
+}
+
+@media (max-width: 960px) {
+  .board3d-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .board3d-canvas-wrap {
+    min-height: 340px;
+  }
+}
