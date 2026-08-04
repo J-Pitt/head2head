@@ -1081,98 +1081,6 @@ body {
   .board-play-panel-table {
     max-width: 100%;
   }
-
-  .board-stage-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    align-items: stretch;
-    justify-content: stretch;
-    padding:
-      max(0.5rem, env(safe-area-inset-top))
-      max(0.5rem, env(safe-area-inset-right))
-      max(0.5rem, env(safe-area-inset-bottom))
-      max(0.5rem, env(safe-area-inset-left));
-    border-radius: 0;
-    overflow: hidden;
-  }
-
-  .tod-room-shell:has(.board-stage-overlay) {
-    overflow: hidden;
-    height: 100dvh;
-  }
-
-  .board-stage-overlay-inner {
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    padding: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .board-stage-overlay-inner .card {
-    width: 100%;
-    max-width: 100%;
-    margin: 0 auto;
-    padding: 0.85rem 0.75rem;
-    box-sizing: border-box;
-    flex: 0 0 auto;
-  }
-
-  .board-stage-overlay-inner:has(.minigame-play-shell) {
-    max-width: 100%;
-  }
-
-  .board-stage-overlay .minigame-play-shell {
-    max-width: 100%;
-    overflow: hidden;
-  }
-
-  .board-stage-overlay .minigame-play-shell .tod-kicker {
-    font-size: 0.72rem;
-    line-height: 1.4;
-    text-wrap: balance;
-  }
-
-  .board-stage-overlay .race-layout {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.65rem;
-    width: 100%;
-  }
-
-  .board-stage-overlay .race-main {
-    width: 100%;
-    align-items: stretch;
-  }
-
-  .board-stage-overlay .race-side {
-    display: none;
-  }
-
-  .board-stage-overlay .phaser-stage {
-    width: 100% !important;
-    max-width: 100%;
-    transform: none;
-    margin-inline: auto;
-  }
-
-  .board-stage-overlay .race-hint {
-    max-width: none;
-    font-size: 0.75rem;
-  }
-
-  .board-stage-overlay .tod-stage {
-    gap: 0.75rem;
-  }
-
-  .board-stage-overlay .tod-onspot h2 {
-    font-size: clamp(1rem, 4.5vw, 1.35rem);
-  }
 }
 
 .sidebar-chat .chat-header,
@@ -3422,19 +3330,24 @@ body {
 
 /* Overlay — dims the board and centers the question/event card */
 .board-stage-overlay {
-  position: absolute;
-  inset: 0;
   z-index: 10;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: clamp(1rem, 4vw, 2rem);
   background:
     radial-gradient(ellipse 90% 70% at 50% 40%, rgba(15, 23, 42, 0.55), rgba(5, 8, 18, 0.88));
-  backdrop-filter: blur(8px) saturate(1.15);
-  -webkit-backdrop-filter: blur(8px) saturate(1.15);
-  border-radius: clamp(1.25rem, 3vw, 2rem);
   animation: board-overlay-in 0.22s ease-out;
+}
+
+@media (min-width: 900px) {
+  .board-stage-overlay {
+    position: absolute;
+    inset: 0;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: clamp(1rem, 4vw, 2rem);
+    backdrop-filter: blur(8px) saturate(1.15);
+    -webkit-backdrop-filter: blur(8px) saturate(1.15);
+    border-radius: clamp(1.25rem, 3vw, 2rem);
+  }
 }
 
 @keyframes board-overlay-in {
@@ -3472,6 +3385,153 @@ body {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile: full-viewport modals (must follow base overlay rules) */
+@media (max-width: 899px) {
+  .board-stage-overlay,
+  .board-stage-overlay--viewport {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    align-items: stretch;
+    justify-content: stretch;
+    padding:
+      max(0.45rem, env(safe-area-inset-top))
+      max(0.45rem, env(safe-area-inset-right))
+      max(0.45rem, env(safe-area-inset-bottom))
+      max(0.45rem, env(safe-area-inset-left));
+    border-radius: 0;
+    overflow: hidden;
+    backdrop-filter: blur(10px) saturate(1.1);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  }
+
+  body:has(.board-stage-overlay--viewport) {
+    overflow: hidden;
+  }
+
+  .board-stage-overlay-inner {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: board-stage-pop 0.28s ease-out;
+  }
+
+  .board-stage-overlay-inner .card {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0.75rem 0.65rem;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 0.85rem;
+  }
+
+  .board-stage-overlay .minigame-play-shell {
+    flex: 1;
+    min-height: 0;
+    gap: 0.45rem;
+    overflow: hidden;
+  }
+
+  .board-stage-overlay .minigame-play-shell .tod-kicker {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+
+  .board-stage-overlay .race-layout {
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .board-stage-overlay .race-main {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    align-items: stretch;
+    gap: 0.4rem;
+    overflow: hidden;
+  }
+
+  .board-stage-overlay .race-status {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+  }
+
+  .board-stage-overlay .race-side {
+    display: none;
+  }
+
+  .board-stage-overlay .phaser-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100% !important;
+    max-width: 100%;
+    max-height: min(42dvh, calc(100vw * 480 / 360));
+    aspect-ratio: 360 / 480;
+    transform: none;
+    margin-inline: auto;
+  }
+
+  .board-stage-overlay .tap-button {
+    flex-shrink: 0;
+    width: 100%;
+    padding: 0.65rem;
+    font-size: 0.95rem;
+  }
+
+  .board-stage-overlay .race-hint {
+    display: none;
+  }
+
+  .board-stage-overlay .minigame-play-shell > .race-board {
+    flex-shrink: 0;
+    max-height: 28dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .board-stage-overlay .tod-stage {
+    flex: 1;
+    min-height: 0;
+    gap: 0.65rem;
+    justify-content: center;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .board-stage-overlay .tod-onspot h2 {
+    font-size: clamp(1rem, 4.5vw, 1.3rem);
+  }
+
+  .board-stage-overlay .board-answer-form,
+  .board-stage-overlay .board-answer-text {
+    flex-shrink: 0;
+  }
+
+  .board-stage-overlay .board-answer-text {
+    min-height: 4rem;
+  }
+
+  .board-stage-overlay .board-answer-reveal-photo {
+    max-width: 100%;
   }
 }
 
