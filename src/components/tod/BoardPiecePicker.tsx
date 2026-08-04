@@ -18,19 +18,20 @@ export default function BoardPiecePicker({ selected, onSelect }: Props) {
   return (
     <div className="avatar-picker board-piece-picker">
       <p className="label">Pick your game piece</p>
-      <p className="board-piece-hint">Cute, silly, or totally random — choose what represents you.</p>
+      <p className="board-piece-hint">Choose a token — car, boat, spaceship, or plane.</p>
       <div className="avatar-grid board-piece-grid">
         {BOARD_PIECES.map((p) => (
           <button
             key={p.id}
             type="button"
             className={`avatar-option board-piece-option ${selected === p.id ? 'selected' : ''}`}
+            style={{ ['--piece-glow' as string]: p.glow }}
             onClick={() => onSelect(p.id)}
             title={p.label}
             aria-label={p.label}
             aria-pressed={selected === p.id}
           >
-            <BoardPiece pieceId={p.id} size={48} />
+            <BoardPiece pieceId={p.id} size={52} />
           </button>
         ))}
       </div>

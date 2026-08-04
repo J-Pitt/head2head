@@ -74,5 +74,15 @@ export default function PhaserGame<B = GameBridge>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return <div ref={parentRef} className={`phaser-stage ${className ?? ''}`.trim()} style={{ width: '100%', maxWidth: width }} />
+  return (
+    <div
+      ref={parentRef}
+      className={`phaser-stage ${className ?? ''}`.trim()}
+      style={{
+        width: '100%',
+        maxWidth: width,
+        aspectRatio: `${width} / ${height}`,
+      }}
+    />
+  )
 }

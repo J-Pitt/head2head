@@ -7,12 +7,22 @@ import {
 } from '@/lib/tod/boardPieces'
 
 describe('boardPieces', () => {
-  it('default piece exists', () => {
+  it('offers four vehicle tokens', () => {
+    expect(BOARD_PIECES).toHaveLength(4)
+    expect(BOARD_PIECES.map((p) => p.id)).toEqual(['car', 'boat', 'spaceship', 'plane'])
+  })
+
+  it('default piece is car', () => {
+    expect(DEFAULT_BOARD_PIECE).toBe('car')
     expect(isBoardPiece(DEFAULT_BOARD_PIECE)).toBe(true)
   })
 
   it('getBoardPiece returns known piece', () => {
-    expect(getBoardPiece('duck').emoji).toBe('🦆')
+    expect(getBoardPiece('car').label).toBe('Car')
+  })
+
+  it('maps legacy duck id to boat', () => {
+    expect(getBoardPiece('duck').id).toBe('boat')
   })
 
   it('getBoardPiece maps unknown id to stable piece', () => {

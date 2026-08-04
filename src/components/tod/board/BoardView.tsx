@@ -129,27 +129,37 @@ function BoardMaze({
 
   return (
     <div className="board-track board-track-course">
-      <div
-        className="board-course-canvas board-course-canvas-table"
-        style={{ aspectRatio: `${layout.spanCols} / ${layout.spanRows}` }}
-      >
-        <CourseTrail tiles={tiles} layout={layout} />
-        {tiles.map((tile, idx) => (
-          <Tile
-            key={tile.i}
-            tile={tile}
-            layout={layout}
-            prev={tiles[idx - 1]}
-            next={tiles[idx + 1]}
-            arrow={arrowFor(tile, tiles[idx + 1])}
-          />
-        ))}
-        {center && (
-          <div className="board-center-hub" style={boardCenterSlotStyle(layout)}>
-            {center}
-          </div>
-        )}
-        {children}
+      <div className="board-stage-shell">
+        <div className="board-stage-backdrop" aria-hidden="true">
+          <span className="board-stage-orb board-stage-orb-a" />
+          <span className="board-stage-orb board-stage-orb-b" />
+          <span className="board-stage-orb board-stage-orb-c" />
+        </div>
+        <div
+          className="board-course-canvas board-course-canvas-table"
+          style={{
+            aspectRatio: `${layout.spanCols} / ${layout.spanRows}`,
+            ['--board-aspect' as string]: `${layout.spanCols} / ${layout.spanRows}`,
+          }}
+        >
+          <CourseTrail tiles={tiles} layout={layout} />
+          {tiles.map((tile, idx) => (
+            <Tile
+              key={tile.i}
+              tile={tile}
+              layout={layout}
+              prev={tiles[idx - 1]}
+              next={tiles[idx + 1]}
+              arrow={arrowFor(tile, tiles[idx + 1])}
+            />
+          ))}
+          {center && (
+            <div className="board-center-hub" style={boardCenterSlotStyle(layout)}>
+              {center}
+            </div>
+          )}
+          {children}
+        </div>
       </div>
     </div>
   )
@@ -164,7 +174,7 @@ export function BoardPreview() {
         tiles={tiles}
         center={
           <div className="board-center-hub-inner">
-            <p className="board-center-title">Head2Head</p>
+            <p className="board-center-title">Truth or Dare</p>
             <p className="board-center-sub">Race the outer path</p>
           </div>
         }
@@ -179,19 +189,6 @@ function dirBetween(from: BoardTile, to: BoardTile): 'n' | 's' | 'e' | 'w' | nul
   if (to.row > from.row) return 's'
   if (to.row < from.row) return 'n'
   return null
-}
-
-function tilePathClasses(tile: BoardTile, prev: BoardTile | undefined, next: BoardTile | undefined): string {
-  const cls: string[] = []
-  if (prev) {
-    const d = dirBetween(prev, tile)
-    if (d) cls.push(`path-in-${d}`)
-  }
-  if (next) {
-    const d = dirBetween(tile, next)
-    if (d) cls.push(`path-out-${d}`)
-  }
-  return cls.join(' ')
 }
 
 function arrowFor(tile: BoardTile, next: BoardTile | undefined): string | null {
@@ -243,7 +240,7 @@ function BoardTrack({
       </div>
     ) : (
       <div className="board-center-hub-inner">
-        <p className="board-center-title">Head2Head</p>
+        <p className="board-center-title">Truth or Dare</p>
         <p className="board-center-sub">Around the board</p>
       </div>
     )
@@ -363,7 +360,7 @@ function AnimatedPieces({ room, hold }: { room: Room; hold: boolean }) {
               title={p.name}
             >
               <div key={hopping ? tileIdx : 'idle'} className="board-piece-hop">
-                <BoardPiece pieceId={p.avatar} size={40} className="tile-token board-piece" />
+                <BoardPiece pieceId={p.avatar} size={46} className="tile-token board-piece" />
               </div>
             </div>
           )
@@ -419,15 +416,13 @@ function Tile({
   const meta = TILE_META[tile.type]
   const special = tile.type === 'special' && tile.special != null ? SPECIAL_CHALLENGES[tile.special] : null
   const endpoint = tile.type === 'start' || tile.type === 'finish'
-  const pathCls = tilePathClasses(tile, prev, next)
-  const label = special ? 'Special' : meta.label
-  const hasTunnel = pathCls.includes('path-')
   const corner = isPathCorner(prev, tile, next)
+  const label = special ? 'Special' : meta.label
   const slot = tileSlotStyle(layout, tile)
   return (
     <div className="board-tile-slot" style={slot}>
       <div
-        className={`board-tile tile-${tile.type} ${pathCls}${hasTunnel ? ' has-tunnel' : ''}${corner ? ' board-tile-corner' : ''}${endpoint ? ' board-tile-endpoint' : ''}`}
+        className={`board-tile tile-${tile.type}${corner ? ' board-tile-corner' : ''}${endpoint ? ' board-tile-endpoint' : ''}`}
         style={{
           ['--tile' as string]: meta.color,
           ['--tile-glow' as string]: meta.color,

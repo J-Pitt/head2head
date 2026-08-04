@@ -13,8 +13,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trivia or Dare — The Board Game",
-  description: "Think quick. Dare harder. Finish first. — a party board game for your crew.",
+  title: "Truth or Dare — Board game edition",
+  description: "Roll the dice, land on truth and dare tiles, and race to the finish with your crew.",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -1,10 +1,10 @@
 import { Suspense } from 'react'
-import GameApp from '@/components/GameApp'
+import BoardGameHome from '@/components/BoardGameHome'
 
 export default function Home() {
   return (
     <Suspense fallback={null}>
-      <GameApp />
+      <BoardGameHome />
     </Suspense>
   )
 }
