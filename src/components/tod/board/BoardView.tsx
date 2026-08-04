@@ -13,11 +13,10 @@ import {
   getBoardDisplayLayout,
   tileCenterPercent,
   tileSlotStyle,
-  boardCenterSlotStyle,
 } from '@/lib/tod/board'
 import type { BoardTile, BoardDisplayLayout } from '@/lib/tod/board'
 import { getQuestionById } from '@/lib/trivia'
-import { getDaresForMode, getTruthsForMode, getDaresForDeck, getTruthsForDeck, pickRandomPrompt } from '@/lib/tod/classic/lists'
+import { getDaresForMode, getTruthsForMode, getDaresForDeck, getTruthsForDeck, pickPromptChoices } from '@/lib/tod/classic/lists'
 import type { PromptDeckId } from '@/lib/tod/classic/lists'
 import { isVideoDataUrl } from '@/lib/chat'
 import { getMinigame } from '@/lib/minigames/catalog'
@@ -67,7 +66,8 @@ export default function BoardView({
 
   if (!b) return null
 
-  const overlayKey = `${b.phase}-${b.rollerId ?? ''}-${b.onSpotId ?? ''}-${b.questionId ?? ''}-${b.dice ?? ''}-${b.prompt ?? ''}`
+  // Don't include prompt in the key — remounting on submit was re-rolling choices.
+  const overlayKey = `${b.phase}-${b.rollerId ?? ''}-${b.onSpotId ?? ''}-${b.questionId ?? ''}-${b.dice ?? ''}`
 
   // Hold the resolution overlay until the dice tumble finishes so everyone sees the roll.
   const overlay =
@@ -153,13 +153,9 @@ function BoardMaze({
               arrow={arrowFor(tile, tiles[idx + 1])}
             />
           ))}
-          {center && (
-            <div className="board-center-hub" style={boardCenterSlotStyle(layout)}>
-              {center}
-            </div>
-          )}
           {children}
         </div>
+        {center && <div className="board-hub-dock">{center}</div>}
       </div>
     </div>
   )
@@ -169,13 +165,13 @@ export function BoardPreview() {
   const tiles = buildTiles(BOARD_COLS, BOARD_ROWS, { randomize: false })
   return (
     <div className="board-play-panel board-play-panel-preview board-play-panel-table">
-      <p className="board-legend">🚦 GO → around the board → 🏁 WIN</p>
+      <p className="board-legend">🚦 START → spiral inward → 🏁 FINISH</p>
       <BoardMaze
         tiles={tiles}
         center={
           <div className="board-center-hub-inner">
             <p className="board-center-title">Truth or Dare</p>
-            <p className="board-center-sub">Race the outer path</p>
+            <p className="board-center-sub">Race to the center</p>
           </div>
         }
       />
@@ -241,7 +237,7 @@ function BoardTrack({
     ) : (
       <div className="board-center-hub-inner">
         <p className="board-center-title">Truth or Dare</p>
-        <p className="board-center-sub">Around the board</p>
+        <p className="board-center-sub">Spiral to the finish</p>
       </div>
     )
 
@@ -437,7 +433,7 @@ function Tile({
             {special ? special.icon : meta.emoji}
           </span>
           <span className={endpoint ? 'tile-label' : 'tile-type-name'}>
-            {endpoint ? (tile.type === 'start' ? 'GO' : 'WIN') : label}
+            {endpoint ? (tile.type === 'start' ? 'START' : 'FINISH') : label}
           </span>
         </div>
         {arrow && corner && !endpoint && (
@@ -535,8 +531,13 @@ function BoardPrompt({ room }: { room: Room }) {
   const asker = room.players.find((p) => p.id === b.askerId)
   const [draft, setDraft] = useState('')
   const [promptMode, setPromptMode] = useState<'list' | 'custom'>('list')
-  const [suggestion, setSuggestion] = useState<{ text: string; idx: number } | null>(null)
-  const [promptDeck, setPromptDeck] = useState<PromptDeckId | null>(null)
+  const [choices, setChoices] = useState<{ text: string; idx: number }[]>([])
+  const [promptDeck, setPromptDeck] = useState<PromptDeckId | null>(() =>
+    (b.listMode ?? 'nsfw') === 'pg' ? 'standard' : null
+  )
+  const [submitting, setSubmitting] = useState(false)
+  const seenIdxRef = useRef<Set<number>>(new Set())
+  const sessionRef = useRef<string | null>(null)
 
   const isMine = b.onSpotId === room.playerId
   const canAnswer = isMine || (room.isLocal && !!b.onSpotId)
@@ -564,88 +565,102 @@ function BoardPrompt({ room }: { room: Room }) {
   const needsDeckPick = listMode === 'nsfw' && !promptDeck
   const activeDeck: PromptDeckId = promptDeck ?? 'standard'
 
+  function poolFor(c: 'truth' | 'dare', deck: PromptDeckId) {
+    if (listMode === 'pg') {
+      return c === 'truth' ? getTruthsForMode('pg') : getDaresForMode('pg')
+    }
+    return c === 'truth' ? getTruthsForDeck(deck) : getDaresForDeck(deck)
+  }
+
+  function usedFor(c: 'truth' | 'dare', deck: PromptDeckId) {
+    if (deck === 'kink') {
+      return c === 'truth' ? (b.usedKinkTruths ?? []) : (b.usedKinkDares ?? [])
+    }
+    return c === 'truth' ? (b.usedTruths ?? []) : (b.usedDares ?? [])
+  }
+
+  function drawChoices(c: 'truth' | 'dare', deck: PromptDeckId, exclude: number[]) {
+    const next = pickPromptChoices(
+      poolFor(c, deck),
+      usedFor(c, deck),
+      3,
+      exclude,
+      b.usedPromptTexts ?? []
+    )
+    for (const p of next) seenIdxRef.current.add(p.idx)
+    setChoices(next)
+    setPromptMode(next.length === 0 ? 'custom' : 'list')
+    return next
+  }
+
+  // Reset local writer state only when the asker session changes (new person / choice).
   useEffect(() => {
-    setPromptDeck(listMode === 'nsfw' ? null : 'standard')
-    setSuggestion(null)
+    if (!promptSessionKey) {
+      sessionRef.current = null
+      return
+    }
+    if (sessionRef.current === promptSessionKey) return
+    sessionRef.current = promptSessionKey
+    seenIdxRef.current = new Set()
+    setSubmitting(false)
     setDraft('')
     setPromptMode('list')
+    const deck: PromptDeckId | null = listMode === 'pg' ? 'standard' : null
+    setPromptDeck(deck)
+    setChoices([])
+    if (deck && choice) {
+      drawChoices(choice, deck, [])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [promptSessionKey, listMode, choice])
 
+  // If a submit didn't stick (sync race), unlock the buttons again.
   useEffect(() => {
-    if (!promptSessionKey || !choice || needsDeckPick) return
-    const pool =
-      listMode === 'pg'
-        ? choice === 'truth'
-          ? getTruthsForMode('pg')
-          : getDaresForMode('pg')
-        : choice === 'truth'
-          ? getTruthsForDeck(activeDeck)
-          : getDaresForDeck(activeDeck)
-    const used =
-      activeDeck === 'kink'
-        ? choice === 'truth'
-          ? (b.usedKinkTruths ?? [])
-          : (b.usedKinkDares ?? [])
-        : choice === 'truth'
-          ? (b.usedTruths ?? [])
-          : (b.usedDares ?? [])
-    const pick = pickRandomPrompt(pool, used)
-    if (pick) {
-      setSuggestion(pick)
-      setPromptMode('list')
-    } else {
-      setSuggestion(null)
-      setPromptMode('custom')
-    }
-    setDraft('')
-  }, [promptSessionKey, listMode, choice, activeDeck, needsDeckPick])
+    if (b.prompt || !submitting) return
+    const t = setTimeout(() => setSubmitting(false), 1200)
+    return () => clearTimeout(t)
+  }, [b.prompt, submitting])
 
-  function refreshSuggestion() {
-    if (!choice || needsDeckPick) return
-    const pool =
-      listMode === 'pg'
-        ? choice === 'truth'
-          ? getTruthsForMode('pg')
-          : getDaresForMode('pg')
-        : choice === 'truth'
-          ? getTruthsForDeck(activeDeck)
-          : getDaresForDeck(activeDeck)
-    const used =
-      activeDeck === 'kink'
-        ? choice === 'truth'
-          ? (b.usedKinkTruths ?? [])
-          : (b.usedKinkDares ?? [])
-        : choice === 'truth'
-          ? (b.usedTruths ?? [])
-          : (b.usedDares ?? [])
-    const next = pickRandomPrompt(pool, used, suggestion?.idx)
-    if (next) {
-      setSuggestion(next)
-      setPromptMode('list')
-    } else {
-      setSuggestion(null)
-      setPromptMode('custom')
+  function selectDeck(deck: PromptDeckId) {
+    if (!choice || submitting) return
+    seenIdxRef.current = new Set()
+    setPromptDeck(deck)
+    setDraft('')
+    drawChoices(choice, deck, [])
+  }
+
+  function refreshChoices() {
+    if (!choice || !promptDeck || submitting || promptMode !== 'list') return
+    const exclude = [...seenIdxRef.current]
+    const next = drawChoices(choice, promptDeck, exclude)
+    // If the pool was exhausted and we recycled, clear seen so future refreshes cycle again.
+    if (next.length > 0 && next.every((p) => exclude.includes(p.idx))) {
+      seenIdxRef.current = new Set(next.map((p) => p.idx))
     }
   }
 
-  const canRefresh = promptMode === 'list'
-
-  function useSuggestion() {
-    if (!suggestion || !choice) return
+  function useChoice(pick: { text: string; idx: number }) {
+    if (!choice || submitting || b.prompt) return
+    setSubmitting(true)
     room.signalTyping(false)
-    room.boardSubmitPrompt(suggestion.text, {
+    room.boardSubmitPrompt(pick.text, {
       choice,
-      idx: suggestion.idx,
+      idx: pick.idx,
       deck: listMode === 'nsfw' ? activeDeck : undefined,
     })
   }
 
   function submitCustom(e: FormEvent) {
     e.preventDefault()
-    if (draft.trim()) {
-      room.signalTyping(false)
-      room.boardSubmitPrompt(draft, listMode === 'nsfw' && promptDeck ? { deck: promptDeck } : undefined)
-    }
+    const text = draft.trim()
+    if (!text || !choice || submitting || b.prompt) return
+    setSubmitting(true)
+    room.signalTyping(false)
+    room.boardSubmitPrompt(text, {
+      choice,
+      custom: true,
+      deck: listMode === 'nsfw' && promptDeck ? promptDeck : undefined,
+    })
   }
 
   const targetName = isMine ? 'yourself' : onSpot?.name ?? 'them'
@@ -754,11 +769,17 @@ function BoardPrompt({ room }: { room: Room }) {
                   <button
                     type="button"
                     className="btn tod-deck-standard"
-                    onClick={() => setPromptDeck('standard')}
+                    disabled={submitting}
+                    onClick={() => selectDeck('standard')}
                   >
                     💋 Standard NSFW
                   </button>
-                  <button type="button" className="btn tod-deck-kink" onClick={() => setPromptDeck('kink')}>
+                  <button
+                    type="button"
+                    className="btn tod-deck-kink"
+                    disabled={submitting}
+                    onClick={() => selectDeck('kink')}
+                  >
                     ⛓️ Kink
                   </button>
                 </div>
@@ -769,50 +790,72 @@ function BoardPrompt({ room }: { room: Room }) {
             ) : (
               <>
                 <p className="tod-write-label">
-                  {promptMode === 'list' && suggestion
-                    ? `Suggested ${activeDeck === 'kink' ? 'kink ' : ''}${b.choice} for ${targetName}:`
-                    : `Pick a ${b.choice} for ${targetName}:`}
+                  {promptMode === 'list' && choices.length > 0
+                    ? `Pick a ${activeDeck === 'kink' ? 'kink ' : ''}${b.choice} for ${targetName}:`
+                    : `Write a ${b.choice} for ${targetName}:`}
                 </p>
                 {listMode === 'nsfw' && (
                   <div className="tod-deck-switch">
                     <button
                       type="button"
                       className={`btn-ghost btn-sm${activeDeck === 'standard' ? ' active' : ''}`}
-                      onClick={() => setPromptDeck('standard')}
+                      disabled={submitting}
+                      onClick={() => selectDeck('standard')}
                     >
                       💋 Standard
                     </button>
                     <button
                       type="button"
                       className={`btn-ghost btn-sm${activeDeck === 'kink' ? ' active' : ''}`}
-                      onClick={() => setPromptDeck('kink')}
+                      disabled={submitting}
+                      onClick={() => selectDeck('kink')}
                     >
                       ⛓️ Kink
                     </button>
                   </div>
                 )}
-                {promptMode === 'list' && suggestion ? (
+                {promptMode === 'list' && choices.length > 0 ? (
                   <>
-                    <div className="tod-prompt-suggestion">
-                      <p className="tod-prompt">{suggestion.text}</p>
-                    </div>
-                    <button type="button" className="btn btn-primary full" onClick={useSuggestion}>
-                      Use this prompt →
-                    </button>
-                    <div className="tod-prompt-alt">
-                      {canRefresh && suggestion && (
-                        <button type="button" className="btn-ghost btn-sm" onClick={refreshSuggestion}>
-                          🔄 Refresh
+                    <div className="tod-prompt-choices" role="list">
+                      {choices.map((pick, i) => (
+                        <button
+                          key={pick.idx}
+                          type="button"
+                          className="tod-prompt-choice"
+                          role="listitem"
+                          disabled={submitting}
+                          onClick={() => useChoice(pick)}
+                        >
+                          <span className="tod-prompt-choice-num">{i + 1}</span>
+                          <span className="tod-prompt-choice-text">{pick.text}</span>
                         </button>
-                      )}
-                      <button type="button" className="btn-ghost btn-sm" onClick={() => setPromptMode('custom')}>
+                      ))}
+                    </div>
+                    <div className="tod-prompt-alt">
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm"
+                        disabled={submitting}
+                        onClick={refreshChoices}
+                      >
+                        🔄 New choices
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm"
+                        disabled={submitting}
+                        onClick={() => {
+                          setPromptMode('custom')
+                          setDraft('')
+                        }}
+                      >
                         ✏️ Write your own
                       </button>
                     </div>
                   </>
                 ) : (
                   <>
-                    {promptMode === 'list' && !suggestion && (
+                    {promptMode === 'list' && choices.length === 0 && (
                       <p className="lobby-sub">All suggested prompts have been used — write your own:</p>
                     )}
                     <form className="tod-write-custom" onSubmit={submitCustom}>
@@ -828,21 +871,27 @@ function BoardPrompt({ room }: { room: Room }) {
                         rows={3}
                         className="tod-textarea"
                         autoFocus
+                        disabled={submitting}
                       />
-                      <button type="submit" className="btn btn-primary full" disabled={!draft.trim()}>
-                        Submit for everyone →
+                      <button
+                        type="submit"
+                        className="btn btn-primary full"
+                        disabled={!draft.trim() || submitting}
+                      >
+                        {submitting ? 'Submitting…' : 'Submit for everyone →'}
                       </button>
-                      {suggestion && (
+                      {choices.length > 0 && (
                         <button
                           type="button"
                           className="btn-ghost btn-sm"
+                          disabled={submitting}
                           onClick={() => {
                             setPromptMode('list')
                             setDraft('')
                             room.signalTyping(false)
                           }}
                         >
-                          ← Back to suggestions
+                          ← Back to choices
                         </button>
                       )}
                     </form>

@@ -102,7 +102,7 @@ export default function VictoryFireworks({ winnerName, pieceId, isHost, onBackTo
         </div>
         <BoardPiece pieceId={pieceId} size={96} className="victory-piece" />
         <h1 className="victory-title">{winnerName} wins!</h1>
-        <p className="victory-sub">They raced around the board and claimed the crown.</p>
+        <p className="victory-sub">They spiraled to the finish and claimed the crown.</p>
         {isHost ? (
           <button type="button" className="btn btn-primary victory-btn" onClick={onBackToLobby}>
             Back to lobby →

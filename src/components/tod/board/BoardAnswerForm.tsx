@@ -69,7 +69,7 @@ export default function BoardAnswerForm({ category, onSubmit, disabled, labels }
       </label>
 
       <div className="board-answer-upload">
-        <label className="btn btn-sm board-upload-btn">
+        <label className="btn btn-sm board-upload-btn" title="Photo or video, max 50MB">
           {uploadLabel}
           <input
             type="file"

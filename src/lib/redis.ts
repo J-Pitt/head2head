@@ -104,6 +104,26 @@ export async function getChat(roomId: string): Promise<unknown[]> {
   return raw.map((v) => (typeof v === 'string' ? safeParse(v) : v))
 }
 
+// —— Shared party playlist (YouTube queue) ——
+
+export function playlistKey(roomId: string) {
+  return `${REDIS_KEY_PREFIX}playlist:${roomId}`
+}
+
+export async function getPlaylist(roomId: string): Promise<unknown | null> {
+  const r = getRedis()
+  if (!r) return null
+  const raw = await r.get(playlistKey(roomId))
+  if (!raw) return null
+  return typeof raw === 'string' ? safeParse(raw) : raw
+}
+
+export async function setPlaylist(roomId: string, playlist: unknown) {
+  const r = getRedis()
+  if (!r) return
+  await r.set(playlistKey(roomId), JSON.stringify(playlist), { ex: ROOM_TTL_SEC })
+}
+
 // —— Truth or Dare rooms ——
 
 export function todRoomKey(roomId: string) {

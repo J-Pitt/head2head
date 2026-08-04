@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { resolveGameCode } from '@/lib/roomApi'
+import { clearTodSession, loadTodSession, type TodSession } from '@/lib/tod/session'
 
 function HomeQuickModeTile({
   className,
@@ -44,11 +45,19 @@ export default function BoardGameHome() {
   const [onlineAction, setOnlineAction] = useState<'join' | null>(null)
   const [joinGameCode, setJoinGameCode] = useState('')
   const [joinRouteError, setJoinRouteError] = useState('')
+  const [pendingRejoin, setPendingRejoin] = useState<TodSession | null>(null)
 
   const [minigamesOpen, setMinigamesOpen] = useState(false)
   const [minigamesOnlineOpen, setMinigamesOnlineOpen] = useState(false)
   const [minigamesJoinAction, setMinigamesJoinAction] = useState(false)
   const [minigamesJoinCode, setMinigamesJoinCode] = useState('')
+
+  useEffect(() => {
+    const saved = loadTodSession()
+    if (saved?.gameCode && saved.roomId !== 'local' && saved.entryMode !== 'classic') {
+      setPendingRejoin(saved)
+    }
+  }, [])
 
   function closeMinigamesPanel() {
     setMinigamesOpen(false)
@@ -73,6 +82,41 @@ export default function BoardGameHome() {
           </h1>
           <p className="tod-tagline">Roll the dice. Land on a tile. Truth, dare, or mini-game forfeit.</p>
         </header>
+
+        {pendingRejoin && (
+          <section className="card rejoin-card tod-glass">
+            <p className="lobby-sub">
+              Room <strong>{pendingRejoin.gameCode}</strong> is saved
+              {pendingRejoin.playerName ? (
+                <>
+                  {' '}
+                  for <strong>{pendingRejoin.playerName}</strong>
+                </>
+              ) : null}
+              .
+            </p>
+            <p className="rejoin-hint">Left or refreshed? Rejoin without entering the code again.</p>
+            <div className="rejoin-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => router.push('/truth-or-dare')}
+              >
+                Rejoin game
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  clearTodSession()
+                  setPendingRejoin(null)
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="card tod-home-actions tod-glass">
           {!onlineOpen ? (

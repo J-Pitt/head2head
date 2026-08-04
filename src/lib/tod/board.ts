@@ -2,8 +2,8 @@ import type { Player } from '@/lib/types'
 import type { Session } from '@/lib/minigames/types'
 import type { ClassicListMode } from '@/lib/tod/classic/lists'
 
-// Race board: START at bottom-left, path hugs the outer ring clockwise,
-// FINISH sits on the left edge just above start — Monopoly-style table.
+// Race board: START (GO) at bottom-left, path spirals clockwise inward,
+// FINISH (WIN) is the center tile.
 export type TileType =
   | 'start'
   | 'finish'
@@ -111,45 +111,72 @@ export type BoardState = {
   /** Used indices into the Kink deck (separate from standard NSFW). */
   usedKinkTruths: number[]
   usedKinkDares: number[]
+  /** Special challenge indices already played this game. */
+  usedSpecials: number[]
+  /** Jail penalty indices already played this game. */
+  usedJailPenalties: number[]
+  /** Normalized prompt texts already played (belt-and-suspenders vs index lists). */
+  usedPromptTexts: string[]
   usedQuestionIds: string[]
 }
 
 export const BOARD_COLS = 10
 export const BOARD_ROWS = 10
-/** Perimeter length of a 10×10 table. */
-export const BOARD_PATH_LENGTH = 2 * (BOARD_COLS - 1) + 2 * (BOARD_ROWS - 1)
+/** Full spiral fills every cell on the table. */
+export const BOARD_PATH_LENGTH = BOARD_COLS * BOARD_ROWS
 
 /**
- * Monopoly-style loop: start bottom-left, walk the outer ring clockwise,
- * finish on the left edge just above start.
+ * Clockwise spiral inward: start bottom-left (GO), end at the center (WIN).
  */
-export function buildPerimeterWaypoints(
+export function buildSpiralWaypoints(
   cols: number,
   rows: number
 ): { row: number; col: number }[] {
   const path: { row: number; col: number }[] = []
-  const lastRow = rows - 1
-  const lastCol = cols - 1
+  let top = 0
+  let bottom = rows - 1
+  let left = 0
+  let right = cols - 1
 
-  // Bottom edge: left → right
-  for (let col = 0; col <= lastCol; col++) path.push({ row: lastRow, col })
-  // Right edge: up
-  for (let row = lastRow - 1; row >= 0; row--) path.push({ row, col: lastCol })
-  // Top edge: right → left
-  for (let col = lastCol - 1; col >= 0; col--) path.push({ row: 0, col })
-  // Left edge: down (stop before closing on start)
-  for (let row = 1; row < lastRow; row++) path.push({ row, col: 0 })
+  while (top <= bottom && left <= right) {
+    // Bottom edge: left → right
+    for (let col = left; col <= right; col++) path.push({ row: bottom, col })
+    bottom--
+    if (top > bottom) break
+
+    // Right edge: up
+    for (let row = bottom; row >= top; row--) path.push({ row, col: right })
+    right--
+    if (left > right) break
+
+    // Top edge: right → left
+    for (let col = right; col >= left; col--) path.push({ row: top, col })
+    top++
+    if (top > bottom) break
+
+    // Left edge: down
+    for (let row = top; row <= bottom; row++) path.push({ row, col: left })
+    left++
+  }
 
   return path
 }
 
-/** @deprecated Prefer buildPerimeterWaypoints. */
+/** @deprecated Prefer buildSpiralWaypoints. */
+export function buildPerimeterWaypoints(
+  cols: number,
+  rows: number
+): { row: number; col: number }[] {
+  return buildSpiralWaypoints(cols, rows)
+}
+
+/** @deprecated Prefer buildSpiralWaypoints. */
 export function buildZigzagWaypoints(
   cols: number,
   rows: number,
   _steps?: number
 ): { row: number; col: number }[] {
-  return buildPerimeterWaypoints(cols, rows)
+  return buildSpiralWaypoints(cols, rows)
 }
 
 /** Split path into contiguous same-row legs. */
@@ -168,7 +195,7 @@ export function splitZigzagLegs(tiles: BoardTile[]): BoardTile[][] {
   return legs
 }
 
-// Tile mix for middle squares. Shuffled each game.
+// Tile mix for middle squares. Shuffled each game; pool cycles to fill longer spirals.
 const MIDDLE_TILE_POOL: TileType[] = [
   'truth', 'dare', 'trivia', 'minigame', 'special', 'dare',
   'truth', 'trivia', 'dare', 'special', 'truth', 'minigame',
@@ -191,17 +218,25 @@ function middleTypePool(count: number): TileType[] {
   return pool
 }
 
-/** Perimeter path coordinates for the logical board grid. */
+/** Spiral path coordinates for the logical board grid. */
+export function spiralCourseCoords(
+  cols: number,
+  rows: number
+): { row: number; col: number }[] {
+  return buildSpiralWaypoints(cols, rows)
+}
+
+/** @deprecated Prefer spiralCourseCoords. */
 export function perimeterCourseCoords(
   cols: number,
   rows: number
 ): { row: number; col: number }[] {
-  return buildPerimeterWaypoints(cols, rows)
+  return buildSpiralWaypoints(cols, rows)
 }
 
-/** @deprecated Alias for perimeterCourseCoords. */
+/** @deprecated Alias for spiralCourseCoords. */
 export const zigzagCourseCoords = (cols: number, rows: number, _steps?: number) =>
-  perimeterCourseCoords(cols, rows)
+  spiralCourseCoords(cols, rows)
 
 /** Bounds of tiles on the logical grid. */
 export function getPathBounds(tiles: BoardTile[]) {
@@ -219,8 +254,7 @@ export function getPathBounds(tiles: BoardTile[]) {
 }
 
 /**
- * Map path tiles onto the full table grid so the route hugs the outer ring
- * and the center stays open for turn controls.
+ * Map path tiles onto the full table grid (spiral fills every cell).
  */
 export function getBoardDisplayLayout(tiles: BoardTile[]) {
   const { minRow, maxRow, minCol, maxCol } = getPathBounds(tiles)
@@ -251,7 +285,7 @@ export function tileCenterPercent(layout: BoardDisplayLayout, tile: BoardTile) {
   }
 }
 
-/** Absolute slot for a perimeter tile. */
+/** Absolute slot for a path tile. */
 export function tileSlotStyle(layout: BoardDisplayLayout, tile: BoardTile): {
   left: string
   top: string
@@ -270,30 +304,13 @@ export function tileSlotStyle(layout: BoardDisplayLayout, tile: BoardTile): {
   }
 }
 
-/** Open table center inside the perimeter ring (for dice / status hub). */
-export function boardCenterSlotStyle(layout: BoardDisplayLayout): {
-  left: string
-  top: string
-  width: string
-  height: string
-} {
-  const w = 100 / layout.spanCols
-  const h = 100 / layout.spanRows
-  return {
-    left: `${w}%`,
-    top: `${h}%`,
-    width: `${(layout.spanCols - 2) * w}%`,
-    height: `${(layout.spanRows - 2) * h}%`,
-  }
-}
-
 export function buildTiles(
   cols = BOARD_COLS,
   rows = BOARD_ROWS,
   options: BuildTilesOptions = {}
 ): BoardTile[] {
   const { randomize = true } = options
-  const coords = perimeterCourseCoords(cols, rows)
+  const coords = spiralCourseCoords(cols, rows)
   const total = coords.length
   const shuffledMiddle = randomize ? shuffle(middleTypePool(total - 2)) : middleTypePool(total - 2)
   let middleIdx = 0
@@ -366,8 +383,47 @@ export function createBoardState(
     usedDares: [],
     usedKinkTruths: [],
     usedKinkDares: [],
+    usedSpecials: [],
+    usedJailPenalties: [],
+    usedPromptTexts: [],
     usedQuestionIds: [],
   }
+}
+
+const USED_NUMBER_KEYS = [
+  'usedTruths',
+  'usedDares',
+  'usedKinkTruths',
+  'usedKinkDares',
+  'usedSpecials',
+  'usedJailPenalties',
+] as const
+
+/** Merge used-index / used-text lists so concurrent patches never drop history. */
+export function mergeBoardUsedFields(
+  prev: BoardState,
+  partial: Partial<BoardState>
+): Partial<BoardState> {
+  const out: Partial<BoardState> = { ...partial }
+  for (const key of USED_NUMBER_KEYS) {
+    if (partial[key] == null) continue
+    out[key] = [...new Set([...(prev[key] ?? []), ...(partial[key] ?? [])])]
+  }
+  if (partial.usedPromptTexts != null) {
+    const seen = new Set((prev.usedPromptTexts ?? []).map((t) => t.trim().toLowerCase()))
+    const merged = [...(prev.usedPromptTexts ?? [])]
+    for (const t of partial.usedPromptTexts) {
+      const norm = t.trim().toLowerCase()
+      if (!norm || seen.has(norm)) continue
+      seen.add(norm)
+      merged.push(t.trim())
+    }
+    out.usedPromptTexts = merged
+  }
+  if (partial.usedQuestionIds != null) {
+    out.usedQuestionIds = [...new Set([...(prev.usedQuestionIds ?? []), ...partial.usedQuestionIds])]
+  }
+  return out
 }
 
 export const LAST_TILE = (b: BoardState) => b.tiles.length - 1

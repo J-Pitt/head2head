@@ -1,5 +1,5 @@
 import type { SceneFactory } from './PhaserGame'
-import { drawDisc3d, drawSky, drawSlab, shade } from './pseudo3d'
+import { drawDisc3d, drawGlow, drawSky, drawSlab, drawStars, drawVignette, shade } from './pseudo3d'
 
 export const C4_W = 360
 export const C4_H = 380
@@ -76,11 +76,11 @@ export const makeConnect4Scene: SceneFactory<Connect4Bridge> = (_Phaser, bridgeR
       }
 
       this.g.clear()
-      drawSky(this.g, C4_W, C4_H, 0x0f172a, 0x1e3a8a, 12)
+      drawSky(this.g, C4_W, C4_H, 0x020617, 0x1e3a8a, 16, { haze: 1, hazeColor: 0x60a5fa })
+      drawStars(this.g, C4_W, C4_H, 28, 4)
 
-      // Table legs + board frame in 3D
-      drawSlab(this.g, ox - 14, oy + boardH + 4, boardW + 28, 18, 12, 0x1e3a8a)
-      drawSlab(this.g, ox - 10, oy - 10, boardW + 20, boardH + 20, 16, 0x1d4ed8)
+      drawSlab(this.g, ox - 14, oy + boardH + 4, boardW + 28, 18, 14, 0x1e3a8a)
+      drawSlab(this.g, ox - 10, oy - 10, boardW + 20, boardH + 20, 18, 0x2563eb)
 
       for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
@@ -90,19 +90,17 @@ export const makeConnect4Scene: SceneFactory<Connect4Bridge> = (_Phaser, bridgeR
           const r = cell * 0.34
           if (v > 0) {
             const color = b.colors[(v - 1) % b.colors.length] ?? '#ef4444'
-            drawDisc3d(this.g, cx, cy, r, 9, hexToNum(color))
+            drawDisc3d(this.g, cx, cy, r, 11, hexToNum(color))
           } else {
-            // Empty socket — recessed hole
-            this.g.fillStyle(0x0f172a, 1)
-            this.g.fillEllipse(cx, cy + 2, r * 2.05, r * 1.25)
-            this.g.fillStyle(shade(0x1e3a8a, 0.55), 1)
-            this.g.fillEllipse(cx, cy, r * 1.9, r * 1.1)
+            this.g.fillStyle(0x020617, 1)
+            this.g.fillEllipse(cx, cy + 2, r * 2.1, r * 1.28)
+            this.g.fillStyle(shade(0x1e3a8a, 0.5), 1)
+            this.g.fillEllipse(cx, cy, r * 1.92, r * 1.12)
           }
         }
       }
 
       if (b.myTurn && b.status === 'live') {
-        this.g.fillStyle(0xfbbf24, 0.9)
         for (let col = 0; col < COLS; col++) {
           let free = false
           for (let row = ROWS - 1; row >= 0; row--) {
@@ -114,11 +112,14 @@ export const makeConnect4Scene: SceneFactory<Connect4Bridge> = (_Phaser, bridgeR
           if (!free) continue
           const cx = ox + col * cell + cell / 2
           const tipY = oy - 8
-          drawDisc3d(this.g, cx, tipY + 4, 5, 4, 0xfbbf24)
-          this.g.fillStyle(0xfbbf24, 0.85)
-          this.g.fillTriangle(cx, tipY + 14, cx - 7, tipY + 4, cx + 7, tipY + 4)
+          drawGlow(this.g, cx, tipY + 6, 14, 0xfbbf24, 0.25)
+          drawDisc3d(this.g, cx, tipY + 4, 5.5, 5, 0xfbbf24)
+          this.g.fillStyle(0xfde68a, 0.95)
+          this.g.fillTriangle(cx, tipY + 15, cx - 8, tipY + 4, cx + 8, tipY + 4)
         }
       }
+
+      drawVignette(this.g, C4_W, C4_H, 0.4)
     }
   }
 }

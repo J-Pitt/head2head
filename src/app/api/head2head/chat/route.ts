@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { appendChat, getChat } from '@/lib/redis'
+import { isVideoDataUrl, MAX_CHAT_IMAGE_CHARS, MAX_MEDIA_DATA_URL_CHARS } from '@/lib/chat'
 
-// Max base64 image payload we accept (~120KB) to keep Redis values sane.
-const MAX_IMAGE_CHARS = 160_000
+export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
   try {
@@ -32,8 +32,18 @@ export async function POST(request: Request) {
     if (!text && !image) {
       return NextResponse.json({ success: false, error: 'Empty message' }, { status: 400 })
     }
-    if (image && image.length > MAX_IMAGE_CHARS) {
-      return NextResponse.json({ success: false, error: 'Image too large' }, { status: 413 })
+    if (image) {
+      const isVideo = isVideoDataUrl(image)
+      const maxChars = isVideo ? MAX_MEDIA_DATA_URL_CHARS : MAX_CHAT_IMAGE_CHARS
+      if (image.length > maxChars) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: isVideo ? 'Video too large — keep it under 50MB' : 'Image too large',
+          },
+          { status: 413 }
+        )
+      }
     }
     const message = {
       id: randomUUID(),

@@ -8,6 +8,15 @@ export type ChatMsg = {
   ts: number
 }
 
+/** Max raw video file size for board answers and chat uploads. */
+export const MAX_VIDEO_BYTES = 50 * 1024 * 1024 // 50MB
+
+/** Base64 data-URL ceiling (~4/3 expansion + header) for a 50MB video. */
+export const MAX_MEDIA_DATA_URL_CHARS = Math.ceil(MAX_VIDEO_BYTES * (4 / 3)) + 256
+
+/** Compressed chat stills stay small; videos may use the full media ceiling. */
+export const MAX_CHAT_IMAGE_CHARS = 160_000
+
 const BASE = '/api/head2head/chat'
 
 export async function fetchMessages(roomId: string): Promise<ChatMsg[]> {
@@ -65,9 +74,7 @@ export function compressImage(file: File, maxSize = 420, quality = 0.5): Promise
   })
 }
 
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024 // 50MB
-
-/** Image (compressed) or short video as a data URL for board answers. */
+/** Image (compressed) or video (up to 50MB) as a data URL. */
 export async function readAnswerMedia(file: File): Promise<string> {
   if (file.type.startsWith('video/')) {
     if (file.size > MAX_VIDEO_BYTES) {

@@ -7,8 +7,11 @@ import BoardPiecePicker from '@/components/tod/BoardPiecePicker'
 import { useTodRoom } from '@/hooks/useTodRoom'
 import { useRoomChat } from '@/hooks/useRoomChat'
 import ChatPanel from '@/components/ChatPanel'
+import PartyPlaylist from '@/components/PartyPlaylist'
+import RoomSidePanel from '@/components/RoomSidePanel'
 import BoardView from '@/components/tod/board/BoardView'
 import LocalPlayerEditor from '@/components/LocalPlayerEditor'
+import { usePartyPlaylist } from '@/hooks/usePartyPlaylist'
 
 function TodSideLayout({ main, chat }: { main: ReactNode; chat: ReactNode | null }) {
   if (!chat) {
@@ -79,23 +82,52 @@ function TodHeader({
 export default function TruthOrDare() {
   const room = useTodRoom()
   const me = room.players.find((p) => p.id === room.playerId)
-  const chat = useRoomChat(room.isLocal ? null : room.roomId, {
+  const meIdentity = {
     playerId: room.playerId,
     playerName: me?.name ?? room.playerName ?? 'Player',
     avatar: me?.avatar ?? room.avatar,
-  })
+  }
+  const chat = useRoomChat(room.isLocal ? null : room.roomId, meIdentity)
+  const playlist = usePartyPlaylist(room.isLocal ? null : room.roomId, meIdentity)
+
+  if (room.restoring) {
+    return (
+      <div className="app-shell tod-room-shell">
+        <section className="card tod-stage">
+          <p className="lobby-sub">Rejoining your game…</p>
+        </section>
+      </div>
+    )
+  }
 
   if (!room.roomId || !room.state) {
     return <TodJoin room={room} />
   }
 
   const { state } = room
-  const chatPanel = room.isLocal ? null : (
-    <ChatPanel
-      messages={chat.messages}
-      meId={room.playerId}
-      onSend={chat.send}
-      title="Group chat 📸 — share your pictures here"
+  const sidePanel = room.isLocal ? null : (
+    <RoomSidePanel
+      chat={
+        <ChatPanel
+          messages={chat.messages}
+          meId={room.playerId}
+          onSend={chat.send}
+          title="Group chat 📸 — share your pictures here"
+        />
+      }
+      music={
+        <PartyPlaylist
+          current={playlist.current}
+          queue={playlist.playlist.queue}
+          meId={room.playerId}
+          error={playlist.error}
+          onAdd={playlist.add}
+          onPlay={playlist.play}
+          onNext={playlist.next}
+          onRemove={playlist.remove}
+          onClear={playlist.clear}
+        />
+      }
     />
   )
 
@@ -111,9 +143,9 @@ export default function TruthOrDare() {
       />
 
       {state.phase === 'board' ? (
-        <BoardView room={room} chatSidebar={chatPanel} />
+        <BoardView room={room} chatSidebar={sidePanel} />
       ) : (
-        <TodSideLayout main={<Lobby room={room} />} chat={chatPanel} />
+        <TodSideLayout main={<Lobby room={room} />} chat={sidePanel} />
       )}
     </div>
   )
@@ -124,8 +156,9 @@ type Room = ReturnType<typeof useTodRoom>
 function TodJoin({ room }: { room: Room }) {
   const mode = room.resolvedEntryMode ?? room.entryMode
   const joinCode = room.resolvedJoinCode
+  const pending = room.pendingRejoin
 
-  if (!mode) {
+  if (!mode && !pending) {
     return (
       <div className="app-shell tod-room-shell">
         <TodHeader
@@ -158,7 +191,7 @@ function TodJoin({ room }: { room: Room }) {
   return (
     <div className="app-shell tod-room-shell">
       <TodHeader
-        gameCode={online ? joinCode || null : null}
+        gameCode={online ? joinCode || pending?.gameCode || null : null}
         isLocal={mode === 'local'}
         playerCount={0}
         isOnBreak={false}
@@ -167,49 +200,77 @@ function TodJoin({ room }: { room: Room }) {
       />
 
       <TodSetupLayout>
-        <section className="card tod-stage tod-setup-card">
-          <p className="tod-kicker">
-            {mode === 'local' ? 'Pass & play' : mode === 'join' ? 'Join the board game' : 'Start a board game'}
-          </p>
-          <h2 className="tod-setup-title">Set up your game</h2>
-          <p className="lobby-sub">
-            {mode === 'local'
-              ? 'Enter your name and pick a game piece. Everyone plays on this device.'
-              : mode === 'join'
-                ? joinCode
-                  ? `Room code ${joinCode} — enter your name and pick a game piece.`
-                  : 'Enter the game code, your name, and pick a game piece.'
-                : 'Enter your name and pick a game piece. You\'ll get a room code in the lobby to share.'}
-          </p>
-          {mode === 'join' && (
+        {pending && (
+          <section className="card rejoin-card tod-glass">
+            <p className="lobby-sub">
+              Welcome back! Rejoin room <strong>{pending.gameCode}</strong>
+              {pending.playerName ? (
+                <>
+                  {' '}
+                  as <strong>{pending.playerName}</strong>
+                </>
+              ) : null}
+              ?
+            </p>
+            <p className="rejoin-hint">
+              Left or refreshed? Same device — tap Rejoin. No need to enter the code again.
+            </p>
+            <div className="rejoin-actions">
+              <button type="button" className="btn btn-primary" onClick={() => void room.rejoinSavedRoom(pending)}>
+                Rejoin game
+              </button>
+              <button type="button" className="btn" onClick={room.dismissRejoin}>
+                Dismiss
+              </button>
+            </div>
+          </section>
+        )}
+
+        {mode && (
+          <section className="card tod-stage tod-setup-card">
+            <p className="tod-kicker">
+              {mode === 'local' ? 'Pass & play' : mode === 'join' ? 'Join the board game' : 'Start a board game'}
+            </p>
+            <h2 className="tod-setup-title">Set up your game</h2>
+            <p className="lobby-sub">
+              {mode === 'local'
+                ? 'Enter your name and pick a game piece. Everyone plays on this device.'
+                : mode === 'join'
+                  ? joinCode
+                    ? `Room code ${joinCode} — enter your name and pick a game piece.`
+                    : 'Enter the game code, your name, and pick a game piece.'
+                  : "Enter your name and pick a game piece. You'll get a room code in the lobby to share."}
+            </p>
+            {mode === 'join' && (
+              <label className="field">
+                <span>Game code</span>
+                <input
+                  value={room.gameCodeInput}
+                  onChange={(e) => room.setGameCodeInput(e.target.value.toUpperCase())}
+                  placeholder="GAME CODE"
+                  maxLength={6}
+                  className="code-input"
+                  autoFocus={!room.playerName.trim()}
+                />
+              </label>
+            )}
             <label className="field">
-              <span>Game code</span>
+              <span>Your name</span>
               <input
-                value={room.gameCodeInput}
-                onChange={(e) => room.setGameCodeInput(e.target.value.toUpperCase())}
-                placeholder="GAME CODE"
-                maxLength={6}
-                className="code-input"
-                autoFocus={!room.playerName.trim()}
+                value={room.playerName}
+                onChange={(e) => room.setPlayerName(e.target.value)}
+                placeholder="Alex"
+                maxLength={24}
+                autoFocus
               />
             </label>
-          )}
-          <label className="field">
-            <span>Your name</span>
-            <input
-              value={room.playerName}
-              onChange={(e) => room.setPlayerName(e.target.value)}
-              placeholder="Alex"
-              maxLength={24}
-              autoFocus
-            />
-          </label>
-          <BoardPiecePicker selected={room.avatar} onSelect={room.setAvatar} />
-          <button type="button" className="btn btn-primary full tod-lets-go" onClick={enterLobby}>
-            {mode === 'join' ? 'Join lobby' : 'Enter lobby'}
-          </button>
-          {room.error && <p className="error">{room.error}</p>}
-        </section>
+            <BoardPiecePicker selected={room.avatar} onSelect={room.setAvatar} />
+            <button type="button" className="btn btn-primary full tod-lets-go" onClick={enterLobby}>
+              {mode === 'join' ? 'Join lobby' : 'Enter lobby'}
+            </button>
+            {room.error && <p className="error">{room.error}</p>}
+          </section>
+        )}
       </TodSetupLayout>
     </div>
   )

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Avatar from '@/components/Avatar'
-import { compressImage, type ChatMsg } from '@/lib/chat'
+import { isVideoDataUrl, readAnswerMedia, type ChatMsg } from '@/lib/chat'
 
 type Props = {
   messages: ChatMsg[]
@@ -46,14 +46,10 @@ export default function ChatPanel({ messages, meId, onSend, title = 'Room chat' 
     if (!file) return
     setError('')
     try {
-      const data = await compressImage(file)
-      if (data.length > 160_000) {
-        setError('Image too large — try a smaller one')
-        return
-      }
+      const data = await readAnswerMedia(file)
       setPending(data)
-    } catch {
-      setError('Could not load image')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load that file')
     }
   }
 
@@ -68,15 +64,18 @@ export default function ChatPanel({ messages, meId, onSend, title = 'Room chat' 
             <div className="chat-bubble">
               <span className="chat-name">{m.playerName}</span>
               {m.text && <span className="chat-text">{m.text}</span>}
-              {m.image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={m.image}
-                  alt="shared"
-                  className="chat-image"
-                  onClick={() => window.open(m.image, '_blank')}
-                />
-              )}
+              {m.image &&
+                (isVideoDataUrl(m.image) ? (
+                  <video src={m.image} className="chat-image chat-video" controls playsInline />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={m.image}
+                    alt="shared"
+                    className="chat-image"
+                    onClick={() => window.open(m.image, '_blank')}
+                  />
+                ))}
             </div>
           </div>
         ))}
@@ -85,8 +84,12 @@ export default function ChatPanel({ messages, meId, onSend, title = 'Room chat' 
 
       {pending && (
         <div className="chat-image-preview">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={pending} alt="preview" />
+          {isVideoDataUrl(pending) ? (
+            <video src={pending} controls playsInline muted />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={pending} alt="preview" />
+          )}
           <button type="button" className="chat-image-remove" onClick={() => setPending(null)}>
             ✕
           </button>
@@ -99,11 +102,17 @@ export default function ChatPanel({ messages, meId, onSend, title = 'Room chat' 
           type="button"
           className="btn-chat-attach"
           onClick={() => fileRef.current?.click()}
-          title="Share a photo"
+          title="Share a photo or video (max 50MB)"
         >
           📷
         </button>
-        <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleFile}
+          style={{ display: 'none' }}
+        />
         <input
           type="text"
           value={input}

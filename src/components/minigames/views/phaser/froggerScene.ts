@@ -1,5 +1,15 @@
 import type { SceneFactory } from './PhaserGame'
-import { drawBox, drawBoxOnGround, drawDisc3d, drawSky } from './pseudo3d'
+import {
+  drawBox,
+  drawBoxOnGround,
+  drawDisc3d,
+  drawGlow,
+  drawSky,
+  drawStars,
+  drawVignette,
+  HUD_BANNER,
+  HUD_STYLE,
+} from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -34,15 +44,10 @@ export const makeFroggerScene: SceneFactory = (Phaser, bridgeRef) => {
     create() {
       this.g = this.add.graphics()
       this.scoreText = this.add
-        .text(8, 6, 'Crossings: 0', { fontFamily: 'monospace', fontSize: '16px', color: '#e5e7eb' })
+        .text(8, 6, 'Crossings: 0', HUD_STYLE)
         .setDepth(10)
       this.statusText = this.add
-        .text(FROGGER_W / 2, FROGGER_H / 2, '', {
-          fontFamily: 'monospace',
-          fontSize: '40px',
-          color: '#fde68a',
-          fontStyle: 'bold',
-        })
+        .text(FROGGER_W / 2, FROGGER_H / 2, '', HUD_BANNER)
         .setOrigin(0.5)
         .setDepth(10)
 
@@ -141,53 +146,48 @@ export const makeFroggerScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      drawSky(g, FROGGER_W, FROGGER_H, 0x0b3d2e, 0x052016, 12)
+      drawSky(g, FROGGER_W, FROGGER_H, 0x064e3b, 0x022c22, 14, { haze: 1, hazeColor: 0x34d399 })
+      drawStars(g, FROGGER_W, 80, 18, 5)
 
       for (let r = 0; r < ROWS; r++) {
         let col = 0x166534
-        let elev = 4
+        let elev = 5
         if (r === 0) {
           col = 0x0ea5e9
-          elev = 8
+          elev = 10
         } else if (this.lanes.find((l) => l.row === r)) {
-          col = 0x1f2937
-          elev = 3
+          col = 0x111827
+          elev = 4
         } else if (r % 4 === 0) {
           col = 0x14532d
-          elev = 6
+          elev = 7
         }
-        // Draw tiles back-to-front for depth
         for (let c = 0; c < COLS; c++) {
-          drawBox(g, c * CELL + 1, r * CELL + 6, CELL - 4, CELL - 8, elev, col, { round: 3 })
+          drawBox(g, c * CELL + 1, r * CELL + 6, CELL - 4, CELL - 8, elev, col, { round: 4 })
         }
       }
 
-      // Goal pads
       for (let c = 0; c < COLS; c += 2) {
-        drawBox(g, c * CELL + 8, 10, CELL - 16, CELL - 18, 6, 0x22c55e, { round: 4 })
+        drawBox(g, c * CELL + 8, 10, CELL - 16, CELL - 18, 8, 0x4ade80, { round: 5, glow: true })
       }
 
       for (const lane of this.lanes) {
         for (const cx of lane.cars) {
-          drawBoxOnGround(
-            g,
-            cx,
-            lane.row * CELL + CELL - 6,
-            lane.len,
-            CELL - 14,
-            8,
-            lane.color,
-            { round: 5 }
-          )
+          drawBoxOnGround(g, cx, lane.row * CELL + CELL - 6, lane.len, CELL - 14, 10, lane.color, {
+            round: 6,
+            glow: true,
+          })
         }
       }
 
-      // Frog
       const fx = this.col * CELL + 5
       const fy = this.row * CELL + CELL - 6
-      drawBoxOnGround(g, fx, fy, CELL - 10, CELL - 12, 10, 0x34d399, { round: 7 })
-      drawDisc3d(g, fx + 9, fy - (CELL - 12) + 10, 3.2, 2, 0x064e3b)
-      drawDisc3d(g, fx + CELL - 19, fy - (CELL - 12) + 10, 3.2, 2, 0x064e3b)
+      drawGlow(g, fx + (CELL - 10) / 2, fy - (CELL - 12) / 2, 18, 0x34d399, 0.2)
+      drawBoxOnGround(g, fx, fy, CELL - 10, CELL - 12, 12, 0x34d399, { round: 8, glow: true })
+      drawDisc3d(g, fx + 9, fy - (CELL - 12) + 10, 3.4, 3, 0xecfdf5)
+      drawDisc3d(g, fx + CELL - 19, fy - (CELL - 12) + 10, 3.4, 3, 0xecfdf5)
+
+      drawVignette(g, FROGGER_W, FROGGER_H, 0.38)
 
       this.scoreText.setText('Crossings: ' + this.score)
       if (!this.started()) {

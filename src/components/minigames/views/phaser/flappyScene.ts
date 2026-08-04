@@ -1,5 +1,17 @@
 import type { SceneFactory } from './PhaserGame'
-import { drawBox, drawBoxOnGround, drawPerspectiveFloor, drawSphere, shade } from './pseudo3d'
+import {
+  drawBox,
+  drawBoxOnGround,
+  drawGlow,
+  drawPerspectiveFloor,
+  drawSky,
+  drawSphere,
+  drawStars,
+  drawVignette,
+  shade,
+  HUD_BANNER,
+  HUD_STYLE,
+} from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -37,15 +49,10 @@ export const makeFlappyScene: SceneFactory = (Phaser, bridgeRef) => {
     create() {
       this.g = this.add.graphics()
       this.scoreText = this.add
-        .text(8, 6, 'Score: 0', { fontFamily: 'monospace', fontSize: '16px', color: '#e5e7eb' })
+        .text(8, 6, 'Score: 0', HUD_STYLE)
         .setDepth(10)
       this.statusText = this.add
-        .text(FLAPPY_W / 2, FLAPPY_H / 2, '', {
-          fontFamily: 'monospace',
-          fontSize: '36px',
-          color: '#bae6fd',
-          fontStyle: 'bold',
-        })
+        .text(FLAPPY_W / 2, FLAPPY_H / 2, '', HUD_BANNER)
         .setOrigin(0.5)
         .setDepth(10)
       this.input.on('pointerdown', () => this.flap())
@@ -121,33 +128,29 @@ export const makeFlappyScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      drawPerspectiveFloor(g, FLAPPY_W, FLAPPY_H, FLAPPY_H - 48, 0x14532d, 0x22c55e)
+      drawSky(g, FLAPPY_W, FLAPPY_H - 48, 0x0369a1, 0x7dd3fc, 20, { haze: 1, hazeColor: 0xfef08a })
+      drawStars(g, FLAPPY_W, 90, 12, 2)
+      drawPerspectiveFloor(g, FLAPPY_W, FLAPPY_H, FLAPPY_H - 48, 0x14532d, 0x4ade80)
 
-      // Clouds
-      g.fillStyle(0xffffff, 0.12)
-      g.fillEllipse(60, 70, 90, 28)
-      g.fillEllipse(220, 110, 110, 32)
-      g.fillEllipse(300, 55, 70, 22)
+      g.fillStyle(0xffffff, 0.18)
+      g.fillEllipse(60, 70, 100, 32)
+      g.fillEllipse(220, 110, 120, 36)
+      g.fillEllipse(300, 55, 80, 24)
+      g.fillStyle(0xffffff, 0.08)
+      g.fillEllipse(60, 70, 130, 44)
 
       for (const p of this.pipes) {
-        const depth = 14
-        // Top pipe
-        drawBox(g, p.x, 8, PIPE_W, Math.max(4, p.gapY - 8), depth, 0x16a34a, { round: 4 })
-        drawBox(g, p.x - 4, p.gapY - 18, PIPE_W + 8, 18, depth + 2, shade(0x22c55e, 1.05), {
+        const depth = 16
+        drawBox(g, p.x, 8, PIPE_W, Math.max(4, p.gapY - 8), depth, 0x16a34a, { round: 4, glow: true })
+        drawBox(g, p.x - 4, p.gapY - 18, PIPE_W + 8, 18, depth + 2, shade(0x4ade80, 1.05), {
           round: 3,
+          glow: true,
         })
-        // Bottom pipe
         const by = p.gapY + GAP
-        drawBox(
-          g,
-          p.x - 4,
-          by,
-          PIPE_W + 8,
-          18,
-          depth + 2,
-          shade(0x22c55e, 1.05),
-          { round: 3 }
-        )
+        drawBox(g, p.x - 4, by, PIPE_W + 8, 18, depth + 2, shade(0x4ade80, 1.05), {
+          round: 3,
+          glow: true,
+        })
         drawBox(
           g,
           p.x,
@@ -156,15 +159,19 @@ export const makeFlappyScene: SceneFactory = (Phaser, bridgeRef) => {
           Math.max(4, FLAPPY_H - by - 18 - 40),
           depth,
           0x16a34a,
-          { round: 4 }
+          { round: 4, glow: true }
         )
       }
 
+      drawGlow(g, BIRD_X, this.y, R * 1.8, 0xfacc15, 0.2)
       drawSphere(g, BIRD_X, this.y, R, 0xfacc15)
-      g.fillStyle(0x111827, 1)
-      g.fillCircle(BIRD_X + 5, this.y - 4, 2.5)
-      // Beak
-      drawBoxOnGround(g, BIRD_X + 8, this.y + 4, 10, 6, 3, 0xf97316, { round: 2, shadow: false })
+      g.fillStyle(0x0f172a, 1)
+      g.fillCircle(BIRD_X + 5, this.y - 4, 2.8)
+      g.fillStyle(0xffffff, 0.95)
+      g.fillCircle(BIRD_X + 6, this.y - 5, 1)
+      drawBoxOnGround(g, BIRD_X + 8, this.y + 4, 10, 6, 4, 0xfb923c, { round: 2, shadow: false })
+
+      drawVignette(g, FLAPPY_W, FLAPPY_H, 0.38)
 
       this.scoreText.setText('Score: ' + this.score)
       if (!this.started()) {

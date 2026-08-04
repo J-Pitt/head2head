@@ -1,5 +1,13 @@
 import type { SceneFactory } from './PhaserGame'
-import { drawBox, drawPerspectiveFloor, drawSphere } from './pseudo3d'
+import {
+  drawBox,
+  drawGlow,
+  drawPerspectiveFloor,
+  drawSphere,
+  drawVignette,
+  HUD_BANNER,
+  HUD_STYLE,
+} from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -35,15 +43,10 @@ export const makePongScene: SceneFactory = (Phaser, bridgeRef) => {
     create() {
       this.g = this.add.graphics()
       this.scoreText = this.add
-        .text(8, 6, 'Rally: 0', { fontFamily: 'monospace', fontSize: '16px', color: '#e5e7eb' })
+        .text(8, 6, 'Rally: 0', HUD_STYLE)
         .setDepth(10)
       this.statusText = this.add
-        .text(PONG_W / 2, PONG_H / 2, '', {
-          fontFamily: 'monospace',
-          fontSize: '36px',
-          color: '#86efac',
-          fontStyle: 'bold',
-        })
+        .text(PONG_W / 2, PONG_H / 2, '', HUD_BANNER)
         .setOrigin(0.5)
         .setDepth(10)
       this.cursors = this.input.keyboard!.createCursorKeys()
@@ -129,29 +132,30 @@ export const makePongScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      drawPerspectiveFloor(g, PONG_W, PONG_H, 40, 0x052e16, 0x166534)
+      drawPerspectiveFloor(g, PONG_W, PONG_H, 40, 0x052e16, 0x4ade80)
 
-      // Court rails
-      drawBox(g, 4, 44, 8, PONG_H - 60, 10, 0x166534)
-      drawBox(g, PONG_W - 12, 44, 8, PONG_H - 60, 10, 0x166534)
-      drawBox(g, 4, 40, PONG_W - 8, 10, 8, 0x15803d)
+      drawBox(g, 4, 44, 8, PONG_H - 60, 12, 0x166534, { glow: true })
+      drawBox(g, PONG_W - 12, 44, 8, PONG_H - 60, 12, 0x166534, { glow: true })
+      drawBox(g, 4, 40, PONG_W - 8, 10, 10, 0x22c55e, { glow: true })
 
-      // Center net posts
       for (let y = 60; y < PONG_H - 50; y += 28) {
-        drawBox(g, PONG_W / 2 - 3, y, 6, 14, 5, 0x4ade80, { round: 1 })
+        drawBox(g, PONG_W / 2 - 3, y, 6, 14, 6, 0x86efac, { round: 2, glow: true })
       }
 
+      drawGlow(g, this.paddleX, PADDLE_Y + PADDLE_H / 2, PADDLE_W * 0.55, 0x4ade80, 0.2)
       drawBox(
         g,
         this.paddleX - PADDLE_W / 2,
         PADDLE_Y,
         PADDLE_W,
         PADDLE_H,
-        12,
+        14,
         0x4ade80,
-        { round: 4 }
+        { round: 5, glow: true }
       )
-      drawSphere(g, this.ballX, this.ballY, BALL_R, 0xffffff)
+      drawSphere(g, this.ballX, this.ballY, BALL_R, 0xf8fafc)
+
+      drawVignette(g, PONG_W, PONG_H, 0.4)
 
       this.scoreText.setText('Rally: ' + this.score)
       if (!this.started()) {

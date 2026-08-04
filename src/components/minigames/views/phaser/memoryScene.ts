@@ -1,6 +1,6 @@
 import type { SceneFactory } from './PhaserGame'
 import { seededShuffle } from '@/lib/minigames/rng'
-import { drawBox, drawSky, shade } from './pseudo3d'
+import { drawBox, drawSky, drawStars, drawVignette, shade } from './pseudo3d'
 
 export const MEMORY_W = 360
 export const MEMORY_H = 420
@@ -143,10 +143,10 @@ export const makeMemoryScene: SceneFactory<MemoryBridge> = (Phaser, bridgeRef) =
       }
 
       this.g.clear()
-      drawSky(this.g, MEMORY_W, MEMORY_H, 0x1c1917, 0x0c0a09, 10)
+      drawSky(this.g, MEMORY_W, MEMORY_H, 0x1e1b4b, 0x0c0a09, 14, { haze: 1, hazeColor: 0xf59e0b })
+      drawStars(this.g, MEMORY_W, MEMORY_H, 24, 8)
 
-      // Table slab
-      drawBox(this.g, 6, 24, MEMORY_W - 12, MEMORY_H - 32, 14, 0x292524, { round: 10 })
+      drawBox(this.g, 6, 24, MEMORY_W - 12, MEMORY_H - 32, 16, 0x292524, { round: 12, glow: true })
 
       for (let i = 0; i < this.deck.length; i++) {
         const col = i % COLS
@@ -155,21 +155,24 @@ export const makeMemoryScene: SceneFactory<MemoryBridge> = (Phaser, bridgeRef) =
         const y = 28 + PAD + row * (cardH + GAP)
         const open = this.flipped.includes(i) || this.matched.includes(i)
         const matched = this.matched.includes(i)
-        const depth = matched ? 4 : open ? 12 : 8
-        const color = matched ? 0x166534 : open ? 0x9a3412 : 0x1e293b
+        const depth = matched ? 5 : open ? 14 : 9
+        const color = matched ? 0x15803d : open ? 0xc2410c : 0x1e293b
 
-        drawBox(this.g, x, y, cardW, cardH, depth, color, { round: 8 })
+        drawBox(this.g, x, y, cardW, cardH, depth, color, { round: 9, glow: open || matched })
         if (!open) {
-          // Back pattern
-          this.g.fillStyle(shade(0x475569, 1.1), 0.5)
-          this.g.fillRoundedRect(x + 8, y + 8, cardW - 16, cardH - 16, 6)
+          this.g.fillStyle(shade(0x6366f1, 1.05), 0.45)
+          this.g.fillRoundedRect(x + 8, y + 8, cardW - 16, cardH - 16, 7)
+          this.g.fillStyle(0xffffff, 0.08)
+          this.g.fillRoundedRect(x + 12, y + 12, cardW - 24, cardH * 0.28, 4)
         }
 
         const label = this.labels[i]!
         label.setText(open ? this.deck[i]! : '?')
-        label.setColor(open ? '#fff7ed' : '#94a3b8')
+        label.setColor(open ? '#fff7ed' : '#cbd5e1')
         label.setY(y + cardH / 2 - depth * 0.15)
       }
+
+      drawVignette(this.g, MEMORY_W, MEMORY_H, 0.4)
     }
   }
 }

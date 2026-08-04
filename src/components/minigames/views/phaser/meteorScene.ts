@@ -1,5 +1,16 @@
 import type { SceneFactory } from './PhaserGame'
-import { drawBoxOnGround, drawPerspectiveFloor, drawSky, drawSphere, shade } from './pseudo3d'
+import {
+  drawBoxOnGround,
+  drawGlow,
+  drawPerspectiveFloor,
+  drawSky,
+  drawSphere,
+  drawStars,
+  drawVignette,
+  shade,
+  HUD_BANNER,
+  HUD_STYLE,
+} from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -35,15 +46,10 @@ export const makeMeteorScene: SceneFactory = (Phaser, bridgeRef) => {
     create() {
       this.g = this.add.graphics()
       this.scoreText = this.add
-        .text(8, 6, 'Score: 0', { fontFamily: 'monospace', fontSize: '16px', color: '#e5e7eb' })
+        .text(8, 6, 'Score: 0', HUD_STYLE)
         .setDepth(10)
       this.statusText = this.add
-        .text(METEOR_W / 2, METEOR_H / 2, '', {
-          fontFamily: 'monospace',
-          fontSize: '36px',
-          color: '#fca5a5',
-          fontStyle: 'bold',
-        })
+        .text(METEOR_W / 2, METEOR_H / 2, '', HUD_BANNER)
         .setOrigin(0.5)
         .setDepth(10)
       this.cursors = this.input.keyboard!.createCursorKeys()
@@ -134,43 +140,43 @@ export const makeMeteorScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      drawSky(g, METEOR_W, METEOR_H - 40, 0x020617, 0x1e1b4b, 16)
-      drawPerspectiveFloor(g, METEOR_W, METEOR_H, METEOR_H - 40, 0x312e81, 0x6366f1)
+      drawSky(g, METEOR_W, METEOR_H - 40, 0x020617, 0x312e81, 18, { haze: 1, hazeColor: 0xa78bfa })
+      drawStars(g, METEOR_W, METEOR_H - 50, 48, 19)
+      drawPerspectiveFloor(g, METEOR_W, METEOR_H, METEOR_H - 40, 0x1e1b4b, 0x818cf8)
 
-      for (let i = 0; i < 28; i++) {
-        g.fillStyle(0xffffff, 0.4)
-        g.fillCircle((i * 47) % METEOR_W, (i * 83) % (METEOR_H - 80), 1.2)
-      }
-
-      // Sort meteors by y so nearer ones draw last
       const sorted = [...this.meteors].sort((a, b) => a.y - b.y)
       for (const m of sorted) {
         const depthScale = 0.7 + (m.y / METEOR_H) * 0.5
-        drawSphere(g, m.x, m.y, m.r * depthScale, shade(0x78716c, 0.9 + depthScale * 0.2))
-        g.fillStyle(0xf97316, 0.45)
-        g.fillCircle(m.x - m.r * 0.2, m.y - m.r * 0.2, m.r * 0.4 * depthScale)
+        drawGlow(g, m.x, m.y, m.r * depthScale * 1.4, 0xf97316, 0.2)
+        drawSphere(g, m.x, m.y, m.r * depthScale, shade(0xa8a29e, 0.9 + depthScale * 0.2))
+        g.fillStyle(0xf97316, 0.55)
+        g.fillCircle(m.x - m.r * 0.2, m.y - m.r * 0.2, m.r * 0.42 * depthScale)
       }
 
-      // Ship as extruded wedge / hull
+      drawGlow(g, this.shipX, SHIP_Y + SHIP_H / 2, SHIP_W, 0x38bdf8, 0.22)
       drawBoxOnGround(
         g,
         this.shipX - SHIP_W / 2,
         SHIP_Y + SHIP_H,
         SHIP_W,
         SHIP_H,
-        12,
+        14,
         0x38bdf8,
-        { round: 4 }
+        { round: 5, glow: true }
       )
-      g.fillStyle(0x7dd3fc, 1)
+      g.fillStyle(0xe0f2fe, 1)
       g.fillTriangle(
         this.shipX,
-        SHIP_Y - 6,
-        this.shipX - 10,
+        SHIP_Y - 8,
+        this.shipX - 11,
         SHIP_Y + 8,
-        this.shipX + 10,
+        this.shipX + 11,
         SHIP_Y + 8
       )
+      g.fillStyle(0xfbbf24, 0.85)
+      g.fillCircle(this.shipX, SHIP_Y + SHIP_H - 2, 3.5)
+
+      drawVignette(g, METEOR_W, METEOR_H, 0.45)
 
       this.scoreText.setText('Score: ' + this.score)
       if (!this.started()) {

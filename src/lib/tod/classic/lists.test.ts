@@ -4,6 +4,7 @@ import {
   getTruthsForMode,
   getDaresForDeck,
   getTruthsForDeck,
+  pickPromptChoices,
   pickRandomPrompt,
   PG_DARES,
   PG_TRUTHS,
@@ -40,5 +41,27 @@ describe('classic lists', () => {
   it('pickRandomPrompt returns null when all used', () => {
     const pool = ['only']
     expect(pickRandomPrompt(pool, [0])).toBeNull()
+  })
+
+  it('pickPromptChoices returns up to three distinct options', () => {
+    const pool = ['a', 'b', 'c', 'd']
+    const picks = pickPromptChoices(pool, [0], 3)
+    expect(picks).toHaveLength(3)
+    expect(new Set(picks.map((p) => p.idx)).size).toBe(3)
+    expect(picks.every((p) => p.idx !== 0)).toBe(true)
+  })
+
+  it('pickPromptChoices prefers fresh prompts over ones just shown', () => {
+    const pool = ['a', 'b', 'c', 'd', 'e', 'f']
+    const picks = pickPromptChoices(pool, [], 3, [0, 1, 2])
+    expect(picks).toHaveLength(3)
+    expect(picks.every((p) => ![0, 1, 2].includes(p.idx))).toBe(true)
+  })
+
+  it('pickPromptChoices skips prompts whose text was already used', () => {
+    const pool = ['Hello world', 'Other', 'Third', 'Fourth']
+    const picks = pickPromptChoices(pool, [], 3, [], ['hello world'])
+    expect(picks.every((p) => p.idx !== 0)).toBe(true)
+    expect(picks).toHaveLength(3)
   })
 })

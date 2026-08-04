@@ -82,26 +82,67 @@ export function getDaresForDeck(deck: PromptDeckId): string[] {
   return deck === 'kink' ? KINK_DARES : NSFW_DARES
 }
 
+export function normalizePromptText(text: string): string {
+  return text.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
 export function findPromptIndex(pool: string[], text: string): number | null {
-  const idx = pool.indexOf(text.trim())
+  const needle = normalizePromptText(text)
+  const idx = pool.findIndex((p) => normalizePromptText(p) === needle)
   return idx >= 0 ? idx : null
 }
 
 export function pickRandomPrompt(
   pool: string[],
   used: number[],
-  excludeIdx?: number
+  excludeIdx?: number,
+  usedTexts: string[] = []
 ): { text: string; idx: number } | null {
-  if (pool.length === 0) return null
+  const picks = pickPromptChoices(
+    pool,
+    used,
+    1,
+    excludeIdx != null ? [excludeIdx] : [],
+    usedTexts
+  )
+  return picks[0] ?? null
+}
+
+/** Pick up to `count` distinct unused prompts for the asker to choose from. */
+export function pickPromptChoices(
+  pool: string[],
+  used: number[],
+  count = 3,
+  excludeIdxs: number[] = [],
+  usedTexts: string[] = []
+): { text: string; idx: number }[] {
+  if (pool.length === 0 || count <= 0) return []
   const usedSet = new Set(used)
-  let available = pool
+  const usedTextSet = new Set(usedTexts.map(normalizePromptText).filter(Boolean))
+  const excludeSet = new Set(excludeIdxs)
+
+  const unused = pool
     .map((text, idx) => ({ text, idx }))
-    .filter((x) => !usedSet.has(x.idx) && x.idx !== excludeIdx)
-  if (available.length === 0) {
-    available = pool
-      .map((text, idx) => ({ text, idx }))
-      .filter((x) => !usedSet.has(x.idx))
+    .filter((x) => !usedSet.has(x.idx) && !usedTextSet.has(normalizePromptText(x.text)))
+  if (unused.length === 0) return []
+
+  // Prefer prompts not shown yet this turn. Only recycle already-shown
+  // unused ones when nothing else remains — never reuse played prompts.
+  const fresh = unused.filter((x) => !excludeSet.has(x.idx))
+  const recycled = unused.filter((x) => excludeSet.has(x.idx))
+
+  function takeShuffled(source: { text: string; idx: number }[], n: number) {
+    const bag = [...source]
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[bag[i], bag[j]] = [bag[j]!, bag[i]!]
+    }
+    return bag.slice(0, n)
   }
-  if (available.length === 0) return null
-  return available[Math.floor(Math.random() * available.length)]
+
+  const picks = takeShuffled(fresh, count)
+  if (picks.length < count) {
+    picks.push(...takeShuffled(recycled, count - picks.length))
+  }
+  return picks
 }

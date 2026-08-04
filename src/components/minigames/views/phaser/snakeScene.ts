@@ -1,5 +1,15 @@
 import type { SceneFactory } from './PhaserGame'
-import { drawBox, drawDisc3d, drawSky, shade } from './pseudo3d'
+import {
+  drawBox,
+  drawDisc3d,
+  drawGlow,
+  drawSky,
+  drawStars,
+  drawVignette,
+  shade,
+  HUD_BANNER,
+  HUD_STYLE,
+} from './pseudo3d'
 
 type Graphics = Phaser.GameObjects.Graphics
 type Text = Phaser.GameObjects.Text
@@ -37,15 +47,10 @@ export const makeSnakeScene: SceneFactory = (Phaser, bridgeRef) => {
     create() {
       this.g = this.add.graphics()
       this.scoreText = this.add
-        .text(8, 6, 'Length: 1', { fontFamily: 'monospace', fontSize: '15px', color: '#e5e7eb' })
+        .text(8, 6, 'Length: 1', HUD_STYLE)
         .setDepth(10)
       this.statusText = this.add
-        .text(SNAKE_W / 2, SNAKE_H / 2, '', {
-          fontFamily: 'monospace',
-          fontSize: '36px',
-          color: '#fca5a5',
-          fontStyle: 'bold',
-        })
+        .text(SNAKE_W / 2, SNAKE_H / 2, '', HUD_BANNER)
         .setOrigin(0.5)
         .setDepth(10)
       this.placeFood()
@@ -141,7 +146,8 @@ export const makeSnakeScene: SceneFactory = (Phaser, bridgeRef) => {
     private draw() {
       const g = this.g
       g.clear()
-      drawSky(g, SNAKE_W, SNAKE_H, 0x0c1220, 0x070b12, 10)
+      drawSky(g, SNAKE_W, SNAKE_H, 0x020617, 0x1e1b4b, 14, { haze: 1, hazeColor: 0x6366f1 })
+      drawStars(g, SNAKE_W, SNAKE_H, 36, 11)
 
       for (let y = 0; y < GRID; y++) {
         for (let x = 0; x < GRID; x++) {
@@ -152,23 +158,30 @@ export const makeSnakeScene: SceneFactory = (Phaser, bridgeRef) => {
             y * SCELL + 5,
             SCELL - 3,
             SCELL - 6,
-            3,
-            odd ? 0x152033 : 0x101826,
-            { round: 2 }
+            4,
+            odd ? 0x1e293b : 0x0f172a,
+            { round: 3 }
           )
         }
       }
 
+      drawGlow(
+        g,
+        this.food.x * SCELL + SCELL / 2,
+        this.food.y * SCELL + SCELL / 2,
+        SCELL * 0.7,
+        0xf43f5e,
+        0.28
+      )
       drawDisc3d(
         g,
         this.food.x * SCELL + SCELL / 2,
         this.food.y * SCELL + SCELL / 2,
         SCELL / 2 - 4,
-        6,
-        0xf87171
+        7,
+        0xfb7185
       )
 
-      // Draw snake from tail → head so head sits on top
       for (let i = this.body.length - 1; i >= 0; i--) {
         const s = this.body[i]!
         const isHead = i === 0
@@ -178,11 +191,13 @@ export const makeSnakeScene: SceneFactory = (Phaser, bridgeRef) => {
           s.y * SCELL + 6,
           SCELL - 6,
           SCELL - 8,
-          isHead ? 9 : 6,
-          isHead ? 0xc4b5fd : shade(0xa78bfa, 0.85 + (i / this.body.length) * 0.2),
-          { round: 5 }
+          isHead ? 11 : 7,
+          isHead ? 0xe9d5ff : shade(0xa78bfa, 0.85 + (i / this.body.length) * 0.25),
+          { round: 6, glow: isHead }
         )
       }
+
+      drawVignette(g, SNAKE_W, SNAKE_H, 0.42)
 
       this.scoreText.setText('Length: ' + this.body.length)
       if (!this.started()) {
